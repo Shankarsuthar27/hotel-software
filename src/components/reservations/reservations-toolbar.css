@@ -21,148 +21,437 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px;
+  padding: 8px 12px;
   box-sizing: border-box;
   font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif);
-  font-size: 16px;
-  line-height: 24px;
-  color: #020817;
+  font-size: 14px;
+  line-height: 20px;
+  color: #0f172a;
   background-color: transparent;
   transition: all 0.2s ease;
 }
 
-/* 1. Filter Icon Square Button */
+/* 1. Subtle Filter Icon Button (matches Image 1) */
 .otal-filter-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 6px;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
   flex-shrink: 0;
-  border: 2px solid #3b82f6;
+  border: 1px solid #e2e8f0;
   background-color: #ffffff;
-  color: #3b82f6;
+  color: #94a3b8;
   cursor: pointer;
   transition: all 0.15s ease;
   outline: none;
+  padding: 0;
 }
 
 .otal-filter-icon-btn:hover {
-  background-color: #eff6ff;
-  border-color: #2563eb;
-  color: #2563eb;
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
 }
 
 .otal-filter-icon-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
-/* 2. Date Range Picker (From - To) */
-.otal-date-range-box {
-  display: flex;
+.otal-filter-icon-btn .material-symbols-outlined {
+  font-size: 18px !important;
+}
+
+/* 2. Status Dropdown (All Active, All Statuses, Confirmed, In-house, etc.) */
+.otal-status-dropdown-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.otal-status-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 10px;
+  height: 38px;
+  min-width: 136px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.otal-status-btn:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.otal-status-btn.open {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.otal-status-arrow {
+  font-size: 20px !important;
+  color: #94a3b8;
+  transition: color 0.15s ease;
+}
+
+.otal-status-arrow.open {
+  color: #2563eb !important;
+}
+
+/* Status Menu Dropdown (matches Images 2 & 3) */
+.otal-status-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  width: 175px;
+  max-height: 240px;
+  overflow-y: auto;
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 2px 8px;
-  height: 36px;
-  flex-shrink: 0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  padding: 6px 0;
+  z-index: 100;
   box-sizing: border-box;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: otalDropdownFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.otal-date-range-box:focus-within {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+/* Custom Sleek Scrollbar for Status Dropdown (matches Images 2 & 3) */
+.otal-status-dropdown-menu::-webkit-scrollbar {
+  width: 5px;
 }
 
-.otal-date-input-wrap {
-  position: relative;
+.otal-status-dropdown-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.otal-status-dropdown-menu::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.otal-status-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+.otal-status-menu-item {
   display: flex;
   align-items: center;
-  width: 112px;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 16px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.12s ease;
+  box-sizing: border-box;
 }
 
-.otal-date-input {
-  display: flex;
+.otal-status-menu-item:hover {
+  background-color: #f8fafc;
+  color: #000000;
+}
+
+.otal-status-menu-item.selected {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.otal-status-menu-item .check-icon {
+  font-size: 18px !important;
+  color: #2563eb !important;
+  font-weight: 700;
+}
+
+/* 3. Date Range Picker [ 📅 From 📅 - To 📅 ] */
+.otal-date-range-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.otal-date-range-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
   background-color: #ffffff;
-  outline: none;
-  border: none;
-  box-shadow: none;
-  font-size: 12px;
-  line-height: 16px;
-  padding: 0 24px 0 0;
-  height: 32px;
-  width: 112px;
+  padding: 0 12px;
   cursor: pointer;
   user-select: none;
-  color: #0f172a;
-  font-family: inherit;
-  font-weight: 500;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
-.otal-date-input::placeholder {
-  color: #9ca3af;
+.otal-date-range-box:hover {
+  border-color: #cbd5e1;
+}
+
+.otal-date-range-box.active {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.otal-date-range-box .material-symbols-outlined {
+  font-size: 17px !important;
+  color: #94a3b8;
+}
+
+.otal-date-text {
+  font-size: 13.5px;
+  line-height: 1;
+}
+
+.otal-date-text.placeholder {
+  color: #94a3b8;
   font-weight: 400;
 }
 
-.otal-date-icon-right {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
+.otal-date-text.has-date {
+  color: #0f172a;
+  font-weight: 500;
 }
 
 .otal-date-sep {
   color: #94a3b8;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 13.5px;
   user-select: none;
-  padding: 0 2px;
+  font-weight: 400;
+  margin: 0 1px;
 }
 
-/* 3. Search Bar */
+.otal-date-clear-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background-color: #f1f5f9;
+  color: #64748b;
+  border: none;
+  cursor: pointer;
+  margin-left: 4px;
+  padding: 0;
+  transition: all 0.12s ease;
+}
+
+.otal-date-clear-icon:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+/* 4. Calendar Popup Modal (matches Image 4) */
+.otal-calendar-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 296px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: 18px;
+  z-index: 120;
+  box-sizing: border-box;
+  animation: otalDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.otal-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.otal-cal-nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #334155;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.otal-cal-nav-btn:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.otal-cal-nav-btn .material-symbols-outlined {
+  font-size: 19px !important;
+}
+
+.otal-cal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: center;
+}
+
+.otal-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.otal-cal-weekday {
+  padding: 3px 0;
+}
+
+.otal-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  row-gap: 5px;
+}
+
+.otal-cal-day {
+  height: 34px;
+  width: 34px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+  padding: 0;
+}
+
+/* Previous/Next Month Days in muted gray (matches Image 4: 27, 28, 29, 30) */
+.otal-cal-day.other-month {
+  color: #cbd5e1;
+}
+
+.otal-cal-day.current-month {
+  color: #1e293b;
+}
+
+.otal-cal-day:hover {
+  background-color: #f1f5f9;
+}
+
+/* Today Day: Blue text (matches Image 4: day 27 in blue!) */
+.otal-cal-day.today {
+  color: #2563eb !important;
+  font-weight: 700;
+}
+
+/* Selected Dates */
+.otal-cal-day.selected-from,
+.otal-cal-day.selected-to {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-radius: 8px;
+}
+
+.otal-cal-day.in-range {
+  background-color: #eff6ff !important;
+  color: #2563eb !important;
+  border-radius: 4px;
+}
+
+.otal-cal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.otal-cal-helper-text {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.otal-cal-footer-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.otal-cal-footer-btn.clear {
+  color: #ef4444;
+  border-color: #fee2e2;
+  background-color: #fef2f2;
+}
+
+.otal-cal-footer-btn.today {
+  color: #2563eb;
+  border-color: #dbeafe;
+  background-color: #eff6ff;
+}
+
+/* 5. Search Bar */
 .otal-search-box {
   display: flex;
   align-items: center;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
-  background-color: rgba(255, 255, 255, 0.8);
-  height: 36px;
-  transition: all 0.3s ease-in-out;
+  background-color: #ffffff;
+  height: 38px;
+  transition: all 0.2s ease;
   max-width: 100%;
-  width: 224px;
+  width: 228px;
   box-sizing: border-box;
 }
 
 .otal-search-box:hover {
-  background-color: #ffffff;
   border-color: #cbd5e1;
 }
 
 .otal-search-box:focus-within {
-  border: 2px solid #3b82f6;
-  background-color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 .otal-search-icon {
-  margin-left: 12px;
+  margin-left: 11px;
   flex-shrink: 0;
   color: #64748b;
-  transition: color 0.2s ease;
+  font-size: 19px !important;
+  transition: color 0.15s ease;
 }
 
 .otal-search-box:focus-within .otal-search-icon {
@@ -175,48 +464,45 @@
   width: 100%;
   border: 0;
   background: transparent;
-  padding: 0 12px;
+  padding: 0 10px;
   outline: none;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 13.5px;
   color: #0f172a;
   font-family: inherit;
 }
 
 .otal-search-input::placeholder {
-  color: #9ca3af;
+  color: #94a3b8;
   font-size: 13.5px;
 }
 
-/* 4. Booking Source Combobox */
+/* 6. Booking Source Combobox */
 .otal-combobox-wrap {
   display: flex;
   flex-direction: column;
   position: relative;
-  height: 36px;
-  width: 208px;
+  height: 38px;
+  width: 185px;
   flex-shrink: 0;
 }
 
 .otal-combobox-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 8px;
   white-space: nowrap;
   font-size: 14px;
-  line-height: 20px;
   font-weight: 500;
-  padding: 8px 16px;
+  padding: 0 12px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.15s ease;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   background-color: #ffffff;
-  color: #6b7280;
-  height: 36px;
-  width: 208px;
-  flex-shrink: 0;
+  color: #334155;
+  height: 38px;
+  width: 100%;
   box-sizing: border-box;
   outline: none;
 }
@@ -226,45 +512,32 @@
   border-color: #cbd5e1;
 }
 
-.otal-combobox-btn:focus,
 .otal-combobox-btn.open {
-  border-color: rgba(59, 130, 246, 0.5);
-  background-color: #ffffff;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 .otal-combobox-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 5px);
   left: 0;
-  width: 208px;
+  width: 185px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  padding: 4px;
-  z-index: 60;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  padding: 5px;
+  z-index: 100;
   display: flex;
   flex-direction: column;
   animation: otalDropdownFadeIn 0.15s ease-out;
-}
-
-@keyframes otalDropdownFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .otal-combobox-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 8px 10px;
   font-size: 13.5px;
   color: #334155;
   border-radius: 6px;
@@ -283,34 +556,31 @@
   font-weight: 600;
 }
 
-/* 5. VIP Button */
+/* 7. VIP Button */
 .otal-vip-btn {
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   white-space: nowrap;
   font-size: 14px;
-  line-height: 20px;
   font-weight: 500;
-  height: 36px;
-  border-radius: 6px;
-  padding: 0 12px;
+  height: 38px;
+  border-radius: 8px;
+  padding: 0 14px;
   flex-shrink: 0;
-  transition: all 0.3s ease-in-out;
-  color: #4b5563;
-  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+  color: #334155;
+  border: 1px solid #e2e8f0;
   background-color: #ffffff;
-  width: 96px;
   box-sizing: border-box;
   outline: none;
 }
 
 .otal-vip-btn:hover {
-  background-color: #f9fafb;
-  border-color: #d1d5db;
-  color: #1f2937;
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .otal-vip-btn.active {
@@ -318,29 +588,26 @@
   border-color: #fde68a;
   color: #b45309;
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(217, 119, 6, 0.1);
 }
 
-/* 6. Single Lady Button */
+/* 8. Single Lady Button */
 .otal-single-lady-btn {
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   white-space: nowrap;
   font-size: 14px;
-  line-height: 20px;
   font-weight: 500;
-  height: 36px;
-  border-radius: 6px;
-  padding: 0 12px;
+  height: 38px;
+  border-radius: 8px;
+  padding: 0 14px;
   flex-shrink: 0;
-  transition: all 0.3s ease-in-out;
-  color: #4b5563;
-  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+  color: #334155;
+  border: 1px solid #e2e8f0;
   background-color: #ffffff;
-  width: 144px;
   box-sizing: border-box;
   outline: none;
 }
@@ -348,7 +615,6 @@
 .otal-single-lady-btn:hover {
   background-color: #fdf4ff;
   border-color: #f0abfc;
-  color: #a21caf;
 }
 
 .otal-single-lady-btn.active {
@@ -356,10 +622,9 @@
   border-color: #fbcfe8;
   color: #9d174d;
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(192, 38, 211, 0.1);
 }
 
-/* 7. Right Controls Cluster (Report + Segmented View Modes) */
+/* 9. Right Controls Cluster (Report + Segmented View Modes) */
 .otal-right-cluster {
   margin-left: auto;
   display: flex;
@@ -368,7 +633,6 @@
   flex-shrink: 0;
 }
 
-/* Report Download Button */
 .otal-report-btn {
   cursor: pointer;
   display: flex;
@@ -377,15 +641,14 @@
   gap: 6px;
   white-space: nowrap;
   font-size: 14px;
-  line-height: 20px;
   font-weight: 500;
   border: 1px solid #e2e8f0;
   background-color: #ffffff;
-  border-radius: 6px;
-  padding: 0 12px;
+  border-radius: 8px;
+  padding: 0 14px;
   flex-shrink: 0;
   color: #475569;
-  height: 36px;
+  height: 38px;
   box-sizing: border-box;
   transition: all 0.15s ease;
   outline: none;
@@ -397,19 +660,15 @@
   border-color: #cbd5e1;
 }
 
-.otal-report-btn:active {
-  transform: scale(0.98);
-}
-
 /* Segmented View Mode Toggle Container */
 .otal-view-toggle-group {
   display: inline-flex;
   align-items: center;
   border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  border-radius: 8px;
   background-color: #ffffff;
   overflow: hidden;
-  height: 36px;
+  height: 38px;
   box-sizing: border-box;
 }
 
@@ -418,19 +677,15 @@
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 36px;
+  width: 52px;
+  height: 38px;
   padding: 0;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.15s ease;
   background-color: transparent;
   color: #64748b;
   border: 0;
   border-right: 1px solid #e2e8f0;
   border-radius: 0;
-  box-shadow: none;
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
   outline: none;
 }
 
@@ -440,7 +695,7 @@
 }
 
 .otal-toggle-tab-btn.active {
-  background-color: rgba(239, 246, 255, 0.8) !important;
+  background-color: #eff6ff !important;
   color: #2563eb !important;
 }
 
@@ -449,10 +704,10 @@
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 36px;
+  width: 52px;
+  height: 38px;
   padding: 0;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.15s ease;
   background-color: transparent;
   color: #64748b;
   border: 0;
@@ -470,11 +725,22 @@
 }
 
 .otal-toggle-action-btn.active {
-  background-color: rgba(239, 246, 255, 0.8) !important;
+  background-color: #eff6ff !important;
   color: #2563eb !important;
 }
 
-@media (max-width: 1024px) {
+@keyframes otalDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1100px) {
   .otal-right-cluster {
     margin-left: 0;
     width: 100%;
