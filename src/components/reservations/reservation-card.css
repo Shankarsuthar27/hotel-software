@@ -487,10 +487,10 @@
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
   z-index: 1000;
   width: 172px;
-  padding: 6px;
+  padding: 5px;
   animation: radixMenuFade 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
@@ -510,11 +510,11 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 8px 10px;
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   color: #1e293b;
@@ -527,32 +527,32 @@
 }
 
 .radix-menu-item .material-symbols-outlined {
-  font-size: 20px !important;
-  color: #64748b;
+  font-size: 19px !important;
+  color: #475569;
   flex-shrink: 0;
   transition: color 0.12s ease;
 }
 
 .radix-menu-item:hover,
 .radix-menu-item.active {
-  background-color: #f1f5f9;
+  background-color: #f8fafc;
   color: #0f172a;
 }
 
 .radix-menu-item:hover .material-symbols-outlined,
 .radix-menu-item.active .material-symbols-outlined {
-  color: #334155;
+  color: #1e293b;
 }
 
 .radix-menu-item .chevron-icon {
   margin-left: auto;
-  font-size: 18px !important;
-  color: #94a3b8;
+  font-size: 16px !important;
+  color: #475569;
 }
 
 .radix-menu-item:hover .chevron-icon,
 .radix-menu-item.active .chevron-icon {
-  color: #475569;
+  color: #1e293b;
 }
 
 /* Submenu trigger wrapper */
@@ -570,10 +570,10 @@
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
   z-index: 1010;
   width: 165px;
-  padding: 6px;
+  padding: 5px;
   animation: radixMenuFade 0.12s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
@@ -607,12 +607,30 @@
 
 .radix-menu-item.action-checkin {
   color: #2563eb;
-  font-weight: 600;
+  font-weight: 500;
 }
 
+.radix-menu-item.action-checkin .material-symbols-outlined {
+  color: #2563eb !important;
+}
+
+/* Check-out Action (Red icon and text matching OTAL PMS screenshot) */
 .radix-menu-item.action-checkout {
-  color: #ef4444;
-  font-weight: 600;
+  color: #ef4444 !important;
+  font-weight: 500;
+}
+
+.radix-menu-item.action-checkout .material-symbols-outlined {
+  color: #ef4444 !important;
+}
+
+.radix-menu-item.action-checkout:hover {
+  background-color: #fef2f2;
+  color: #dc2626 !important;
+}
+
+.radix-menu-item.action-checkout:hover .material-symbols-outlined {
+  color: #dc2626 !important;
 }
 
 .radix-menu-divider {

@@ -20,11 +20,12 @@ export default function ReservationCard({
   onVoucher,
   onInvoice
 }) {
-  const isCheckedOut = reservation.status === 'checked_out' || reservation.status === 'Checked Out';
-  const isInHouse = reservation.status === 'in_house' || reservation.status === 'In-House';
-  const isConfirmed = reservation.status === 'confirmed' || reservation.status === 'Confirmed';
-  const isCancelled = reservation.status === 'cancelled' || reservation.status === 'Cancelled';
-  const isNoShow = reservation.status === 'no_show' || reservation.status === 'No Show';
+  const statusNormalized = (reservation.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+  const isCheckedOut = statusNormalized === 'checked_out';
+  const isInHouse = statusNormalized === 'in_house';
+  const isConfirmed = statusNormalized === 'confirmed';
+  const isCancelled = statusNormalized === 'cancelled';
+  const isNoShow = statusNormalized === 'no_show';
 
   let statusLabel = 'Checked Out';
   let statusBadgeStyle = 'bg-lime-600/10 text-lime-600';
@@ -153,7 +154,126 @@ export default function ReservationCard({
             {/* Radix Menu Dropdown */}
             {isMenuOpen && (
               <div ref={menuRef} className="radix-card-menu" role="menu">
-                {isCheckedOut ? (
+                {isInHouse ? (
+                  /* Exact In-House Reservation Menu matching user specification image */
+                  <>
+                    <button
+                      className="radix-menu-item"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onEdit) onEdit(reservation);
+                        else if (onSelect) onSelect(reservation);
+                        if (onToggleMenu) onToggleMenu(e);
+                      }}
+                    >
+                      <span className="material-symbols-outlined">edit_square</span>
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      className="radix-menu-item"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onEdit) onEdit(reservation);
+                        else if (onSelect) onSelect(reservation);
+                        if (onToggleMenu) onToggleMenu(e);
+                      }}
+                    >
+                      <span className="material-symbols-outlined">calendar_today</span>
+                      <span>Amend Stay</span>
+                    </button>
+                    <button
+                      className="radix-menu-item"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onRoomMove) onRoomMove(reservation);
+                        if (onToggleMenu) onToggleMenu(e);
+                      }}
+                    >
+                      <span className="material-symbols-outlined">bed</span>
+                      <span>Room Move</span>
+                    </button>
+                    <button
+                      className="radix-menu-item"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onSelect) onSelect(reservation);
+                        else if (onCardClick) onCardClick(reservation);
+                        if (onToggleMenu) onToggleMenu(e);
+                      }}
+                    >
+                      <span className="material-symbols-outlined">group</span>
+                      <span>Group List</span>
+                    </button>
+                    <div
+                      className="radix-menu-item-sub-trigger"
+                      onMouseEnter={() => setShowPrintSubmenu(true)}
+                      onMouseLeave={() => setShowPrintSubmenu(false)}
+                    >
+                      <button
+                        className={`radix-menu-item ${showPrintSubmenu ? 'active' : ''}`}
+                        role="menuitem"
+                        aria-haspopup="menu"
+                        aria-expanded={showPrintSubmenu}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowPrintSubmenu((prev) => !prev);
+                        }}
+                      >
+                        <span className="material-symbols-outlined">print</span>
+                        <span>Print</span>
+                        <span className="material-symbols-outlined chevron-icon">chevron_right</span>
+                      </button>
+
+                      {showPrintSubmenu && (
+                        <div className="radix-card-submenu" role="menu" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="radix-menu-item"
+                            role="menuitem"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onVoucher) onVoucher(reservation);
+                              setShowPrintSubmenu(false);
+                              if (onToggleMenu) onToggleMenu(e);
+                            }}
+                          >
+                            <span className="material-symbols-outlined">receipt_long</span>
+                            <span>Print Voucher</span>
+                          </button>
+                          <button
+                            className="radix-menu-item"
+                            role="menuitem"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onInvoice) onInvoice(reservation);
+                              setShowPrintSubmenu(false);
+                              if (onToggleMenu) onToggleMenu(e);
+                            }}
+                          >
+                            <span className="material-symbols-outlined">description</span>
+                            <span>Print Invoice</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      className="radix-menu-item action-checkout"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onCheckOut) onCheckOut(reservation);
+                        if (onToggleMenu) onToggleMenu(e);
+                      }}
+                    >
+                      <span className="material-symbols-outlined">logout</span>
+                      <span>Check-out</span>
+                    </button>
+                  </>
+                ) : isCheckedOut ? (
+                  /* Checked Out Menu: View, Group List, Print */
                   <>
                     <button
                       className="radix-menu-item"
@@ -235,6 +355,7 @@ export default function ReservationCard({
                     </div>
                   </>
                 ) : (
+                  /* Confirmed / Arrivals and Other Statuses */
                   <>
                     <button
                       className="radix-menu-item"
@@ -254,12 +375,13 @@ export default function ReservationCard({
                       role="menuitem"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onSelect) onSelect(reservation);
+                        if (onEdit) onEdit(reservation);
+                        else if (onSelect) onSelect(reservation);
                         if (onToggleMenu) onToggleMenu(e);
                       }}
                     >
-                      <span className="material-symbols-outlined">group</span>
-                      <span>Group List</span>
+                      <span className="material-symbols-outlined">edit_square</span>
+                      <span>Edit</span>
                     </button>
                     <button
                       className="radix-menu-item"
@@ -268,18 +390,6 @@ export default function ReservationCard({
                         e.stopPropagation();
                         if (onEdit) onEdit(reservation);
                         else if (onSelect) onSelect(reservation);
-                        if (onToggleMenu) onToggleMenu(e);
-                      }}
-                    >
-                      <span className="material-symbols-outlined">edit</span>
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      className="radix-menu-item"
-                      role="menuitem"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onSelect) onSelect(reservation);
                         if (onToggleMenu) onToggleMenu(e);
                       }}
                     >
@@ -297,6 +407,19 @@ export default function ReservationCard({
                     >
                       <span className="material-symbols-outlined">bed</span>
                       <span>Room Move</span>
+                    </button>
+                    <button
+                      className="radix-menu-item"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onSelect) onSelect(reservation);
+                        else if (onCardClick) onCardClick(reservation);
+                        if (onToggleMenu) onToggleMenu(e);
+                      }}
+                    >
+                      <span className="material-symbols-outlined">group</span>
+                      <span>Group List</span>
                     </button>
                     <div
                       className="radix-menu-item-sub-trigger"
@@ -361,20 +484,6 @@ export default function ReservationCard({
                       >
                         <span className="material-symbols-outlined">login</span>
                         <span>Check-in</span>
-                      </button>
-                    )}
-                    {isInHouse && (
-                      <button
-                        className="radix-menu-item action-checkout"
-                        role="menuitem"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onCheckOut) onCheckOut(reservation);
-                          if (onToggleMenu) onToggleMenu(e);
-                        }}
-                      >
-                        <span className="material-symbols-outlined">logout</span>
-                        <span>Check-out</span>
                       </button>
                     )}
                     <div className="radix-menu-divider" />
