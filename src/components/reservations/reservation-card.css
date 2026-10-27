@@ -489,8 +489,8 @@
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
   z-index: 1000;
-  width: 172px;
-  padding: 5px;
+  min-width: 184px;
+  padding: 6px;
   animation: radixMenuFade 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
@@ -511,10 +511,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 10px;
+  padding: 7.5px 10px;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   font-size: 14px;
   font-weight: 500;
   color: #1e293b;
@@ -524,6 +524,7 @@
   box-sizing: border-box;
   text-decoration: none;
   user-select: none;
+  white-space: nowrap;
 }
 
 .radix-menu-item .material-symbols-outlined {
@@ -605,13 +606,23 @@
   background-color: #fef2f2;
 }
 
+/* Check-in Action (Indigo icon and text matching OTAL PMS screenshot) */
 .radix-menu-item.action-checkin {
-  color: #2563eb;
+  color: #4f46e5 !important;
   font-weight: 500;
 }
 
 .radix-menu-item.action-checkin .material-symbols-outlined {
-  color: #2563eb !important;
+  color: #4f46e5 !important;
+}
+
+.radix-menu-item.action-checkin:hover {
+  background-color: #eef2ff;
+  color: #4338ca !important;
+}
+
+.radix-menu-item.action-checkin:hover .material-symbols-outlined {
+  color: #4338ca !important;
 }
 
 /* Check-out Action (Red icon and text matching OTAL PMS screenshot) */

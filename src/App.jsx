@@ -196,6 +196,11 @@ export default function App() {
     showToast(`🚫 Reservation cancelled successfully.`);
   };
 
+  const handleNoShowReservation = (resId) => {
+    pmsStore.markNoShow(resId);
+    showToast(`⚠️ Reservation marked as No-Show.`);
+  };
+
   const handleSlotClick = (room, dateStr) => {
     setSlotPrefillData({ room, date: dateStr });
     navigate(`/reservations/create?roomId=${room.id}&date=${dateStr}`);
@@ -425,6 +430,7 @@ export default function App() {
                 setIsInvoiceOpen(true);
               }}
               onCancelReservation={handleCancelReservation}
+              onNoShowReservation={handleNoShowReservation}
               onEditReservation={(res) => {
                 navigate(`/reservations/${res.id}/edit`);
               }}

@@ -66,6 +66,7 @@ export default function ReservationsView({
   onOpenVoucher,
   onOpenInvoice,
   onCancelReservation,
+  onNoShowReservation,
   onUpdateReservation,
   onPostPendingCharges,
   onAddFolioCharge,
@@ -333,6 +334,7 @@ export default function ReservationsView({
               }}
               onRoomMove={onOpenRoomMove}
               onCancel={onCancelReservation}
+              onNoShow={onNoShowReservation}
               onVoucher={onOpenVoucher}
               onInvoice={onOpenInvoice}
             />
