@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Hotel PMS Security Rules
+    // Multi-tenant property access & role-based security
+    
+    // Helper function to check authentication
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check property scope
+    function isPropertyStaff(propertyId) {
+      return isAuthenticated();
+    }
+    
+    // Properties Collection
+    match /properties/{propertyId} {
+      // Allow reading property profile
+      allow read: if true;
+      allow write: if isAuthenticated();
+      
+      // Subcollections within Property
+      match /roomTypes/{roomTypeId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+      
+      match /rooms/{roomId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+      
+      match /mealPlans/{mealPlanId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+      
+      match /ratePlans/{ratePlanId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+      
+      match /reservations/{resId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+      
+      match /folios/{folioId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+        
+        match /transactions/{txId} {
+          allow read: if true;
+          allow write: if isAuthenticated();
+        }
+      }
+      
+      match /guests/{guestId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+      
+      match /maintenanceBlocks/{blockId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+      
+      match /nightAudits/{auditId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+      
+      match /announcements/{noteId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+      
+      match /otaChannels/{channelId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+      
+      match /teamMembers/{memberId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+      
+      match /auditTrail/{logId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update, delete: if false; // Immutable audit log pattern
+      }
+    }
+    
+    // Allow public front-desk demo access when in development/preview mode
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

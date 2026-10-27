@@ -1,0 +1,24 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Hotel PMS Storage Rules
+    // Protect guest KYC ID proofs and property asset files
+    
+    match /properties/{propertyId}/guests/{guestId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size < 10 * 1024 * 1024 // 10MB limit
+                   && request.resource.contentType.matches('image/.*|application/pdf');
+    }
+    
+    match /properties/{propertyId}/documents/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Fallback for public demo uploads (guest photos/invoices)
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}

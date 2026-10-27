@@ -1,0 +1,483 @@
+/* ==========================================================================
+   Reservations Toolbar UI Component - Exact OTAL PMS Specification
+   Inspected from https://app.otalpms.com/reservations
+   ========================================================================== */
+
+/* Typography Tokens */
+.small-title-4 {
+  font-size: 14px !important;
+  line-height: 20px !important;
+}
+
+.small-title-2 {
+  font-size: 12px !important;
+  line-height: 16px !important;
+}
+
+/* Outer Container - div.w-full */
+.otal-res-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif);
+  font-size: 16px;
+  line-height: 24px;
+  color: #020817;
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+/* 1. Filter Icon Square Button */
+.otal-filter-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  border: 2px solid #3b82f6;
+  background-color: #ffffff;
+  color: #3b82f6;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.otal-filter-icon-btn:hover {
+  background-color: #eff6ff;
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.otal-filter-icon-btn:active {
+  transform: scale(0.98);
+}
+
+/* 2. Date Range Picker (From - To) */
+.otal-date-range-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 2px 8px;
+  height: 36px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.otal-date-range-box:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.otal-date-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 112px;
+}
+
+.otal-date-input {
+  display: flex;
+  background-color: #ffffff;
+  outline: none;
+  border: none;
+  box-shadow: none;
+  font-size: 12px;
+  line-height: 16px;
+  padding: 0 24px 0 0;
+  height: 32px;
+  width: 112px;
+  cursor: pointer;
+  user-select: none;
+  color: #0f172a;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.otal-date-input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.otal-date-icon-right {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.otal-date-sep {
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 16px;
+  user-select: none;
+  padding: 0 2px;
+}
+
+/* 3. Search Bar */
+.otal-search-box {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: rgba(255, 255, 255, 0.8);
+  height: 36px;
+  transition: all 0.3s ease-in-out;
+  max-width: 100%;
+  width: 224px;
+  box-sizing: border-box;
+}
+
+.otal-search-box:hover {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.otal-search-box:focus-within {
+  border: 2px solid #3b82f6;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.otal-search-icon {
+  margin-left: 12px;
+  flex-shrink: 0;
+  color: #64748b;
+  transition: color 0.2s ease;
+}
+
+.otal-search-box:focus-within .otal-search-icon {
+  color: #3b82f6;
+}
+
+.otal-search-input {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0 12px;
+  outline: none;
+  font-size: 14px;
+  line-height: 20px;
+  color: #0f172a;
+  font-family: inherit;
+}
+
+.otal-search-input::placeholder {
+  color: #9ca3af;
+  font-size: 13.5px;
+}
+
+/* 4. Booking Source Combobox */
+.otal-combobox-wrap {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  height: 36px;
+  width: 208px;
+  flex-shrink: 0;
+}
+
+.otal-combobox-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #6b7280;
+  height: 36px;
+  width: 208px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.otal-combobox-btn:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.otal-combobox-btn:focus,
+.otal-combobox-btn.open {
+  border-color: rgba(59, 130, 246, 0.5);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08);
+}
+
+.otal-combobox-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 208px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  padding: 4px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  animation: otalDropdownFadeIn 0.15s ease-out;
+}
+
+@keyframes otalDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.otal-combobox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  color: #334155;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: all 0.12s ease;
+}
+
+.otal-combobox-item:hover,
+.otal-combobox-item.active {
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+/* 5. VIP Button */
+.otal-vip-btn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  height: 36px;
+  border-radius: 6px;
+  padding: 0 12px;
+  flex-shrink: 0;
+  transition: all 0.3s ease-in-out;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  width: 96px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.otal-vip-btn:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.otal-vip-btn.active {
+  background-color: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(217, 119, 6, 0.1);
+}
+
+/* 6. Single Lady Button */
+.otal-single-lady-btn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  height: 36px;
+  border-radius: 6px;
+  padding: 0 12px;
+  flex-shrink: 0;
+  transition: all 0.3s ease-in-out;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  width: 144px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.otal-single-lady-btn:hover {
+  background-color: #fdf4ff;
+  border-color: #f0abfc;
+  color: #a21caf;
+}
+
+.otal-single-lady-btn.active {
+  background-color: #fdf2f8;
+  border-color: #fbcfe8;
+  color: #9d174d;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(192, 38, 211, 0.1);
+}
+
+/* 7. Right Controls Cluster (Report + Segmented View Modes) */
+.otal-right-cluster {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Report Download Button */
+.otal-report-btn {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  border-radius: 6px;
+  padding: 0 12px;
+  flex-shrink: 0;
+  color: #475569;
+  height: 36px;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.otal-report-btn:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.otal-report-btn:active {
+  transform: scale(0.98);
+}
+
+/* Segmented View Mode Toggle Container */
+.otal-view-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background-color: #ffffff;
+  overflow: hidden;
+  height: 36px;
+  box-sizing: border-box;
+}
+
+.otal-toggle-tab-btn {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 36px;
+  padding: 0;
+  transition: all 0.2s ease-in-out;
+  background-color: transparent;
+  color: #64748b;
+  border: 0;
+  border-right: 1px solid #e2e8f0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  outline: none;
+}
+
+.otal-toggle-tab-btn:hover {
+  color: #1e293b;
+  background-color: #f8fafc;
+}
+
+.otal-toggle-tab-btn.active {
+  background-color: rgba(239, 246, 255, 0.8) !important;
+  color: #2563eb !important;
+}
+
+.otal-toggle-action-btn {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 36px;
+  padding: 0;
+  transition: all 0.2s ease-in-out;
+  background-color: transparent;
+  color: #64748b;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+}
+
+.otal-toggle-action-btn.has-border-right {
+  border-right: 1px solid #e2e8f0;
+}
+
+.otal-toggle-action-btn:hover {
+  color: #1e293b;
+  background-color: #f8fafc;
+}
+
+.otal-toggle-action-btn.active {
+  background-color: rgba(239, 246, 255, 0.8) !important;
+  color: #2563eb !important;
+}
+
+@media (max-width: 1024px) {
+  .otal-right-cluster {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
