@@ -1,0 +1,481 @@
+/* ==========================================================================
+   Night Audit Details Modal - Exact OTAL PMS Specification
+   Matching reference screenshots:
+   - Summary: media_1793684902426_aa042d66.png
+   - Room Charges: media_1793684905128_685b1ff2.png
+   - Checked Out: media_1793684906990_79e602c6.png
+   - Overview: media_1793684908813_e0b4f111.png
+   ========================================================================== */
+
+.na-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 20px;
+}
+
+.na-detail-modal {
+  background-color: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 820px;
+  height: 520px;
+  min-height: 520px;
+  max-height: 90vh;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: naDetailScaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #0f172a;
+}
+
+@keyframes naDetailScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Modal Header */
+.na-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px 24px;
+}
+
+.na-detail-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.na-detail-header-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.na-detail-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.na-detail-close-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.na-detail-close-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Tab Navigation */
+.na-detail-tabs {
+  display: flex;
+  gap: 24px;
+  padding: 0 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.na-detail-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 10px 4px 12px 4px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s ease;
+}
+
+.na-detail-tab-btn:hover {
+  color: #0f172a;
+}
+
+.na-detail-tab-btn.active {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.na-detail-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background-color: #2563eb;
+  border-radius: 2px;
+}
+
+/* Modal Body */
+.na-detail-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.na-detail-tab-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+}
+
+/* Tab 1: Summary Styles */
+.na-detail-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .na-detail-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.na-detail-summary-card {
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  height: 84px;
+  min-height: 84px;
+  box-sizing: border-box;
+}
+
+.na-detail-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.na-detail-card-icon.green {
+  background-color: #ecfdf5;
+  color: #059669;
+}
+
+.na-detail-card-icon.blue {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.na-detail-card-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.na-detail-card-val {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.na-detail-card-subval {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.na-detail-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 14px 0;
+}
+
+.na-detail-audit-summary-box {
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  height: 84px;
+  min-height: 84px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .na-detail-audit-summary-box {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+.na-detail-summary-box-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.na-detail-box-item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+}
+
+.na-detail-box-item-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.na-detail-box-item-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Tab 2: Room Charges & Tab 3: Checked Out Table Container */
+.na-detail-table-card {
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 20px 24px;
+  flex: 1;
+  min-height: 290px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.na-detail-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.na-detail-data-table th {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  padding: 10px 12px 14px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.na-detail-data-table td {
+  font-size: 13px;
+  color: #334155;
+  padding: 14px 12px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.na-detail-data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.na-detail-empty-message {
+  text-align: center;
+  padding: 36px 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Room Charges Summary Bar (Right-Aligned) */
+.na-detail-room-charges-totals {
+  display: flex;
+  justify-content: flex-end;
+  gap: 32px;
+  padding-top: 20px;
+  margin-top: 10px;
+}
+
+.na-detail-total-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.na-detail-total-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.na-detail-total-val {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.na-detail-total-val.blue-highlight {
+  font-size: 16px;
+  color: #2563eb;
+}
+
+/* Checked Out Summary Bar (Distributed across width) */
+.na-detail-checkout-totals-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+  margin-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.na-detail-checkout-total-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.na-detail-checkout-total-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.na-detail-checkout-total-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.na-detail-checkout-total-val.red {
+  color: #ef4444;
+}
+
+.na-detail-checkout-total-val.green {
+  color: #10b981;
+}
+
+/* Tab 4: Overview Styles */
+.na-detail-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  flex: 1;
+  min-height: 290px;
+}
+
+@media (max-width: 700px) {
+  .na-detail-overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.na-detail-overview-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 12px 0;
+}
+
+.na-detail-panel-box {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+.na-detail-panel-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.na-detail-panel-table th {
+  background-color: #ffffff;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.na-detail-panel-table td {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #334155;
+  border-bottom: 1px solid #f8fafc;
+}
+
+.na-detail-panel-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Modal Footer */
+.na-detail-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+  background-color: #ffffff;
+}
+
+.na-detail-close-btn-bottom {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 7px 22px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.na-detail-close-btn-bottom:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+

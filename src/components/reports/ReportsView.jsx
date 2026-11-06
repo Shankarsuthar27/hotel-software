@@ -1,237 +1,767 @@
 import React, { useState } from 'react';
 import {
-  FileText,
-  Download,
-  Calendar,
-  TrendingUp,
-  DollarSign,
+  FileSpreadsheet,
   Users,
+  Receipt,
+  Moon,
+  Calendar,
+  RotateCcw,
+  FileDown,
+  ChevronUp,
+  ChevronDown,
   CheckCircle2,
-  Table
+  X,
+  CreditCard,
+  Building
 } from 'lucide-react';
 import {
   exportToExcel,
+  exportMultipleSheetsToExcel,
+  exportManagerReportExcel,
   generateManagerReportData,
-  generateReservationsExport
+  generateGuestDetailsExport,
+  generateFolioListExport,
+  generateNightAuditExport,
+  generateReservationsExport,
+  generate7SheetsReservationExport,
+  generateOtaCommissionExport
 } from '../../services/exportService';
+import './reports.css';
 
 export default function ReportsView({
-  property,
-  rooms,
-  reservations,
-  nightAudits,
-  folios
+  property = {},
+  rooms = [],
+  reservations = [],
+  nightAudits = [],
+  folios = {}
 }) {
-  const [selectedReportType, setSelectedReportType] = useState('manager'); // 'manager' | 'reservations' | 'folios' | 'nightaudit'
+  // Navigation Tabs: 'directory' | 'ota'
+  const [activeTab, setActiveTab] = useState('directory');
 
-  const handleExportXlsx = () => {
-    if (selectedReportType === 'manager') {
-      const data = generateManagerReportData(property, rooms, reservations, nightAudits);
-      exportToExcel(data, `Manager_Report_${property.businessDate}.xlsx`, 'Manager Summary');
-    } else if (selectedReportType === 'reservations') {
-      const data = generateReservationsExport(reservations);
-      exportToExcel(data, `Reservations_Ledger_${property.businessDate}.xlsx`, 'Reservations');
-    } else if (selectedReportType === 'folios') {
-      const folioData = reservations.map(r => ({
-        'Folio No': folios[r.folioId]?.folioNumber || 'FOL',
-        'Booking Ref': r.bookingReference,
-        'Guest Name': r.primaryGuest?.name,
-        'Room #': r.roomNumber,
-        'Total Debits (₹)': r.totalAmount,
-        'Total Credits (₹)': r.paidAmount,
-        'Balance Due (₹)': r.balanceDue,
-        'Status': folios[r.folioId]?.status || 'OPEN'
-      }));
-      exportToExcel(folioData, `Folio_Balances_${property.businessDate}.xlsx`, 'Folios');
-    } else if (selectedReportType === 'nightaudit') {
-      const naData = nightAudits.map(na => ({
-        'Audit Date': na.auditDate,
-        'Performed By': na.performedBy,
-        'Revenue (₹)': na.totalRevenue,
-        'Tax (₹)': na.totalTax,
-        'Occupied Rooms': na.occupiedRooms,
-        'ADR (₹)': na.adr,
-        'RevPAR (₹)': na.revPar
-      }));
-      exportToExcel(naData, `Night_Audit_Archive_${property.businessDate}.xlsx`, 'Audits');
+  // Accordion Expand/Collapse states (all 5 expanded by default matching reference image)
+  const [expandedCards, setExpandedCards] = useState({
+    manager: true,
+    guest: true,
+    folio: true,
+    nightaudit: true,
+    reservation: true
+  });
+
+  const toggleCard = (cardKey) => {
+    setExpandedCards((prev) => ({
+      ...prev,
+      [cardKey]: !prev[cardKey]
+    }));
+  };
+
+  // Card 1: Manager Report Form State
+  const defaultManagerDate = '03/11/2026';
+  const [managerDate, setManagerDate] = useState(defaultManagerDate);
+
+  // Card 2: Guest Details Report Form State
+  const defaultGuestStartDate = '03/11/2026';
+  const defaultGuestEndDate = '03/11/2026';
+  const [guestStartDate, setGuestStartDate] = useState(defaultGuestStartDate);
+  const [guestEndDate, setGuestEndDate] = useState(defaultGuestEndDate);
+
+  // Card 3: Folio List Report Form State
+  const defaultFolioStartDate = '01/11/2026';
+  const defaultFolioEndDate = '03/11/2026';
+  const defaultFolioMode = 'Both';
+  const defaultFolioInclude = 'Confirmed +5';
+  const [folioStartDate, setFolioStartDate] = useState(defaultFolioStartDate);
+  const [folioEndDate, setFolioEndDate] = useState(defaultFolioEndDate);
+  const [folioMode, setFolioMode] = useState(defaultFolioMode);
+  const [folioInclude, setFolioInclude] = useState(defaultFolioInclude);
+
+  // Card 4: Night Audit Report Form State
+  const defaultAuditDate = '03/11/2026';
+  const [auditDate, setAuditDate] = useState(defaultAuditDate);
+
+  // Card 5: Reservation Report Form State
+  const defaultResType = 'All (7 sheets)';
+  const defaultMarketSegment = 'All segments';
+  const defaultResStartDate = '01/11/2026';
+  const defaultResEndDate = '03/11/2026';
+  const [resType, setResType] = useState(defaultResType);
+  const [marketSegment, setMarketSegment] = useState(defaultMarketSegment);
+  const [resStartDate, setResStartDate] = useState(defaultResStartDate);
+  const [resEndDate, setResEndDate] = useState(defaultResEndDate);
+
+  // Toast Notification
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  };
+
+  // 1. Generate Manager Report
+  const handleGenerateManagerReport = () => {
+    try {
+      const ok = exportManagerReportExcel(
+        managerDate,
+        property,
+        rooms,
+        reservations,
+        nightAudits,
+        folios
+      );
+      if (ok) {
+        showToast(`Manager Report for ${managerDate} exported successfully (.xlsx)`);
+      } else {
+        const data = generateManagerReportData(property, rooms, reservations, nightAudits);
+        const fileName = `Manager_Report_${managerDate.replace(/\//g, '-')}.xlsx`;
+        exportToExcel(data, fileName, 'Manager Summary');
+        showToast(`Manager Report for ${managerDate} exported successfully (.xlsx)`);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Error generating Manager Report');
     }
   };
 
-  const inHouseCount = reservations.filter(r => r.status === 'in_house').length;
-  const totalRev = reservations.reduce((acc, r) => acc + (r.paidAmount || 0), 0);
-  const totalDue = reservations.reduce((acc, r) => acc + (r.balanceDue || 0), 0);
+  // 2. Generate Guest Details Report
+  const handleGenerateGuestReport = () => {
+    const data = generateGuestDetailsExport(reservations);
+    const fileName = `Guest_Details_Report_${guestStartDate.replace(/\//g, '-')}_to_${guestEndDate.replace(/\//g, '-')}.xlsx`;
+    exportToExcel(data, fileName, 'Guest Details');
+    showToast(`Guest Details Report (${guestStartDate} to ${guestEndDate}) exported successfully (.xlsx)`);
+  };
+
+  // 3. Generate Folio List Report
+  const handleGenerateFolioReport = () => {
+    const data = generateFolioListExport(reservations, folios, folioMode);
+    const fileName = `Folio_List_Report_${folioMode}_${folioStartDate.replace(/\//g, '-')}.xlsx`;
+    exportToExcel(data, fileName, `Folios_${folioMode}`);
+    showToast(`Folio List Report (${folioMode} Mode) exported successfully (.xlsx)`);
+  };
+
+  // 4. Generate Night Audit Report
+  const handleGenerateNightAuditReport = () => {
+    const data = generateNightAuditExport(nightAudits);
+    const fileName = `Night_Audit_Report_${auditDate.replace(/\//g, '-')}.xlsx`;
+    exportToExcel(data, fileName, 'Night Audit Archive');
+    showToast(`Night Audit Report for ${auditDate} exported successfully (.xlsx)`);
+  };
+
+  // 5. Generate Reservation Report
+  const handleGenerateReservationReport = () => {
+    if (resType === 'All (7 sheets)') {
+      const sheets = generate7SheetsReservationExport(reservations);
+      const fileName = `Reservation_Report_All_7_Sheets_${resStartDate.replace(/\//g, '-')}.xlsx`;
+      exportMultipleSheetsToExcel(sheets, fileName);
+      showToast(`Reservation Report (All 7 Sheets) exported successfully (.xlsx)`);
+    } else {
+      const allRows = generateReservationsExport(reservations);
+      const filtered = allRows.filter((r) =>
+        r.Status.toLowerCase().includes(resType.toLowerCase())
+      );
+      const dataToExport = filtered.length > 0 ? filtered : allRows;
+      const fileName = `Reservation_${resType.replace(/\s+/g, '_')}_${resStartDate.replace(/\//g, '-')}.xlsx`;
+      exportToExcel(dataToExport, fileName, resType);
+      showToast(`Reservation Report (${resType}) exported successfully (.xlsx)`);
+    }
+  };
+
+  // OTA & Commission export
+  const handleGenerateOtaReport = () => {
+    const data = generateOtaCommissionExport();
+    exportToExcel(data, 'OTA_Commission_Payouts_Report.xlsx', 'OTA & Commissions');
+    showToast('OTA & Commission Report exported successfully (.xlsx)');
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Top Banner & Export Trigger */}
-      <div style={{
-        background: '#ffffff',
-        padding: '1.25rem 1.75rem',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-light)',
-        boxShadow: 'var(--shadow-sm)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
-            Financial & Operational Reports
-          </h2>
-          <p style={{ fontSize: '0.78rem', color: '#64748b' }}>
-            Audited financial statements, revenue reconciliations, and spreadsheet exports
-          </p>
-        </div>
-
+    <div className="reports-page-container">
+      {/* 1. Sub-navigation tabs matching media_1793703049870_7244c6d5.jpg */}
+      <div className="reports-tabs-header">
         <button
-          className="btn-primary"
-          onClick={handleExportXlsx}
-          style={{ background: '#059669', boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)' }}
+          type="button"
+          className={`reports-tab-btn ${activeTab === 'directory' ? 'active' : ''}`}
+          onClick={() => setActiveTab('directory')}
         >
-          <Download size={15} />
-          <span>Export to Excel (.xlsx)</span>
+          Reports Directory
+        </button>
+        <button
+          type="button"
+          className={`reports-tab-btn ${activeTab === 'ota' ? 'active' : ''}`}
+          onClick={() => setActiveTab('ota')}
+        >
+          OTA & Commission Report
         </button>
       </div>
 
-      {/* KPI Cards Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-        <div style={{ padding: '1.15rem', background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Occupancy Rate</div>
-          <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#0f172a', margin: '0.2rem 0' }}>
-            {rooms.length > 0 ? Math.round((inHouseCount / rooms.length) * 100) : 0}%
+      {/* Tab 1: Reports Directory View */}
+      {activeTab === 'directory' && (
+        <div className="reports-list-stack">
+          {/* ========================================================
+              CARD 1: Manager Report (Financial)
+             ======================================================== */}
+          <div className="report-card-item">
+            <div className="report-card-header" onClick={() => toggleCard('manager')}>
+              <div className="report-card-header-left">
+                <div className="report-card-icon-badge">
+                  <FileSpreadsheet size={19} strokeWidth={2} />
+                </div>
+                <div className="report-card-title-group">
+                  <div className="report-card-title-row">
+                    <h3 className="report-card-title">Manager Report</h3>
+                    <span className="rpt-pill-badge financial">Financial</span>
+                  </div>
+                  <p className="report-card-desc">
+                    Comprehensive daily financial and operational summary including Room Revenue, Extra Charges, Taxes, Payments, City/Advance/Guest Ledgers, Occupancy, ADR, RevPAR, and POS summaries.
+                  </p>
+                </div>
+              </div>
+              <div className="report-card-chevron">
+                {expandedCards.manager ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </div>
+            </div>
+
+            {expandedCards.manager && (
+              <div className="report-card-body">
+                <div className="report-format-row">
+                  <FileSpreadsheet size={15} className="report-format-icon" strokeWidth={2.2} />
+                  <span>Format: Excel (.xlsx)</span>
+                </div>
+
+                <div className="report-form-row">
+                  <div className="report-inputs-group">
+                    <div className="report-field-item">
+                      <label className="report-field-label">As on Date</label>
+                      <div className="report-input-wrapper">
+                        <input
+                          type="text"
+                          className="report-text-input"
+                          value={managerDate}
+                          onChange={(e) => setManagerDate(e.target.value)}
+                        />
+                        <Calendar size={15} className="report-input-icon" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="report-actions-group">
+                    <button
+                      type="button"
+                      className="report-btn-reset"
+                      onClick={() => setManagerDate(defaultManagerDate)}
+                    >
+                      <RotateCcw size={14} />
+                      <span>Reset</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="report-btn-generate"
+                      onClick={handleGenerateManagerReport}
+                    >
+                      <FileDown size={15} />
+                      <span>Generate Report</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600 }}>
-            {inHouseCount} of {rooms.length} Rooms Occupied
+
+          {/* ========================================================
+              CARD 2: Guest Details Report (Operational)
+             ======================================================== */}
+          <div className="report-card-item">
+            <div className="report-card-header" onClick={() => toggleCard('guest')}>
+              <div className="report-card-header-left">
+                <div className="report-card-icon-badge">
+                  <Users size={19} strokeWidth={2} />
+                </div>
+                <div className="report-card-title-group">
+                  <div className="report-card-title-row">
+                    <h3 className="report-card-title">Guest Details Report</h3>
+                    <span className="rpt-pill-badge operational">Operational</span>
+                  </div>
+                  <p className="report-card-desc">
+                    Lists details of guests in-house or overlapping with a specific date, including contact info, nationality, and VIP status.
+                  </p>
+                </div>
+              </div>
+              <div className="report-card-chevron">
+                {expandedCards.guest ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </div>
+            </div>
+
+            {expandedCards.guest && (
+              <div className="report-card-body">
+                <div className="report-format-row">
+                  <FileSpreadsheet size={15} className="report-format-icon" strokeWidth={2.2} />
+                  <span>Format: Excel (.xlsx)</span>
+                </div>
+
+                <div className="report-form-row">
+                  <div className="report-inputs-group">
+                    <div className="report-field-item">
+                      <label className="report-field-label">Start Date</label>
+                      <div className="report-input-wrapper">
+                        <input
+                          type="text"
+                          className="report-text-input"
+                          value={guestStartDate}
+                          onChange={(e) => setGuestStartDate(e.target.value)}
+                        />
+                        <Calendar size={15} className="report-input-icon" />
+                      </div>
+                    </div>
+
+                    <div className="report-field-item">
+                      <label className="report-field-label">End Date</label>
+                      <div className="report-input-wrapper">
+                        <input
+                          type="text"
+                          className="report-text-input"
+                          value={guestEndDate}
+                          onChange={(e) => setGuestEndDate(e.target.value)}
+                        />
+                        <Calendar size={15} className="report-input-icon" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="report-actions-group">
+                    <button
+                      type="button"
+                      className="report-btn-reset"
+                      onClick={() => {
+                        setGuestStartDate(defaultGuestStartDate);
+                        setGuestEndDate(defaultGuestEndDate);
+                      }}
+                    >
+                      <RotateCcw size={14} />
+                      <span>Reset</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="report-btn-generate"
+                      onClick={handleGenerateGuestReport}
+                    >
+                      <FileDown size={15} />
+                      <span>Generate Report</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================
+              CARD 3: Folio List Report (Financial)
+             ======================================================== */}
+          <div className="report-card-item">
+            <div className="report-card-header" onClick={() => toggleCard('folio')}>
+              <div className="report-card-header-left">
+                <div className="report-card-icon-badge">
+                  <Receipt size={19} strokeWidth={2} />
+                </div>
+                <div className="report-card-title-group">
+                  <div className="report-card-title-row">
+                    <h3 className="report-card-title">Folio List Report</h3>
+                    <span className="rpt-pill-badge financial">Financial</span>
+                  </div>
+                  <p className="report-card-desc">
+                    Comprehensive listing of guest and non-guest folios within a date range, with configurable folio mode (Open, Close, Both) and reservation status filters including invoice number, guest, pax, charges, taxes, credits, and folio balances.
+                  </p>
+                </div>
+              </div>
+              <div className="report-card-chevron">
+                {expandedCards.folio ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </div>
+            </div>
+
+            {expandedCards.folio && (
+              <div className="report-card-body">
+                <div className="report-format-row">
+                  <FileSpreadsheet size={15} className="report-format-icon" strokeWidth={2.2} />
+                  <span>Format: Excel (.xlsx)</span>
+                </div>
+
+                <div className="report-form-row">
+                  <div className="report-inputs-group">
+                    <div className="report-field-item">
+                      <label className="report-field-label">Start Date</label>
+                      <div className="report-input-wrapper">
+                        <input
+                          type="text"
+                          className="report-text-input"
+                          value={folioStartDate}
+                          onChange={(e) => setFolioStartDate(e.target.value)}
+                        />
+                        <Calendar size={15} className="report-input-icon" />
+                      </div>
+                    </div>
+
+                    <div className="report-field-item">
+                      <label className="report-field-label">End Date</label>
+                      <div className="report-input-wrapper">
+                        <input
+                          type="text"
+                          className="report-text-input"
+                          value={folioEndDate}
+                          onChange={(e) => setFolioEndDate(e.target.value)}
+                        />
+                        <Calendar size={15} className="report-input-icon" />
+                      </div>
+                    </div>
+
+                    <div className="report-field-item">
+                      <label className="report-field-label">Folio Mode</label>
+                      <select
+                        className="report-select-input"
+                        value={folioMode}
+                        onChange={(e) => setFolioMode(e.target.value)}
+                        style={{ minWidth: '130px' }}
+                      >
+                        <option value="Both">Both</option>
+                        <option value="Open">Open</option>
+                        <option value="Close">Close</option>
+                      </select>
+                    </div>
+
+                    <div className="report-field-item">
+                      <label className="report-field-label">Include</label>
+                      <select
+                        className="report-select-input"
+                        value={folioInclude}
+                        onChange={(e) => setFolioInclude(e.target.value)}
+                        style={{ minWidth: '150px' }}
+                      >
+                        <option value="Confirmed +5">Confirmed +5</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="In-House">In-House</option>
+                        <option value="Checked-Out">Checked-Out</option>
+                        <option value="All Statuses">All Statuses</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="report-actions-group">
+                    <button
+                      type="button"
+                      className="report-btn-reset"
+                      onClick={() => {
+                        setFolioStartDate(defaultFolioStartDate);
+                        setFolioEndDate(defaultFolioEndDate);
+                        setFolioMode(defaultFolioMode);
+                        setFolioInclude(defaultFolioInclude);
+                      }}
+                    >
+                      <RotateCcw size={14} />
+                      <span>Reset</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="report-btn-generate"
+                      onClick={handleGenerateFolioReport}
+                    >
+                      <FileDown size={15} />
+                      <span>Generate Report</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================
+              CARD 4: Night Audit Report (Audit)
+             ======================================================== */}
+          <div className="report-card-item">
+            <div className="report-card-header" onClick={() => toggleCard('nightaudit')}>
+              <div className="report-card-header-left">
+                <div className="report-card-icon-badge">
+                  <Moon size={19} strokeWidth={2} />
+                </div>
+                <div className="report-card-title-group">
+                  <div className="report-card-title-row">
+                    <h3 className="report-card-title">Night Audit Report</h3>
+                    <span className="rpt-pill-badge audit">Audit</span>
+                  </div>
+                  <p className="report-card-desc">
+                    Detailed end-of-day audit details including in-house room tariffs, guest folio ledger balances, receipts/payments log, misc charges, void charges, room/pax status, and POS outlet summaries.
+                  </p>
+                </div>
+              </div>
+              <div className="report-card-chevron">
+                {expandedCards.nightaudit ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </div>
+            </div>
+
+            {expandedCards.nightaudit && (
+              <div className="report-card-body">
+                <div className="report-format-row">
+                  <FileSpreadsheet size={15} className="report-format-icon" strokeWidth={2.2} />
+                  <span>Format: Excel (.xlsx)</span>
+                </div>
+
+                <div className="report-form-row">
+                  <div className="report-inputs-group">
+                    <div className="report-field-item">
+                      <label className="report-field-label">Audit Date</label>
+                      <div className="report-input-wrapper">
+                        <input
+                          type="text"
+                          className="report-text-input"
+                          value={auditDate}
+                          onChange={(e) => setAuditDate(e.target.value)}
+                        />
+                        <Calendar size={15} className="report-input-icon" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="report-actions-group">
+                    <button
+                      type="button"
+                      className="report-btn-reset"
+                      onClick={() => setAuditDate(defaultAuditDate)}
+                    >
+                      <RotateCcw size={14} />
+                      <span>Reset</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="report-btn-generate"
+                      onClick={handleGenerateNightAuditReport}
+                    >
+                      <FileDown size={15} />
+                      <span>Generate Report</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================
+              CARD 5: Reservation Report (Operational)
+             ======================================================== */}
+          <div className="report-card-item">
+            <div className="report-card-header" onClick={() => toggleCard('reservation')}>
+              <div className="report-card-header-left">
+                <div className="report-card-icon-badge">
+                  <Calendar size={19} strokeWidth={2} />
+                </div>
+                <div className="report-card-title-group">
+                  <div className="report-card-title-row">
+                    <h3 className="report-card-title">Reservation Report</h3>
+                    <span className="rpt-pill-badge operational">Operational</span>
+                  </div>
+                  <p className="report-card-desc">
+                    Lists reservations within a date range, grouped by status. Select All to generate all 7 sheets (Confirmed, Arrivals, In-House, Checked-Out, Cancelled, Hold, No-Show), or choose a specific type for a single sheet. Columns: Reservation Code, Guest Name, Booking Date, Rooms, Check-In/Out Dates, Source, Total Amount, Due Amount, VIP, Single Lady, Group Reservation.
+                  </p>
+                </div>
+              </div>
+              <div className="report-card-chevron">
+                {expandedCards.reservation ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </div>
+            </div>
+
+            {expandedCards.reservation && (
+              <div className="report-card-body">
+                <div className="report-format-row">
+                  <FileSpreadsheet size={15} className="report-format-icon" strokeWidth={2.2} />
+                  <span>Format: Excel (.xlsx)</span>
+                </div>
+
+                <div className="report-form-row">
+                  <div className="report-inputs-group">
+                    <div className="report-field-item">
+                      <label className="report-field-label">Reservation Type</label>
+                      <select
+                        className="report-select-input"
+                        value={resType}
+                        onChange={(e) => setResType(e.target.value)}
+                        style={{ minWidth: '155px' }}
+                      >
+                        <option value="All (7 sheets)">All (7 sheets)</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Arrivals">Arrivals</option>
+                        <option value="In-House">In-House</option>
+                        <option value="Checked-Out">Checked-Out</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Hold">Hold</option>
+                        <option value="No-Show">No-Show</option>
+                      </select>
+                    </div>
+
+                    <div className="report-field-item">
+                      <label className="report-field-label">Market Segment (Optional)</label>
+                      <select
+                        className="report-select-input"
+                        value={marketSegment}
+                        onChange={(e) => setMarketSegment(e.target.value)}
+                        style={{ minWidth: '160px' }}
+                      >
+                        <option value="All segments">All segments</option>
+                        <option value="Walk-In">Walk-In</option>
+                        <option value="Direct Booking">Direct Booking</option>
+                        <option value="OTA">OTA</option>
+                        <option value="Corporate">Corporate</option>
+                      </select>
+                    </div>
+
+                    <div className="report-field-item">
+                      <label className="report-field-label">Start Date</label>
+                      <div className="report-input-wrapper">
+                        <input
+                          type="text"
+                          className="report-text-input"
+                          value={resStartDate}
+                          onChange={(e) => setResStartDate(e.target.value)}
+                        />
+                        <Calendar size={15} className="report-input-icon" />
+                      </div>
+                    </div>
+
+                    <div className="report-field-item">
+                      <label className="report-field-label">End Date</label>
+                      <div className="report-input-wrapper">
+                        <input
+                          type="text"
+                          className="report-text-input"
+                          value={resEndDate}
+                          onChange={(e) => setResEndDate(e.target.value)}
+                        />
+                        <Calendar size={15} className="report-input-icon" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="report-actions-group">
+                    <button
+                      type="button"
+                      className="report-btn-reset"
+                      onClick={() => {
+                        setResType(defaultResType);
+                        setMarketSegment(defaultMarketSegment);
+                        setResStartDate(defaultResStartDate);
+                        setResEndDate(defaultResEndDate);
+                      }}
+                    >
+                      <RotateCcw size={14} />
+                      <span>Reset</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="report-btn-generate"
+                      onClick={handleGenerateReservationReport}
+                    >
+                      <FileDown size={15} />
+                      <span>Generate Report</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+      )}
 
-        <div style={{ padding: '1.15rem', background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Collected (₹)</div>
-          <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#059669', margin: '0.2rem 0' }}>
-            ₹{totalRev.toLocaleString()}
+      {/* Tab 2: OTA & Commission Report View */}
+      {activeTab === 'ota' && (
+        <div className="ota-commission-container">
+          {/* Top KPI Cards */}
+          <div className="ota-metrics-grid">
+            <div className="ota-metric-card">
+              <div className="ota-metric-label">Total OTA Bookings</div>
+              <div className="ota-metric-value">42</div>
+              <div className="ota-metric-sub">Across 4 Connected OTAs</div>
+            </div>
+            <div className="ota-metric-card">
+              <div className="ota-metric-label">Gross OTA Revenue</div>
+              <div className="ota-metric-value" style={{ color: '#059669' }}>
+                ₹2,52,000
+              </div>
+              <div className="ota-metric-sub">Before Commissions & TDS</div>
+            </div>
+            <div className="ota-metric-card">
+              <div className="ota-metric-label">Commission Payable</div>
+              <div className="ota-metric-value" style={{ color: '#ea580c' }}>
+                ₹37,537
+              </div>
+              <div className="ota-metric-sub">Average Rate: 14.8%</div>
+            </div>
+            <div className="ota-metric-card">
+              <div className="ota-metric-label">Net Realized Payout</div>
+              <div className="ota-metric-value" style={{ color: '#2563eb' }}>
+                ₹2,11,943
+              </div>
+              <div className="ota-metric-sub">Post Commission & Deductions</div>
+            </div>
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-            Across all payment modes
-          </div>
-        </div>
 
-        <div style={{ padding: '1.15rem', background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Outstanding Ledger (₹)</div>
-          <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#dc2626', margin: '0.2rem 0' }}>
-            ₹{totalDue.toLocaleString()}
-          </div>
-          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-            Unsettled folio receivables
-          </div>
-        </div>
-
-        <div style={{ padding: '1.15rem', background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Current ADR</div>
-          <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#0f172a', margin: '0.2rem 0' }}>
-            ₹4,750
-          </div>
-          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-            RevPAR: ₹3,654
-          </div>
-        </div>
-      </div>
-
-      {/* Report Selection Subtabs */}
-      <div style={{
-        background: '#ffffff',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-light)',
-        boxShadow: 'var(--shadow-sm)',
-        overflow: 'hidden'
-      }}>
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: '0.5rem', background: '#f8fafc' }}>
-          {[
-            { id: 'manager', label: 'Daily Manager Audit Report' },
-            { id: 'reservations', label: 'Reservations & Revenue Ledger' },
-            { id: 'folios', label: 'Guest Folios & Balances' },
-            { id: 'nightaudit', label: 'Night Audit Financial History' }
-          ].map((item) => {
-            const isActive = selectedReportType === item.id;
-            return (
+          {/* Table Card */}
+          <div className="ota-table-card">
+            <div className="ota-table-header">
+              <h3 className="ota-table-title">Channel Commission & Payout Ledger</h3>
               <button
-                key={item.id}
-                onClick={() => setSelectedReportType(item.id)}
-                style={{
-                  border: 'none',
-                  background: isActive ? '#ffffff' : 'transparent',
-                  color: isActive ? '#2563eb' : '#64748b',
-                  padding: '0.45rem 0.95rem',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.82rem',
-                  fontWeight: isActive ? 700 : 500,
-                  cursor: 'pointer',
-                  boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  borderBottom: isActive ? '2px solid #2563eb' : 'none'
-                }}
+                type="button"
+                className="report-btn-generate"
+                onClick={handleGenerateOtaReport}
               >
-                {item.label}
+                <FileDown size={15} />
+                <span>Export to Excel (.xlsx)</span>
               </button>
-            );
-          })}
-        </div>
+            </div>
 
-        {/* Selected Report Preview Table */}
-        <div style={{ padding: '1.5rem', overflowX: 'auto' }}>
-          {selectedReportType === 'manager' && (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+            <table className="ota-table">
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid var(--border-light)', textAlign: 'left' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>Operational Metric</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Audited Value</th>
+                <tr>
+                  <th>OTA Channel</th>
+                  <th>Bookings</th>
+                  <th>Room Nights</th>
+                  <th>Gross Revenue (₹)</th>
+                  <th>Commission Rate</th>
+                  <th>Commission Due (₹)</th>
+                  <th>Net Payout (₹)</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {generateManagerReportData(property, rooms, reservations, nightAudits).map((row, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#0f172a' }}>{row.Metric}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 800, color: '#2563eb' }}>
-                      {typeof row.Value === 'number' ? `₹${row.Value.toLocaleString()}` : row.Value}
+                {generateOtaCommissionExport().map((row, idx) => (
+                  <tr key={idx}>
+                    <td style={{ fontWeight: 600, color: '#0f172a' }}>{row['OTA Channel']}</td>
+                    <td>{row['Total Bookings']}</td>
+                    <td>{row['Room Nights']}</td>
+                    <td style={{ fontWeight: 600 }}>₹{row['Gross Revenue (₹)'].toLocaleString()}</td>
+                    <td>{row['Commission Rate']}</td>
+                    <td style={{ color: '#ea580c', fontWeight: 600 }}>₹{row['Commission Due (₹)'].toLocaleString()}</td>
+                    <td style={{ color: '#059669', fontWeight: 700 }}>₹{row['Net Payout (₹)'].toLocaleString()}</td>
+                    <td>
+                      <span className={`ota-status-badge ${row.Status === 'SETTLED' ? 'settled' : 'pending'}`}>
+                        {row.Status}
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-
-          {selectedReportType === 'reservations' && (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid var(--border-light)', textAlign: 'left' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>Ref #</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Guest Name</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Room #</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Dates</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Tariff (₹)</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Tax (₹)</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Total (₹)</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Balance Due (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reservations.map((r) => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 800 }}>{r.bookingReference}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{r.primaryGuest?.name}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>Room {r.roomNumber}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{r.checkInDate} → {r.checkOutDate}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>₹{r.totalRoomCharges?.toLocaleString()}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#64748b' }}>₹{r.taxAmount?.toLocaleString()}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700 }}>₹{r.totalAmount?.toLocaleString()}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 800, color: r.balanceDue > 0 ? '#dc2626' : '#059669' }}>
-                      ₹{r.balanceDue?.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="rpt-toast">
+          <CheckCircle2 size={18} className="rpt-toast-icon" strokeWidth={2.4} />
+          <span className="rpt-toast-text">{toastMessage}</span>
+          <button
+            type="button"
+            className="rpt-toast-close"
+            onClick={() => setToastMessage(null)}
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

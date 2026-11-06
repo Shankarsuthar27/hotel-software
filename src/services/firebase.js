@@ -24,8 +24,28 @@ export const app = initializeApp(firebaseConfig);
 // Initialize Cloud Firestore
 export const db = getFirestore(app);
 
-// Initialize Firebase Auth
-export const auth = getAuth(app);
+// Initialize Firebase Auth lazily on demand to avoid automatic CONFIGURATION_NOT_FOUND errors
+// when Authentication has not yet been activated in the Firebase Console.
+let _authInstance = null;
+export const getFirebaseAuth = () => {
+  if (!_authInstance && typeof window !== 'undefined') {
+    try {
+      _authInstance = getAuth(app);
+    } catch (e) {
+      console.warn('Firebase Auth initialization deferred:', e);
+    }
+  }
+  return _authInstance;
+};
+
+export const auth = new Proxy({}, {
+  get(target, prop) {
+    const instance = getFirebaseAuth();
+    if (!instance) return undefined;
+    const value = instance[prop];
+    return typeof value === 'function' ? value.bind(instance) : value;
+  }
+});
 
 // Initialize Cloud Storage
 export const storage = getStorage(app);

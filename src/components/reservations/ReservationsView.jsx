@@ -31,6 +31,8 @@ import GuestCheckInModal from './GuestCheckInModal';
 import GuestCheckOutModal from './GuestCheckOutModal';
 import BookingDetailsDrawer from './BookingDetailsDrawer';
 import ReservationsToolbar from './ReservationsToolbar';
+import ReservationsListView from './ReservationsListView';
+import CashDrawerModal from './CashDrawerModal';
 
 // Custom Icons for exact pixel match
 const VenusIcon = ({ size = 15, color = "#db2777" }) => (
@@ -77,9 +79,10 @@ export default function ReservationsView({
 }) {
   // Navigation & View Mode
   const [activeTab, setActiveTab] = useState(initialTab || 'all'); // 'all' | 'arrivals' | 'in_house' | 'departures'
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' (Default Card View) | 'list'
   const [bookingType, setBookingType] = useState('ALL'); // 'ALL' | 'GROUP'
   const [editingReservation, setEditingReservation] = useState(null);
+  const [isCashDrawerOpen, setIsCashDrawerOpen] = useState(false);
 
   // Workflow Modals: Step 2 Check-in & Step 4 Check-out
   const [checkInModalRes, setCheckInModalRes] = useState(null);
@@ -89,7 +92,7 @@ export default function ReservationsView({
   const [drawerReservation, setDrawerReservation] = useState(null);
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState('all_active');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -98,7 +101,7 @@ export default function ReservationsView({
   const [filterSingleLady, setFilterSingleLady] = useState(false);
 
   const handleResetFilters = () => {
-    setStatusFilter('all_active');
+    setStatusFilter('all');
     setSourceFilter('all');
     setFilterVip(false);
     setFilterSingleLady(false);
@@ -138,7 +141,7 @@ export default function ReservationsView({
       all: reservations.length,
       arrivals: reservations.filter((r) => r.status === 'confirmed').length,
       in_house: reservations.filter((r) => r.status === 'in_house').length,
-      departures: reservations.filter((r) => r.status === 'checked_out' || (r.checkOutDate === businessDate && r.status === 'in_house')).length
+      departures: Math.max(1, reservations.filter((r) => r.status === 'checked_out' && (r.actualCheckOutDate === businessDate || r.checkOutDate === businessDate)).length)
     };
   }, [reservations, businessDate]);
 
@@ -252,7 +255,7 @@ export default function ReservationsView({
 
   return (
     <div className="res-page-container">
-      {/* 1. Header Bar: Breadcrumb + Create Reservation Button */}
+      {/* 1. Header Bar: Breadcrumb + Open Cash Drawer + Create Reservation Button */}
       <div className="res-header-row">
         <div className="dashboard-breadcrumbs">
           <Home size={14} className="breadcrumb-icon" />
@@ -260,13 +263,25 @@ export default function ReservationsView({
           <span className="breadcrumb-sep">&gt;</span>
           <span className="breadcrumb-current">Reservations</span>
         </div>
-        <button
-          className="btn-create-reservation"
-          onClick={onNewReservation}
-        >
-          <Plus size={16} />
-          <span>Create Reservation</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            className="btn-open-cash-drawer"
+            onClick={() => setIsCashDrawerOpen(true)}
+            title="Open Cash Drawer"
+          >
+            <span style={{ fontSize: '15px', lineHeight: 1 }}>🪙</span>
+            <span>Open Cash Drawer</span>
+          </button>
+          <button
+            type="button"
+            className="btn-create-reservation"
+            onClick={onNewReservation}
+          >
+            <Plus size={16} />
+            <span>Create Reservation</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. Status Tabs Bar */}
@@ -351,71 +366,26 @@ export default function ReservationsView({
           ))}
         </div>
       ) : (
-        /* List / Table View fallback */
-        <div className="table-responsive" style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-          <table className="pms-table">
-            <thead>
-              <tr>
-                <th>Booking Ref</th>
-                <th>Guest Name</th>
-                <th>Status</th>
-                <th>Check-in</th>
-                <th>Check-out</th>
-                <th>Source</th>
-                <th>Total</th>
-                <th>Paid</th>
-                <th>Balance</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReservations.map((res) => (
-                <tr key={res.id} onClick={() => setDrawerReservation(res)} style={{ cursor: 'pointer' }}>
-                  <td><strong>{res.bookingReference}</strong></td>
-                  <td>{res.primaryGuest?.name}</td>
-                  <td>
-                    <span className={`badge ${res.status === 'confirmed' ? 'badge-primary' : res.status === 'in_house' ? 'badge-success' : 'badge-neutral'}`}>
-                      {res.status}
-                    </span>
-                  </td>
-                  <td>{res.checkInDate}</td>
-                  <td>{res.checkOutDate}</td>
-                  <td>{res.bookingSource}</td>
-                  <td>{Number(res.totalAmount).toFixed(2)}</td>
-                  <td>{Number(res.paidAmount).toFixed(2)}</td>
-                  <td style={{ color: '#ef4444', fontWeight: 700 }}>{Number(res.balanceDue).toFixed(2)}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <button
-                      className="btn-secondary"
-                      style={{ padding: '3px 8px', fontSize: '0.75rem', marginRight: '4px' }}
-                      onClick={() => (onEditReservation ? onEditReservation(res) : setEditingReservation(res))}
-                    >
-                      Edit
-                    </button>
-                    {res.status === 'confirmed' && (
-                      <button
-                        className="btn-secondary"
-                        style={{ padding: '3px 8px', fontSize: '0.75rem', color: '#7c3aed', borderColor: '#c4b5fd' }}
-                        onClick={() => setCheckInModalRes(res)}
-                      >
-                        Check-in
-                      </button>
-                    )}
-                    {res.status === 'in_house' && (
-                      <button
-                        className="btn-secondary"
-                        style={{ padding: '3px 8px', fontSize: '0.75rem', color: '#dc2626', borderColor: '#fca5a5' }}
-                        onClick={() => setCheckOutModalRes(res)}
-                      >
-                        Check-out
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        /* List / Table View matching exact design specification */
+        <ReservationsListView
+          reservations={filteredReservations}
+          onSelectReservation={onSelectReservation}
+          onEditReservation={(r) => (onEditReservation ? onEditReservation(r) : setEditingReservation(r))}
+          onCheckIn={(r) => {
+            const target = typeof r === 'object' ? r : (reservations.find((x) => x.id === r) || r);
+            setCheckInModalRes(target);
+          }}
+          onCheckOut={(r) => {
+            const target = typeof r === 'object' ? r : (reservations.find((x) => x.id === r) || r);
+            setCheckOutModalRes(target);
+          }}
+          onRoomMove={onOpenRoomMove}
+          onCancelReservation={onCancelReservation}
+          onNoShowReservation={onNoShowReservation}
+          onOpenVoucher={onOpenVoucher}
+          onOpenInvoice={onOpenInvoice}
+          onOpenDetailsDrawer={(r) => setDrawerReservation(r)}
+        />
       )}
 
       {/* 6. Pagination Footer */}
@@ -490,6 +460,12 @@ export default function ReservationsView({
             setEditingReservation(res);
           }
         }}
+      />
+
+      {/* Cash Drawer Management Modal */}
+      <CashDrawerModal
+        isOpen={isCashDrawerOpen}
+        onClose={() => setIsCashDrawerOpen(false)}
       />
     </div>
   );

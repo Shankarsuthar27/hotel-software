@@ -113,11 +113,20 @@ export default function BookingDetailsDrawer({
 
   const sourceLabel = (reservation.bookingSource === 'WALK_IN' ? 'walk-in' : (reservation.bookingSource || 'walk-in')).toLowerCase();
   const ratePlanLabel = (reservation.ratePlanName || reservation.ratePlanCode || 'test plan').toLowerCase().replace(/_/g, ' ');
-  const specialRequestsText = reservation.specialRequests || reservation.notes || '..';
+  const hasCustomNotes = Boolean(
+    reservation.specialRequests &&
+    reservation.specialRequests.trim() !== '' &&
+    reservation.specialRequests.trim() !== '..'
+  );
+  const specialRequestsText = hasCustomNotes
+    ? reservation.specialRequests
+    : (reservation.notes && reservation.notes.trim() !== '..' && reservation.notes.trim() !== ''
+        ? reservation.notes
+        : 'Enter any special requests or notes...');
 
   const guestCountry = guest.country || guest.nationality || guest.address || 'India';
   const guestEmail = guest.email || reservation.guestEmail || 'ss2137789@gmail.com';
-  const guestPhone = guest.phone || reservation.guestPhone || '9898398334';
+  const guestPhone = guest.phone || reservation.guestPhone || '9664471637';
 
   const drawerElement = (
     <div className="booking-details-backdrop no-scrollbar" onClick={onClose}>
@@ -190,7 +199,7 @@ export default function BookingDetailsDrawer({
                 }}
               >
                 <Edit3 size={15} />
-                <span>{isCheckedOut ? 'View Reservation (Locked)' : 'Edit Reservation'}</span>
+                <span>Edit Reservation</span>
               </button>
             </div>
 
@@ -321,7 +330,9 @@ export default function BookingDetailsDrawer({
               </div>
 
               <div className="booking-special-requests-box">
-                <p className="booking-special-requests-text">{specialRequestsText}</p>
+                <p className={`booking-special-requests-text ${!hasCustomNotes ? 'placeholder' : ''}`}>
+                  {specialRequestsText}
+                </p>
               </div>
             </div>
           </div>

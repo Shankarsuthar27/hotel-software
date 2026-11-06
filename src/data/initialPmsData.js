@@ -19,7 +19,7 @@ export const initialProperty = {
   timezone: 'Asia/Kolkata',
   checkInTime: '14:00',
   checkOutTime: '11:00',
-  businessDate: '2026-10-26', // System operational date
+  businessDate: '2026-11-03', // System operational date
   gstin: '08ABCDE1234F1Z5',
   legalName: 'HOTEL ASTHA INDIA',
   tradeName: 'HOTEL ASTHA',
@@ -34,39 +34,39 @@ export const initialProperty = {
 
 export const initialRoomTypes = [
   {
-    id: 'rt_standard',
-    name: 'Standard Room',
-    code: 'STD',
-    description: 'Comfortable air-conditioned room with king bed and work desk.',
-    baseAdults: 2,
-    maxAdults: 2,
-    baseChildren: 0,
-    maxChildren: 1,
-    basePrice: 2625,
-    extraAdultPrice: 800,
-    extraChildPrice: 400,
-    color: '#06b6d4'
-  },
-  {
     id: 'rt_deluxe',
     name: 'Delux Room',
-    code: 'DLX',
+    code: '132',
     description: 'Spacious deluxe room with premium linen, balcony, and mini-bar.',
     baseAdults: 2,
     maxAdults: 3,
     baseChildren: 0,
     maxChildren: 2,
-    basePrice: 3500,
+    basePrice: 2500,
     extraAdultPrice: 1000,
     extraChildPrice: 500,
     color: '#3b82f6'
+  },
+  {
+    id: 'rt_standard',
+    name: 'Normal',
+    code: '132',
+    description: 'Comfortable air-conditioned room with king bed and work desk.',
+    baseAdults: 2,
+    maxAdults: 2,
+    baseChildren: 0,
+    maxChildren: 1,
+    basePrice: 1000,
+    extraAdultPrice: 800,
+    extraChildPrice: 400,
+    color: '#06b6d4'
   }
 ];
 
 export const initialRooms = [
-  { id: 'rm_101', roomNumber: '101', roomTypeId: 'rt_standard', floor: '1', status: 'clean', operational: 'available', notes: 'Ready for check-in' },
-  { id: 'rm_102', roomNumber: '102', roomTypeId: 'rt_standard', floor: '1', status: 'clean', operational: 'available', notes: 'Ready for check-in' },
-  { id: 'rm_201', roomNumber: '201', roomTypeId: 'rt_deluxe', floor: '2', status: 'clean', operational: 'available', notes: 'Ready for check-in' },
+  { id: 'rm_101', roomNumber: '101', roomTypeId: 'rt_standard', floor: '1', status: 'clean', operational: 'allocated', notes: 'In-house' },
+  { id: 'rm_102', roomNumber: '102', roomTypeId: 'rt_standard', floor: '1', status: 'clean', operational: 'allocated', notes: 'In-house' },
+  { id: 'rm_201', roomNumber: '201', roomTypeId: 'rt_deluxe', floor: '2', status: 'dirty', operational: 'available', notes: 'Ready for check-in' },
   { id: 'rm_202', roomNumber: '202', roomTypeId: 'rt_deluxe', floor: '2', status: 'clean', operational: 'available', notes: 'Ready for check-in' }
 ];
 
@@ -109,10 +109,10 @@ export const initialReservations = [
     id: 'res_5',
     bookingReference: '#RES_5',
     primaryGuest: {
-      name: 'Mr Krishna Kumar',
+      name: 'Mr Kkk Suthar',
       title: 'Mr.',
-      firstName: 'Krishna',
-      lastName: 'Kumar',
+      firstName: 'Kkk',
+      lastName: 'Suthar',
       phone: '9898398334',
       email: 'ss2137789@gmail.com',
       country: 'India',
@@ -126,8 +126,8 @@ export const initialReservations = [
     ratePlanName: 'test plan',
     checkInDate: '2026-10-26', // Mon 26, Oct 2026
     checkOutDate: '2026-10-27', // Tue 27, Oct 2026
-    actualCheckOutDate: '2026-10-26', // Mon 26, Oct 2026 (Early Check-out)
-    isEarlyCheckOut: true,
+    actualCheckOutDate: null,
+    isEarlyCheckOut: false,
     nights: 1,
     adults: 1,
     children: 2,
@@ -137,7 +137,7 @@ export const initialReservations = [
     totalAmount: 2625.00,
     paidAmount: 2625.00,
     balanceDue: 0.00,
-    status: 'checked_out',
+    status: 'in_house',
     bookingSource: 'walk-in',
     marketSegment: 'FIT',
     createdAt: '2026-10-26 1:08 PM',
@@ -156,6 +156,7 @@ export const initialReservations = [
       lastName: 'Suthar',
       phone: '9664471637',
       email: 'ss2137789@gmail.com',
+      country: 'India',
       isPrimary: true
     },
     roomId: 'rm_102',
@@ -163,8 +164,11 @@ export const initialReservations = [
     roomTypeId: 'rt_standard',
     roomTypeName: 'Standard Room',
     ratePlanCode: 'BAR_EP',
+    ratePlanName: 'test plan',
     checkInDate: '2026-10-26', // Mon 26, Oct 2026
-    checkOutDate: '2026-10-27', // Tue 27, Oct 2026
+    checkOutDate: '2026-10-26', // Mon 26, Oct 2026
+    actualCheckOutDate: '2026-10-26',
+    isEarlyCheckOut: true,
     nights: 1,
     adults: 1,
     children: 2,
@@ -174,9 +178,11 @@ export const initialReservations = [
     totalAmount: 2625.00,
     paidAmount: 2625.00,
     balanceDue: 0.00,
-    status: 'checked_out',
+    status: 'in_house',
     bookingSource: 'WALK_IN',
     marketSegment: 'FIT',
+    specialRequests: '..',
+    notes: '..',
     createdAt: '2026-10-26 1:02 PM',
     bookingDateFormatted: '26 Oct 2026, 1:02 PM',
     folioId: 'fol_4'
@@ -193,8 +199,8 @@ export const initialReservations = [
       email: 'ss2137789@gmail.com',
       isPrimary: true
     },
-    roomId: 'rm_201',
-    roomNumber: '201',
+    roomId: '',
+    roomNumber: '',
     roomTypeId: 'rt_deluxe',
     roomTypeName: 'Delux Room',
     ratePlanCode: 'BAR_EP',
@@ -203,13 +209,13 @@ export const initialReservations = [
     nights: 1,
     adults: 1,
     children: 2,
-    baseRatePerNight: 0.00,
-    totalRoomCharges: 0.00,
+    baseRatePerNight: 3500.00,
+    totalRoomCharges: 3500.00,
     taxAmount: 0,
-    totalAmount: 0.00,
+    totalAmount: 3500.00,
     paidAmount: 0.00,
-    balanceDue: 0.00,
-    status: 'no_show',
+    balanceDue: 3500.00,
+    status: 'confirmed',
     bookingSource: 'WALK_IN',
     marketSegment: 'FIT',
     createdAt: '2026-10-26 1:02 PM',
@@ -230,18 +236,18 @@ export const initialReservations = [
     roomNumber: '102',
     roomTypeId: 'rt_standard',
     ratePlanCode: 'BAR_EP',
-    checkInDate: '2026-10-26', // Mon 26, Oct 2026
-    checkOutDate: '2026-10-31', // Sat 31, Oct 2026
-    nights: 5,
+    checkInDate: '2026-10-24', // Sat 24, Oct 2026
+    checkOutDate: '2026-10-26', // Mon 26, Oct 2026
+    nights: 2,
     adults: 1,
     children: 1,
     baseRatePerNight: 3345.24,
-    totalRoomCharges: 16726.19,
-    taxAmount: 2007.14,
-    totalAmount: 18733.33,
+    totalRoomCharges: 6690.48,
+    taxAmount: 802.86,
+    totalAmount: 7493.34,
     paidAmount: 0.00,
-    balanceDue: 18733.33,
-    status: 'confirmed',
+    balanceDue: 7493.34,
+    status: 'cancelled',
     bookingSource: 'WALK_IN',
     marketSegment: 'FIT',
     isVIP: false,
@@ -284,8 +290,8 @@ export const initialReservations = [
     },
     roomId: 'rm_102',
     roomNumber: '102',
-    roomTypeId: 'rt_deluxe',
-    roomTypeName: 'Delux Room',
+    roomTypeId: 'rt_standard',
+    roomTypeName: 'Standard Room',
     ratePlanCode: 'BAR_EP',
     checkInDate: '2026-10-24', // Sat 24, Oct 2026
     checkOutDate: '2026-10-26', // Mon 26, Oct 2026
@@ -419,21 +425,115 @@ export const initialTeamMembers = [
 
 export const initialNightAudits = [
   {
-    id: 'na_20261023',
-    auditDate: '2026-10-23',
-    performedAt: '2026-10-24T00:05:00Z',
-    performedBy: 'Astha India (Owner)',
-    totalRevenue: 2625,
-    totalTax: 315,
-    occupiedRooms: 1,
-    vacantRooms: 1,
+    id: 'na_20261026',
+    auditDate: '26 Oct 2026',
+    rawDate: '2026-10-26',
+    isCurrent: true,
+    status: 'running',
+    statusLabel: 'Running (Stage 1)',
+    startedAt: 'Oct 27, 2026 01:00',
+    startedBy: 'Astha India',
+    completedAt: '—',
+    completedBy: '—',
+    occupiedRooms: 2,
+    vacantRooms: 2,
+    totalRevenue: 5250,
+    totalTax: 630,
     adr: 2625,
     revPar: 1312.5,
-    status: 'COMPLETED',
-    checkedOutCount: 1,
+    chargesPostedCount: 2,
+    roomChargesLog: [
+      { room: '101', guest: 'Mr Kkk Suthar', rate: 2625, tax: 315, net: 2940, folio: 'FOL_5' },
+      { room: '102', guest: 'Mr Shankar Suthar', rate: 2625, tax: 315, net: 2940, folio: 'FOL_4' }
+    ]
+  },
+  {
+    id: 'na_20261025',
+    auditDate: '25 Oct 2026',
+    rawDate: '2026-10-25',
+    isCurrent: false,
+    status: 'completed',
+    statusLabel: 'Completed',
+    startedAt: 'Oct 26, 2026 01:00',
+    startedBy: 'System',
+    completedAt: 'Oct 26, 2026 01:00',
+    completedBy: '—',
+    occupiedRooms: 1,
+    vacantRooms: 3,
+    totalRevenue: 2625,
+    totalTax: 315,
+    adr: 2625,
+    revPar: 656.25,
     chargesPostedCount: 1,
     roomChargesLog: [
-      { room: '101', guest: 'Suresh Sharma', rate: 2625, tax: 315, net: 2940, folio: 'FOL_001' }
+      { room: '101', guest: 'Mr Kkk Suthar', rate: 2625, tax: 315, net: 2940, folio: 'FOL_5' }
+    ]
+  },
+  {
+    id: 'na_20261024',
+    auditDate: '24 Oct 2026',
+    rawDate: '2026-10-24',
+    isCurrent: false,
+    status: 'completed',
+    statusLabel: 'Completed',
+    startedAt: 'Oct 25, 2026 01:00',
+    startedBy: 'System',
+    completedAt: 'Oct 25, 2026 01:00',
+    completedBy: '—',
+    occupiedRooms: 2,
+    vacantRooms: 2,
+    totalRevenue: 5250,
+    totalTax: 630,
+    adr: 2625,
+    revPar: 1312.5,
+    chargesPostedCount: 2,
+    roomChargesLog: [
+      { room: '101', guest: 'Mr Krishna Suthar', rate: 2625, tax: 315, net: 2940, folio: 'FOL_2' },
+      { room: '102', guest: 'Mr Shankar Suthar', rate: 2625, tax: 315, net: 2940, folio: 'FOL_4' }
+    ]
+  },
+  {
+    id: 'na_20261023',
+    auditDate: '23 Oct 2026',
+    rawDate: '2026-10-23',
+    isCurrent: false,
+    status: 'completed',
+    statusLabel: 'Completed',
+    startedAt: 'Oct 24, 2026 01:00',
+    startedBy: 'System',
+    completedAt: 'Oct 24, 2026 01:00',
+    completedBy: '—',
+    occupiedRooms: 1,
+    vacantRooms: 3,
+    totalRevenue: 2625,
+    totalTax: 315,
+    adr: 2625,
+    revPar: 656.25,
+    chargesPostedCount: 1,
+    roomChargesLog: [
+      { room: '101', guest: 'Mr Suresh Sharma', rate: 2625, tax: 315, net: 2940, folio: 'FOL_1' }
+    ]
+  },
+  {
+    id: 'na_20261022',
+    auditDate: '22 Oct 2026',
+    rawDate: '2026-10-22',
+    isCurrent: false,
+    status: 'completed',
+    statusLabel: 'Completed',
+    startedAt: 'Oct 23, 2026 01:00',
+    startedBy: 'System',
+    completedAt: 'Oct 23, 2026 01:00',
+    completedBy: '—',
+    occupiedRooms: 1,
+    vacantRooms: 3,
+    totalRevenue: 2625,
+    totalTax: 315,
+    adr: 2625,
+    revPar: 656.25,
+    chargesPostedCount: 1,
+    roomChargesLog: [
+      { room: '101', guest: 'Mr Suresh Sharma', rate: 2625, tax: 315, net: 2940, folio: 'FOL_1' }
     ]
   }
 ];

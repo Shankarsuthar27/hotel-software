@@ -17,9 +17,14 @@ export default function BulkUpdateModal({
 
   // Targets
   const [updateRates, setUpdateRates] = useState(true);
-  const [baseRate, setBaseRate] = useState('5200');
+  const [baseRate, setBaseRate] = useState('3500');
+  const [updateExtraAdult, setUpdateExtraAdult] = useState(false);
+  const [extraAdultRate, setExtraAdultRate] = useState('1000');
+  const [updateExtraChild, setUpdateExtraChild] = useState(false);
+  const [extraChildRate, setExtraChildRate] = useState('500');
   const [updateStopSell, setUpdateStopSell] = useState(false);
   const [stopSellValue, setStopSellValue] = useState(false);
+  const [updateMinNights, setUpdateMinNights] = useState(false);
   const [minNights, setMinNights] = useState('1');
 
   const toggleDay = (day) => {
@@ -50,9 +55,11 @@ export default function BulkUpdateModal({
       startDate,
       endDate,
       daysOfWeek,
-      baseRate: updateRates ? Number(baseRate) : undefined,
+      baseRate: updateRates && baseRate ? Number(baseRate) : undefined,
+      extraAdultRate: updateExtraAdult && extraAdultRate ? Number(extraAdultRate) : undefined,
+      extraChildRate: updateExtraChild && extraChildRate ? Number(extraChildRate) : undefined,
       stopSell: updateStopSell ? stopSellValue : undefined,
-      minNights: Number(minNights) || 1
+      minNights: updateMinNights && minNights ? Number(minNights) : undefined
     });
 
     onClose();
@@ -188,7 +195,71 @@ export default function BulkUpdateModal({
                     value={baseRate}
                     onChange={(e) => setBaseRate(e.target.value)}
                     style={{ width: '140px', fontSize: '0.84rem' }}
-                    placeholder="e.g. 5200"
+                    placeholder="e.g. 3500"
+                  />
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={updateExtraAdult}
+                    onChange={(e) => setUpdateExtraAdult(e.target.checked)}
+                  />
+                  <span>Extra Adult Rate (₹)</span>
+                </label>
+                {updateExtraAdult && (
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={extraAdultRate}
+                    onChange={(e) => setExtraAdultRate(e.target.value)}
+                    style={{ width: '140px', fontSize: '0.84rem' }}
+                    placeholder="e.g. 1000"
+                  />
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={updateExtraChild}
+                    onChange={(e) => setUpdateExtraChild(e.target.checked)}
+                  />
+                  <span>Extra Child Rate (₹)</span>
+                </label>
+                {updateExtraChild && (
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={extraChildRate}
+                    onChange={(e) => setExtraChildRate(e.target.value)}
+                    style={{ width: '140px', fontSize: '0.84rem' }}
+                    placeholder="e.g. 500"
+                  />
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={updateMinNights}
+                    onChange={(e) => setUpdateMinNights(e.target.checked)}
+                  />
+                  <span>Minimum Stay (Nights)</span>
+                </label>
+                {updateMinNights && (
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-input"
+                    value={minNights}
+                    onChange={(e) => setMinNights(e.target.value)}
+                    style={{ width: '140px', fontSize: '0.84rem' }}
+                    placeholder="e.g. 2"
                   />
                 )}
               </div>

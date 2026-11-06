@@ -15,7 +15,7 @@ import './reservations-toolbar.css';
  * - Segmented controls: groups, group, list, grid_view
  */
 export default function ReservationsToolbar({
-  statusFilter = 'all_active',
+  statusFilter = 'all',
   onStatusFilterChange,
   searchQuery = '',
   onSearchChange,
@@ -86,8 +86,8 @@ export default function ReservationsToolbar({
 
   // Status Filter Options matching OTAL PMS dropdown specification
   const statusOptions = [
-    { value: 'all_active', label: 'All Active' },
     { value: 'all', label: 'All Statuses' },
+    { value: 'all_active', label: 'All Active' },
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'in_house', label: 'In-house' },
     { value: 'checked_out', label: 'Checked Out' },
@@ -97,7 +97,7 @@ export default function ReservationsToolbar({
   ];
 
   const currentStatusLabel =
-    statusOptions.find((opt) => opt.value === statusFilter)?.label || 'All Active';
+    statusOptions.find((opt) => opt.value === statusFilter)?.label || 'All Statuses';
 
   // Booking Sources
   const bookingSources = [

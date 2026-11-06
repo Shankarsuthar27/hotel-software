@@ -348,7 +348,7 @@ export default function App() {
             )}
 
         {/* Dynamic Viewport with Page Transitions */}
-        <main className={`content-viewport ${activeTab === 'reservations' || activeTab === 'dashboard' ? 'no-pad-viewport' : ''}`}>
+        <main className={`content-viewport ${activeTab === 'reservations' || activeTab === 'dashboard' || activeTab === 'rates' ? 'no-pad-viewport' : ''}`}>
           <div key={activeTab} className="pms-page-view">
             {activeTab === 'dashboard' && (
             <DashboardView
@@ -465,14 +465,30 @@ export default function App() {
               roomTypes={state.roomTypes}
               reservations={state.reservations}
               onUpdateStatus={handleUpdateRoomStatus}
+              onNewReservation={(roomId) => {
+                if (roomId) {
+                  const room = state.rooms.find(r => r.id === roomId || r.roomNumber === roomId);
+                  if (room) setSlotPrefillData({ room, roomId: room.id });
+                }
+                navigate('/reservations/create');
+              }}
+              onSelectReservation={(res) => {
+                setSelectedReservation(res);
+                setIsFolioOpen(true);
+              }}
             />
           )}
 
           {activeTab === 'rates' && (
             <RatesMatrixView
               roomTypes={state.roomTypes}
+              rooms={state.rooms}
+              reservations={state.reservations}
+              maintenanceBlocks={state.maintenanceBlocks}
               property={state.property}
               stopouts={state.stopouts}
+              dailyRates={state.dailyRates}
+              restrictions={state.restrictions}
               otaChannels={state.otaChannels}
               ratePlans={state.ratePlans}
               onToggleStopout={(rtId, d) => {
@@ -481,6 +497,10 @@ export default function App() {
               onBulkUpdate={(payload) => {
                 pmsStore.bulkUpdateRates(payload);
                 showToast(`✅ Bulk rates and restrictions applied successfully.`);
+              }}
+              onSaveRates={(ratesMap, tier) => {
+                pmsStore.updateDailyRates(ratesMap, tier);
+                showToast(`✅ Rates updated and saved successfully.`);
               }}
               onFullSyncChannel={(channelId) => {
                 pmsStore.triggerOtaFullSync(channelId);

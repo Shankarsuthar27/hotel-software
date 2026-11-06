@@ -31,7 +31,7 @@
   transition: all 0.2s ease;
 }
 
-/* 1. Subtle Filter Icon Button (matches Image 1) */
+/* 1. Subtle Filter Icon Button (matches Image) */
 .otal-filter-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -40,9 +40,9 @@
   height: 38px;
   border-radius: 8px;
   flex-shrink: 0;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #3b82f6;
   background-color: #ffffff;
-  color: #94a3b8;
+  color: #2563eb;
   cursor: pointer;
   transition: all 0.15s ease;
   outline: none;
@@ -50,9 +50,9 @@
 }
 
 .otal-filter-icon-btn:hover {
-  background-color: #f8fafc;
-  border-color: #cbd5e1;
-  color: #475569;
+  background-color: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
 }
 
 .otal-filter-icon-btn:active {
@@ -61,6 +61,7 @@
 
 .otal-filter-icon-btn .material-symbols-outlined {
   font-size: 18px !important;
+  color: #2563eb;
 }
 
 /* 2. Status Dropdown (All Active, All Statuses, Confirmed, In-house, etc.) */
@@ -725,8 +726,12 @@
 }
 
 .otal-toggle-action-btn.active {
-  background-color: #eff6ff !important;
-  color: #2563eb !important;
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.otal-toggle-action-btn.active .material-symbols-outlined {
+  color: #ffffff !important;
 }
 
 @keyframes otalDropdownFadeIn {

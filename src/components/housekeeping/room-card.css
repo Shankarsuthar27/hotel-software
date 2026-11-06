@@ -1,0 +1,632 @@
+/* ==========================================================================
+   Room View Component - Exact OTAL PMS Specification
+   Matching live screenshots from https://app.otalpms.com/room-view
+   ========================================================================== */
+
+/* Page View Wrapper */
+.room-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background-color: #ffffff;
+  padding: 16px 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif);
+}
+
+/* 1. Top Filter Bar */
+.room-view-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Icon button for filter */
+.room-view-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: #64748b;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.room-view-icon-btn:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+/* Select dropdown button */
+.room-view-select-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #1e293b;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.room-view-select-btn:hover {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+/* Dropdown popover menu */
+.room-view-dropdown-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  z-index: 100;
+  padding: 6px;
+  min-width: 200px;
+  animation: pmsDropdownFade 0.15s ease forwards;
+}
+
+.room-view-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.room-view-dropdown-item:hover {
+  background-color: #f1f5f9;
+}
+
+.room-view-dropdown-rich-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.room-view-dropdown-rich-item:hover {
+  background-color: #f8fafc;
+}
+
+/* Unassigned button */
+.room-view-unassigned-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background-color: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  color: #b45309;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(245, 158, 11, 0.1);
+}
+
+.room-view-unassigned-btn:hover {
+  background-color: #fef3c7;
+}
+
+/* Group header */
+.room-view-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.room-view-group-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.room-view-pill-count {
+  background-color: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 10px;
+  border-radius: 9999px;
+}
+
+.room-view-pill-unassigned {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.room-view-pill-unassigned:hover {
+  background-color: #fef3c7;
+}
+
+/* Room Card */
+.room-view-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif);
+  font-size: 16px;
+  line-height: 24px;
+  color: #020817;
+  background-color: var(--color-white, #ffffff);
+  border-radius: 16px;
+  border-width: 2px;
+  border-style: solid;
+  padding: 18px;
+  min-height: 128px;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+  max-width: 260px;
+  width: 100%;
+}
+
+.room-view-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+}
+
+/* Card Borders */
+.room-view-card.border-dirty {
+  border-color: #ef4444;
+}
+
+.room-view-card.border-clean,
+.room-view-card.border-available {
+  border-color: #22c55e;
+}
+
+.room-view-card.border-maintenance {
+  border-color: #f59e0b;
+}
+
+.room-view-card.border-occupied,
+div.bg-white.border-\[\#3B82F6\] {
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-size: 16px;
+  line-height: 24px;
+  color: #020817;
+  background-color: var(--color-white, #ffffff);
+  border: 1.6px solid #3b82f6;
+  border-radius: 12px;
+  box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 4px 6px -1px, rgba(0, 0, 0, 0.1) 0px 2px 4px -2px;
+  padding: 16px;
+  cursor: default;
+  transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.room-view-card.border-dirty,
+div.bg-white.border-\[\#EF4444\],
+div.bg-white.border-dirty,
+div.border-dirty {
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-size: 16px;
+  line-height: 24px;
+  color: #020817;
+  background-color: var(--color-white, #ffffff);
+  border: 1.6px solid #ef4444 !important;
+  border-color: #ef4444 !important;
+  border-radius: 12px;
+  box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 4px 6px -1px, rgba(0, 0, 0, 0.1) 0px 2px 4px -2px;
+  padding: 16px;
+  transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.room-view-card.border-maintenance,
+div.bg-white.border-\[\#F59E0B\],
+div.bg-white.border-maintenance,
+div.border-maintenance {
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-size: 16px;
+  line-height: 24px;
+  color: #020817;
+  background-color: var(--color-white, #ffffff);
+  border: 1.6px solid #f59e0b !important;
+  border-color: #f59e0b !important;
+  border-radius: 12px;
+  box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 4px 6px -1px, rgba(0, 0, 0, 0.1) 0px 2px 4px -2px;
+  padding: 16px;
+  transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.room-view-card.border-clean,
+.room-view-card.border-available,
+div.bg-white.border-\[\#22C55E\] {
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-size: 16px;
+  line-height: 24px;
+  color: #020817;
+  background-color: var(--color-white, #ffffff);
+  border: 1.6px solid #22c55e;
+  border-radius: 12px;
+  box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 4px 6px -1px, rgba(0, 0, 0, 0.1) 0px 2px 4px -2px;
+  padding: 16px 16px 16px 16px;
+  cursor: pointer;
+  transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Typography Tokens */
+.title-3 {
+  font-size: 18px !important;
+  line-height: 24px !important;
+  font-weight: 700 !important;
+}
+
+.small-title-2 {
+  font-size: 12px !important;
+  line-height: 16px !important;
+}
+
+/* Responsive Grid - Exact OTAL PMS Specification */
+.room-view-grid,
+div.gap-5 {
+  display: grid;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-size: 16px;
+  line-height: 24px;
+  color: #020817;
+  overflow: hidden;
+  cursor: default;
+  transition: all;
+}
+
+/* Room Card Action Buttons Container - Exact OTAL PMS Specification */
+div.items-center.gap-1\.5,
+div.flex.items-center.gap-1\.5 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-size: 16px;
+  line-height: 24px;
+  color: #020817;
+  cursor: pointer;
+  transition: all;
+}
+
+/* Dirty Cleaning Button - Exact OTAL PMS Specification */
+/* ==========================================================================
+   Room Card Header & Quick-Action Icon Toolbar Styles
+   ========================================================================== */
+
+/* 1. Header Row Alignment */
+.room-card-header,
+.flex.items-center.justify-between.w-full,
+.flex.justify-between.items-start {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+}
+
+.flex.items-center.gap-2\.5 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.flex.items-center.gap-1\.5 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* ==========================================================================
+   OTAL PMS Section & Room Component Specifications (sp-e1 to sp-e18)
+   ========================================================================== */
+
+.sp-e1 {
+  display: block;
+  position: static;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.sp-e2 {
+  display: flex;
+  margin-bottom: 16px;
+  align-items: center;
+  gap: 12px;
+}
+
+.title-1 {
+  font-size: 18px !important;
+  line-height: 28px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+}
+
+.title-3 {
+  font-size: 18px !important;
+  line-height: 24px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+}
+
+.small-title-2 {
+  font-size: 12px !important;
+  line-height: 16px !important;
+}
+
+.sp-e4 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  padding: 4px 16px;
+  border-radius: 4px;
+  background-color: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.sp-e5 {
+  display: grid;
+  flex: 1 1 0%;
+  overflow: hidden;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 1280px) {
+  .sp-e5 {
+    gap: 8px;
+  }
+}
+
+.sp-e6 {
+  position: relative;
+  background-color: #ffffff;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.sp-e6:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.sp-e7 {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.sp-e8 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-e9 {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  border-radius: 4px !important;
+  border: 1px solid #cbd5e1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: border-color 0.15s ease, background-color 0.15s ease !important;
+  cursor: pointer !important;
+  background-color: #ffffff;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.sp-e9:hover {
+  border-color: #60a5fa !important;
+}
+
+.sp-e9.bg-blue-600 {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.sp-e11 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sp-e12 {
+  padding: 6px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease !important;
+  cursor: pointer !important;
+  background-color: transparent;
+  border: none !important;
+  outline: none !important;
+}
+
+.sp-e13 {
+  font-size: 16px !important;
+  user-select: none;
+  line-height: 1;
+}
+
+.sp-e14 {
+  padding: 6px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: color 0.15s ease, background-color 0.15s ease !important;
+  cursor: pointer !important;
+  background-color: transparent;
+  border: none !important;
+  outline: none !important;
+}
+
+.sp-e15 {
+  font-size: 18px !important;
+  user-select: none;
+  line-height: 1;
+}
+
+.sp-e16 {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sp-e17,
+.sp-e18 {
+  font-size: 12px !important;
+  line-height: 16px !important;
+  margin: 0;
+}
+
+.sp-e17.text-\[\#22C55E\],
+.sp-e17-available {
+  color: #22c55e !important;
+}
+
+.sp-e17.text-\[\#EF4444\],
+.sp-e17-dirty {
+  color: #ef4444 !important;
+}
+
+/* ==========================================================================
+   Block Room Slide-Over Drawer - Exact OTAL PMS Specification
+   ========================================================================== */
+
+@keyframes blockRoomSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.block-room-drawer {
+  animation: blockRoomSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.12);
+}
+
+.block-room-select-trigger {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  font-size: 13.5px;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.block-room-select-trigger:hover {
+  border-color: #cbd5e1;
+}
+
+.block-room-select-trigger:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.block-room-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  z-index: 60;
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.block-room-dropdown-option {
+  padding: 10px 16px;
+  font-size: 13.5px;
+  color: #1e293b;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.block-room-dropdown-option:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.block-room-dropdown-option.selected {
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+
+
+
+
+

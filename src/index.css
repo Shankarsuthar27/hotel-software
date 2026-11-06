@@ -1,4 +1,8 @@
 @import './components/reservations/reservation-card.css';
+@import './components/reservations/booking-details-drawer.css';
+@import './components/rates/rates-inventory.css';
+@import './components/housekeeping/room-card.css';
+@import './components/housekeeping/block-room-drawer.css';
 
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
@@ -23,6 +27,12 @@
    ========================================================================== */
 
 :root {
+  --color-white: #ffffff;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --spacing: 4px;
+  --color-amber-50: oklch(0.987 0.022 95.277);
+  --color-amber-200: oklch(0.924 0.12 95.746);
+  --color-amber-600: oklch(0.666 0.179 58.318);
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: 'JetBrains Mono', monospace;
 
@@ -485,9 +495,60 @@ body {
   z-index: 15;
 }
 
+.group\/booking,
+.booking-block.status-in_house,
+.booking-block.status-checked_out {
+  display: flex !important;
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  align-items: center;
+  height: calc(var(--spacing) * 9);
+  font-family: var(--font-serif, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--color-white, #ffffff);
+  border-radius: 6px;
+  box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+              rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+              rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+              rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+              rgba(0, 0, 0, 0.1) 0px 1px 3px 0px,
+              rgba(0, 0, 0, 0.1) 0px 1px 2px -1px;
+  padding: 0px 8px;
+  margin: 0px 2px;
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              translate 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              scale 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              rotate 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: brightness(1.05);
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.group\/booking,
 .booking-block.status-in_house {
-  background: linear-gradient(135deg, #059669, #10b981);
-  border-left: 4px solid #047857;
+  background-color: #3b82f6 !important;
+}
+
+.group\/booking.bg-\[\#6B7280\],
+.booking-block.status-checked_out {
+  background-color: #6b7280 !important;
+}
+
+.group\/booking:hover,
+.booking-block.status-in_house:hover,
+.booking-block.status-checked_out:hover {
+  scale: 1.01;
+  transform: scale(1.01);
+  filter: brightness(1.05);
+  z-index: 20;
+}
+
+.small-title-3 {
+  font-size: 13px;
+  line-height: 1.25;
 }
 
 .booking-block.status-confirmed {
@@ -495,14 +556,223 @@ body {
   border-left: 4px solid #1d4ed8;
 }
 
-.booking-block.status-checked_out {
-  background: linear-gradient(135deg, #64748b, #94a3b8);
-  border-left: 4px solid #475569;
-}
 
 .booking-block.status-maintenance {
   background: linear-gradient(135deg, #d97706, #f59e0b);
   border-left: 4px solid #b45309;
+}
+
+/* Selected Slot in Tape Chart */
+.timeline-slot.selected-slot {
+  background-color: #dbeafe !important;
+}
+
+/* Slot Click Popover Card - Exact match to live OTAL PMS screenshot */
+.tape-chart-slot-popover {
+  position: fixed;
+  z-index: 9999;
+  width: 360px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 14px 35px -5px rgba(0, 0, 0, 0.15), 0 5px 12px -3px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f1f5f9;
+  padding: 18px;
+  box-sizing: border-box;
+  animation: slotPopIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+@keyframes slotPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.slot-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.slot-popover-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slot-popover-cal-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background-color: #eff6ff;
+  border: 1px solid #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.slot-popover-date-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.slot-popover-room-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.slot-popover-close-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+}
+
+.slot-popover-close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.slot-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.slot-action-card {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+/* Maintenance Block Card */
+.slot-action-card.maintenance {
+  background-color: #fffdf5;
+  border: 1px solid #fef3c7;
+}
+
+.slot-action-card.maintenance:hover {
+  background-color: #fefce8;
+  border-color: #fde68a;
+  transform: translateY(-1px);
+}
+
+.slot-action-icon.maintenance {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: #fef3c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d97706;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.slot-action-title.maintenance {
+  font-size: 14px;
+  font-weight: 700;
+  color: #b45309;
+}
+
+.slot-action-arrow.maintenance {
+  color: #d97706;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Quick Booking Card */
+.slot-action-card.booking {
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+}
+
+.slot-action-card.booking:hover {
+  background-color: #eff6ff;
+  border-color: #dbeafe;
+  transform: translateY(-1px);
+}
+
+.slot-action-icon.booking {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.slot-action-title.booking {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.slot-action-arrow.booking {
+  color: #2563eb;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.slot-action-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.slot-action-desc {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.tape-chart-room-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tape-chart-icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.12s ease;
+}
+
+.tape-chart-icon-btn:hover {
+  background-color: #f1f5f9;
 }
 
 /* Room Status Cards */
@@ -1761,6 +2031,29 @@ body.drawer-open .content-viewport {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.btn-open-cash-drawer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  border-radius: 9999px;
+  padding: 0.42rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(245, 158, 11, 0.08);
+}
+
+.btn-open-cash-drawer:hover {
+  background-color: #fef3c7;
+  border-color: #fcd34d;
+  color: #92400e;
+  transform: translateY(-1px);
 }
 
 .btn-create-reservation {

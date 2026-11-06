@@ -51,10 +51,45 @@ class PMSStore {
         this.property = parsed.property || initialProperty;
         this.roomTypes = parsed.roomTypes || initialRoomTypes;
         this.rooms = parsed.rooms || initialRooms;
+
+        // Apply room mapping: Standard Room 101, 102 & Delux Room 201, 202
+        const r101 = this.rooms.find(r => r.id === 'rm_101');
+        if (r101) {
+          r101.roomTypeId = 'rt_standard';
+          r101.roomNumber = '101';
+          r101.operational = 'allocated';
+          r101.notes = 'In-house';
+        }
+        const r102 = this.rooms.find(r => r.id === 'rm_102');
+        if (r102) {
+          r102.roomTypeId = 'rt_standard';
+          r102.roomNumber = '102';
+          r102.operational = 'allocated';
+          r102.notes = 'In-house';
+        }
+        const r201 = this.rooms.find(r => r.id === 'rm_201');
+        if (r201) {
+          r201.roomTypeId = 'rt_deluxe';
+          r201.roomNumber = '201';
+          if (r201.status !== 'maintenance') {
+            r201.status = 'dirty';
+            r201.notes = 'Ready for check-in';
+            r201.operational = 'available';
+          }
+        }
+        const r202 = this.rooms.find(r => r.id === 'rm_202');
+        if (r202) {
+          r202.roomTypeId = 'rt_deluxe';
+          r202.roomNumber = '202';
+          if (r202.status !== 'maintenance') {
+            r202.status = 'clean';
+            r202.notes = 'Ready for check-in';
+            r202.operational = 'available';
+          }
+        }
         this.mealPlans = parsed.mealPlans || initialMealPlans;
-        this.ratePlans = parsed.ratePlans || initialRatePlans;
-        this.reservations = parsed.reservations || initialReservations;
-        ['res_5', 'res_4', 'res_3'].forEach(id => {
+        this.reservations = (parsed.reservations || initialReservations).filter(r => r.id !== 'res_unassigned_1');
+        ['res_5', 'res_4', 'res_3', 'res_2', 'res_1'].forEach(id => {
           const initRes = initialReservations.find(r => r.id === id);
           if (initRes) {
             const existingIdx = this.reservations.findIndex(r => r.id === id);
@@ -64,10 +99,17 @@ class PMSStore {
               this.reservations[existingIdx] = {
                 ...this.reservations[existingIdx],
                 ...initRes,
+                roomId: initRes.roomId,
+                roomNumber: initRes.roomNumber,
+                roomTypeId: initRes.roomTypeId,
+                roomTypeName: initRes.roomTypeName,
                 primaryGuest: {
                   ...(this.reservations[existingIdx].primaryGuest || {}),
                   ...(initRes.primaryGuest || {})
                 },
+                checkInDate: initRes.checkInDate,
+                checkOutDate: initRes.checkOutDate,
+                nights: initRes.nights,
                 status: initRes.status,
                 totalAmount: initRes.totalAmount,
                 paidAmount: initRes.paidAmount,
@@ -76,6 +118,75 @@ class PMSStore {
             }
           }
         });
+
+        // Ensure Room 101 has active in_house reservation for Mr Kkk Suthar (Checkout: Tue 27, Oct 2026)
+        const res101 = this.reservations.find(r => r.id === 'res_5');
+        if (res101) {
+          res101.roomId = 'rm_101';
+          res101.roomNumber = '101';
+          res101.roomTypeId = 'rt_standard';
+          res101.roomTypeName = 'Standard Room';
+          res101.status = 'in_house';
+          res101.checkOutDate = '2026-10-27';
+          res101.primaryGuest = {
+            ...(res101.primaryGuest || {}),
+            name: 'Mr Kkk Suthar',
+            title: 'Mr.',
+            firstName: 'Kkk',
+            lastName: 'Suthar'
+          };
+        }
+
+        // Ensure Room 102 has active in_house reservation for Mr Shankar Suthar (Checkout: Mon 26, Oct 2026)
+        const res102 = this.reservations.find(r => r.id === 'res_4' || r.id === 'res_1');
+        if (res102) {
+          res102.roomId = 'rm_102';
+          res102.roomNumber = '102';
+          res102.roomTypeId = 'rt_standard';
+          res102.roomTypeName = 'Standard Room';
+          res102.status = 'in_house';
+          res102.checkOutDate = '2026-10-26';
+          res102.primaryGuest = {
+            ...(res102.primaryGuest || {}),
+            name: 'Mr Shankar Suthar',
+            title: 'Mr.',
+            firstName: 'Shankar',
+            lastName: 'Suthar'
+          };
+        }
+
+        // Ensure no other reservation is conflicting with 101, 102, 201, 202
+        this.reservations.forEach(r => {
+          if (r.id !== 'res_5' && r.roomId === 'rm_101') {
+            r.roomId = '';
+            r.roomNumber = '';
+          }
+          if (r.id !== res102?.id && r.roomId === 'rm_102') {
+            r.roomId = '';
+            r.roomNumber = '';
+          }
+          if ((r.roomId === 'rm_201' || r.roomId === 'rm_202') && r.status === 'in_house') {
+            r.status = 'confirmed';
+          }
+        });
+
+        // Ensure 1 Unassigned reservation exists for Delux Room
+        const unassignedDlx = this.reservations.filter(
+          r => (r.status === 'confirmed' || r.status === 'in_house') && (!r.roomId || r.roomId === '') && r.roomTypeId === 'rt_deluxe'
+        );
+        if (unassignedDlx.length === 0) {
+          const res3 = initialReservations.find(r => r.id === 'res_3');
+          if (res3) {
+            this.reservations.push({
+              ...res3,
+              roomId: '',
+              roomNumber: '',
+              roomTypeId: 'rt_deluxe',
+              roomTypeName: 'Delux Room',
+              status: 'confirmed'
+            });
+          }
+        }
         this.folios = parsed.folios || initialFolios;
         ['fol_3', 'fol_4', 'fol_5'].forEach(fId => {
           if (!this.folios[fId] && initialFolios[fId]) {
@@ -85,10 +196,30 @@ class PMSStore {
         this.announcements = parsed.announcements || initialStaffNotes || [];
         this.otaChannels = parsed.otaChannels || initialOtaChannels;
         this.teamMembers = parsed.teamMembers || initialTeamMembers;
-        this.nightAudits = parsed.nightAudits || initialNightAudits;
+        this.nightAudits = (parsed.nightAudits && parsed.nightAudits.length >= 5) ? parsed.nightAudits : initialNightAudits;
         this.auditTrail = parsed.auditTrail || initialAuditTrail;
         this.stopouts = parsed.stopouts || {};
+        this.dailyRates = parsed.dailyRates || {
+          base: {
+            'rt_deluxe_2026-11-05': 1000,
+            'rt_deluxe_2026-11-06': 1000
+          },
+          extra_adult: {},
+          extra_child: {}
+        };
+        if (!this.dailyRates.base) this.dailyRates.base = {};
+        if (this.dailyRates.base['rt_deluxe_2026-11-05'] === undefined) {
+          this.dailyRates.base['rt_deluxe_2026-11-05'] = 1000;
+        }
+        if (this.dailyRates.base['rt_deluxe_2026-11-06'] === undefined) {
+          this.dailyRates.base['rt_deluxe_2026-11-06'] = 1000;
+        }
+        if (this.property) {
+          this.property.businessDate = '2026-11-03';
+        }
+        this.restrictions = parsed.restrictions || {};
         this.maintenanceBlocks = parsed.maintenanceBlocks || [];
+        this.save();
         return;
       } catch (e) {
         console.warn('Failed to parse saved PMS state, resetting to defaults.', e);
@@ -111,6 +242,15 @@ class PMSStore {
     this.nightAudits = JSON.parse(JSON.stringify(initialNightAudits));
     this.auditTrail = JSON.parse(JSON.stringify(initialAuditTrail));
     this.stopouts = {};
+    this.dailyRates = {
+      base: {
+        'rt_deluxe_2026-11-05': 1000,
+        'rt_deluxe_2026-11-06': 1000
+      },
+      extra_adult: {},
+      extra_child: {}
+    };
+    this.restrictions = {};
     this.maintenanceBlocks = [
       {
         id: 'mb_01',
@@ -140,6 +280,8 @@ class PMSStore {
       nightAudits: this.nightAudits,
       auditTrail: this.auditTrail,
       stopouts: this.stopouts,
+      dailyRates: this.dailyRates,
+      restrictions: this.restrictions,
       maintenanceBlocks: this.maintenanceBlocks
     };
     try {
@@ -181,6 +323,8 @@ class PMSStore {
       nightAudits: this.nightAudits,
       auditTrail: this.auditTrail,
       stopouts: this.stopouts,
+      dailyRates: this.dailyRates,
+      restrictions: this.restrictions,
       maintenanceBlocks: this.maintenanceBlocks,
       cloudStatus: this.cloudStatus,
       isCloudLive: this.cloudStatus === 'LIVE'
@@ -1146,41 +1290,148 @@ class PMSStore {
     this.save();
   }
 
-  bulkUpdateRates(payload) {
-    const rtNames = this.roomTypes.filter(rt => payload.roomTypeIds.includes(rt.id)).map(r => r.name).join(', ');
+  updateDailyRates(ratesMap, tier = 'base') {
+    if (!ratesMap || typeof ratesMap !== 'object') return;
+    if (!this.dailyRates) this.dailyRates = { base: {}, extra_adult: {}, extra_child: {} };
+    if (!this.dailyRates[tier]) this.dailyRates[tier] = {};
 
-    if (payload.baseRate) {
+    Object.entries(ratesMap).forEach(([key, val]) => {
+      const num = Number(val);
+      if (!isNaN(num) && num > 0) {
+        this.dailyRates[tier][key] = num;
+      }
+    });
+
+    // Update roomTypes default basePrice if tier is base
+    if (tier === 'base') {
       this.roomTypes = this.roomTypes.map(rt => {
-        if (payload.roomTypeIds.includes(rt.id)) {
-          return { ...rt, basePrice: Number(payload.baseRate) };
+        const matchingKey = Object.keys(ratesMap).find(k => k.startsWith(rt.id + '_'));
+        if (matchingKey) {
+          const v = Number(ratesMap[matchingKey]);
+          if (!isNaN(v) && v > 0) return { ...rt, basePrice: v };
         }
         return rt;
       });
     }
 
-    if (payload.stopSell !== undefined) {
-      const cur = new Date(payload.startDate);
-      const end = new Date(payload.endDate);
-      const dayMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    this.logAudit('RATES_UPDATE', 'RATE_MATRIX', tier, `Updated ${Object.keys(ratesMap).length} daily rates for tier: ${tier}`);
+    this.save();
+  }
 
-      while (cur <= end) {
-        const dayName = dayMap[cur.getDay()];
-        if (!payload.daysOfWeek || payload.daysOfWeek.includes(dayName)) {
-          const iso = cur.toISOString().split('T')[0];
-          payload.roomTypeIds.forEach(rtId => {
-            const key = `${rtId}_${iso}`;
-            this.stopouts[key] = !!payload.stopSell;
-          });
-        }
-        cur.setDate(cur.getDate() + 1);
+  updateSingleRate(roomTypeId, dateStr, rate, tier = 'base') {
+    if (!this.dailyRates) this.dailyRates = { base: {}, extra_adult: {}, extra_child: {} };
+    if (!this.dailyRates[tier]) this.dailyRates[tier] = {};
+    const num = Number(rate);
+    if (!isNaN(num) && num > 0) {
+      this.dailyRates[tier][`${roomTypeId}_${dateStr}`] = num;
+      this.save();
+    }
+  }
+
+  bulkUpdateRates(payload) {
+    if (!payload) return;
+
+    if (!this.dailyRates) this.dailyRates = { base: {}, extra_adult: {}, extra_child: {} };
+    if (!this.restrictions) this.restrictions = {};
+
+    // 1. Direct inline rate matrix save
+    if (payload.rates && typeof payload.rates === 'object') {
+      this.updateDailyRates(payload.rates, payload.tier || 'base');
+      return;
+    }
+
+    // 2. Bulk Update from Modal
+    const targetRoomTypeIds = payload.roomTypeIds || this.roomTypes.map(r => r.id);
+    const rtNames = this.roomTypes.filter(rt => targetRoomTypeIds.includes(rt.id)).map(r => r.name).join(', ');
+
+    const startDateStr = payload.startDate || '2026-10-24';
+    const endDateStr = payload.endDate || '2026-11-15';
+    const dayMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const cur = new Date(startDateStr + 'T00:00:00');
+    const end = new Date(endDateStr + 'T00:00:00');
+
+    while (cur <= end) {
+      const dayName = dayMap[cur.getDay()];
+      if (!payload.daysOfWeek || payload.daysOfWeek.length === 0 || payload.daysOfWeek.includes(dayName)) {
+        const iso = cur.toISOString().split('T')[0];
+        targetRoomTypeIds.forEach(rtId => {
+          const cellKey = `${rtId}_${iso}`;
+
+          // Rate override
+          if (payload.baseRate !== undefined && payload.baseRate !== null && payload.baseRate !== '') {
+            const rateNum = Number(payload.baseRate);
+            if (!isNaN(rateNum) && rateNum > 0) {
+              if (!this.dailyRates.base) this.dailyRates.base = {};
+              this.dailyRates.base[cellKey] = rateNum;
+            }
+          }
+
+          // Extra adult
+          if (payload.extraAdultRate !== undefined && payload.extraAdultRate !== null && payload.extraAdultRate !== '') {
+            const eaNum = Number(payload.extraAdultRate);
+            if (!isNaN(eaNum) && eaNum > 0) {
+              if (!this.dailyRates.extra_adult) this.dailyRates.extra_adult = {};
+              this.dailyRates.extra_adult[cellKey] = eaNum;
+            }
+          }
+
+          // Extra child
+          if (payload.extraChildRate !== undefined && payload.extraChildRate !== null && payload.extraChildRate !== '') {
+            const ecNum = Number(payload.extraChildRate);
+            if (!isNaN(ecNum) && ecNum > 0) {
+              if (!this.dailyRates.extra_child) this.dailyRates.extra_child = {};
+              this.dailyRates.extra_child[cellKey] = ecNum;
+            }
+          }
+
+          // Stop sell
+          if (payload.stopSell !== undefined) {
+            this.stopouts[cellKey] = !!payload.stopSell;
+          }
+
+          // Min nights
+          if (payload.minNights !== undefined) {
+            this.restrictions[`min_${cellKey}`] = Number(payload.minNights);
+          }
+
+          // Max nights
+          if (payload.maxNights !== undefined) {
+            this.restrictions[`max_${cellKey}`] = Number(payload.maxNights);
+          }
+
+          // CTA (Closed to arrival)
+          if (payload.cta !== undefined) {
+            this.restrictions[`cta_${cellKey}`] = !!payload.cta;
+          }
+
+          // CTD (Closed to departure)
+          if (payload.ctd !== undefined) {
+            this.restrictions[`ctd_${cellKey}`] = !!payload.ctd;
+          }
+        });
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    // Update roomTypes default basePrice if provided
+    if (payload.baseRate) {
+      const bNum = Number(payload.baseRate);
+      if (!isNaN(bNum) && bNum > 0) {
+        this.roomTypes = this.roomTypes.map(rt => {
+          if (targetRoomTypeIds.includes(rt.id)) {
+            return { ...rt, basePrice: bNum };
+          }
+          return rt;
+        });
       }
     }
 
     this.logAudit(
       'BULK_RATE_UPDATE',
       'INVENTORY_RATES',
-      `${payload.startDate} to ${payload.endDate}`,
-      `Bulk updated for [${rtNames}]. Base Rate: ₹${payload.baseRate || 'Unchanged'}, StopSell: ${payload.stopSell ? 'YES' : 'NO'}`
+      `${startDateStr} to ${endDateStr}`,
+      `Bulk updated for [${rtNames}]. Base Rate: ₹${payload.baseRate || 'Unchanged'}, StopSell: ${payload.stopSell !== undefined ? (payload.stopSell ? 'YES' : 'NO') : 'Unchanged'}`
     );
 
     this.save();

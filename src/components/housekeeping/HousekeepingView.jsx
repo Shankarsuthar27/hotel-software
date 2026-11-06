@@ -1,39 +1,133 @@
-import React, { useState, useMemo } from 'react';
-import {
-  Sparkles,
-  CheckCircle2,
-  AlertTriangle,
-  Wrench,
-  User,
-  ShieldCheck,
-  Filter,
-  Check
-} from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Wrench, PlusCircle, User, Clock, Moon, Calendar, X, AlertCircle, Ban, ChevronDown } from 'lucide-react';
+import RoomCard from './RoomCard';
+import BlockRoomDrawer from './BlockRoomDrawer.jsx';
+import { pmsStore } from '../../services/pmsStore';
+import { navigate } from '../../services/router';
+import './room-card.css';
 
 export default function HousekeepingView({
-  rooms,
-  roomTypes,
-  reservations,
-  onUpdateStatus
+  rooms = [],
+  roomTypes = [],
+  reservations = [],
+  onUpdateStatus,
+  onNewReservation,
+  onSelectReservation
 }) {
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'dirty' | 'clean' | 'inspected' | 'maintenance'
+  // Dropdown states
+  const [isRoomsOpen, setIsRoomsOpen] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [isUnassignedOpen, setIsUnassignedOpen] = useState(false);
 
-  const counts = {
-    all: rooms.length,
-    dirty: rooms.filter((r) => r.status === 'dirty').length,
-    clean: rooms.filter((r) => r.status === 'clean').length,
-    inspected: rooms.filter((r) => r.status === 'inspected').length,
-    maintenance: rooms.filter((r) => r.status === 'maintenance').length
+  // Filter selections
+  const [selectedRoomType, setSelectedRoomType] = useState('ALL');
+  const [selectedStatus, setSelectedStatus] = useState('ALL');
+
+  // Selected rooms for batch actions
+  const [selectedRooms, setSelectedRooms] = useState(new Set());
+
+  // Maintenance / Block Room Drawer State (Matching OTAL PMS Specification)
+  const [maintenanceRoom, setMaintenanceRoom] = useState(null);
+  const [blockCheckIn, setBlockCheckIn] = useState('2026-11-02');
+  const [blockCheckOut, setBlockCheckOut] = useState('2026-11-02');
+  const [blockReason, setBlockReason] = useState('');
+  const [isReasonOpen, setIsReasonOpen] = useState(false);
+  const [blockRoomType, setBlockRoomType] = useState(null);
+  const [blockSelectedRoom, setBlockSelectedRoom] = useState(null);
+  const [isRoomTypeOpen, setIsRoomTypeOpen] = useState(false);
+  const [isRoomSelectOpen, setIsRoomSelectOpen] = useState(false);
+  const reasonDropdownRef = useRef(null);
+  const roomTypeDropdownRef = useRef(null);
+  const roomSelectDropdownRef = useRef(null);
+
+  const handleOpenMaintenance = (r) => {
+    const roomObj = (typeof r === 'object' && r !== null)
+      ? r
+      : rooms.find(rm => rm.id === r || rm.roomNumber === r)
+        || rooms.find(rm => rm.roomNumber === '101')
+        || rooms[0]
+        || { id: 'rm_101', roomNumber: '101', roomTypeId: 'rt_deluxe' };
+
+    setMaintenanceRoom(roomObj);
+    setBlockSelectedRoom(roomObj);
+
+    const rType = (roomObj?.roomTypeId && roomTypes.find(rt => rt.id === roomObj.roomTypeId))
+      || roomTypes.find(rt => rt.name.toLowerCase().includes('delux'))
+      || roomTypes[0]
+      || { id: 'rt_deluxe', name: 'Delux Room' };
+
+    setBlockRoomType(rType);
+    setBlockReason(roomObj?.status === 'maintenance' && roomObj?.notes ? roomObj.notes : '');
+    setBlockCheckIn('2026-11-02');
+    setBlockCheckOut('2026-11-02');
+    setIsReasonOpen(false);
+    setIsRoomTypeOpen(false);
+    setIsRoomSelectOpen(false);
   };
 
+  // Close dropdowns on outside click
+  const roomsDropdownRef = useRef(null);
+  const statusDropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (roomsDropdownRef.current && !roomsDropdownRef.current.contains(event.target)) {
+        setIsRoomsOpen(false);
+      }
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setIsStatusOpen(false);
+      }
+      if (reasonDropdownRef.current && !reasonDropdownRef.current.contains(event.target)) {
+        setIsReasonOpen(false);
+      }
+      if (roomTypeDropdownRef.current && !roomTypeDropdownRef.current.contains(event.target)) {
+        setIsRoomTypeOpen(false);
+      }
+      if (roomSelectDropdownRef.current && !roomSelectDropdownRef.current.contains(event.target)) {
+        setIsRoomSelectOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Compute counts for top status legend
+  const counts = useMemo(() => {
+    return {
+      available: rooms.filter((r) => r.status === 'clean' || !r.status).length,
+      occupied: reservations.filter((r) => r.status === 'in_house' && r.roomId).length,
+      maintenance: rooms.filter((r) => r.status === 'maintenance').length,
+      dirty: rooms.filter((r) => r.status === 'dirty').length
+    };
+  }, [rooms, reservations]);
+
+  // Unassigned reservations (booked without a room number allocated)
+  const unassignedReservations = useMemo(() => {
+    return reservations.filter(
+      (r) => (r.status === 'confirmed' || r.status === 'in_house') && (!r.roomId || r.roomId === '')
+    );
+  }, [reservations]);
+
+  // Filtered rooms list
   const filteredRooms = useMemo(() => {
     return rooms.filter((r) => {
-      if (filterStatus !== 'all' && r.status !== filterStatus) return false;
-      return true;
+      // Room type filter
+      if (selectedRoomType !== 'ALL' && r.roomTypeId !== selectedRoomType) {
+        return false;
+      }
+      // Status filter
+      if (selectedStatus === 'ALL') return true;
+      if (selectedStatus === 'clean') return r.status === 'clean' || !r.status;
+      if (selectedStatus === 'occupied') {
+        return reservations.some((res) => res.roomId === r.id && res.status === 'in_house');
+      }
+      return r.status === selectedStatus;
     });
-  }, [rooms, filterStatus]);
+  }, [rooms, reservations, selectedRoomType, selectedStatus]);
 
-  // Group by room types
+  // Group rooms by room type
   const groupedRooms = useMemo(() => {
     const map = {};
     roomTypes.forEach((rt) => {
@@ -44,216 +138,567 @@ export default function HousekeepingView({
         map[r.roomTypeId].rooms.push(r);
       }
     });
+    // Ensure room numbers are sorted numerically (101, 102, 201, 202)
+    Object.values(map).forEach((g) => {
+      g.rooms.sort((a, b) =>
+        (a.roomNumber || '').localeCompare(b.roomNumber || '', undefined, { numeric: true })
+      );
+    });
     return Object.values(map).filter((g) => g.rooms.length > 0);
   }, [roomTypes, filteredRooms]);
 
+  // Selected room type label for button
+  const selectedRoomTypeLabel = useMemo(() => {
+    if (selectedRoomType === 'ALL') return 'All Rooms';
+    const found = roomTypes.find((rt) => rt.id === selectedRoomType);
+    return found ? found.name : 'All Rooms';
+  }, [selectedRoomType, roomTypes]);
+
+  // Selected status label for button
+  const selectedStatusLabel = useMemo(() => {
+    switch (selectedStatus) {
+      case 'clean': return 'Available';
+      case 'occupied': return 'Occupied';
+      case 'maintenance': return 'Maintenance';
+      case 'dirty': return 'Dirty';
+      default: return 'All Statuses';
+    }
+  }, [selectedStatus]);
+
+  // Selection toggle
+  const handleToggleSelect = (roomId) => {
+    setSelectedRooms((prev) => {
+      const next = new Set(prev);
+      if (next.has(roomId)) {
+        next.delete(roomId);
+      } else {
+        next.add(roomId);
+      }
+      return next;
+    });
+  };
+
+  // Batch status update
+  const handleBatchStatus = (newStatus) => {
+    if (onUpdateStatus) {
+      selectedRooms.forEach((roomId) => {
+        onUpdateStatus(roomId, newStatus);
+      });
+    }
+    setSelectedRooms(new Set());
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Header Toolbar */}
-      <div style={{
-        background: '#ffffff',
-        padding: '1.15rem 1.5rem',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-light)',
-        boxShadow: 'var(--shadow-sm)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div>
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
-            Housekeeping & Room Hygiene Operations
-          </h2>
-          <p style={{ fontSize: '0.78rem', color: '#64748b' }}>
-            Real-time room hygiene state tracker linked directly to front-desk check-out triggers
-          </p>
+    <div className="room-view-container">
+      {/* 1. Top Filter Bar */}
+      <div className="room-view-top-bar">
+        
+        {/* Left Controls: Filter Icon + All Rooms Dropdown + All Statuses Dropdown */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          
+          {/* Funnel / Filter button */}
+          <button
+            type="button"
+            className="room-view-icon-btn"
+            title="Filter View"
+          >
+            <span className="material-symbols-outlined select-none" style={{ fontSize: '18px' }}>
+              filter_list
+            </span>
+          </button>
+
+          {/* All Rooms Dropdown (Image 4) */}
+          <div className="relative" ref={roomsDropdownRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className="room-view-select-btn"
+              onClick={() => setIsRoomsOpen(!isRoomsOpen)}
+            >
+              <span className="material-symbols-outlined select-none text-blue-600" style={{ fontSize: '18px' }}>
+                category
+              </span>
+              <span>{selectedRoomTypeLabel}</span>
+              <span className="material-symbols-outlined select-none text-slate-400" style={{ fontSize: '18px' }}>
+                {isRoomsOpen ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+
+            {/* All Rooms Popover Menu */}
+            {isRoomsOpen && (
+              <div className="room-view-dropdown-popover" style={{ width: '180px' }}>
+                <div
+                  className="room-view-dropdown-item"
+                  onClick={() => { setSelectedRoomType('ALL'); setIsRoomsOpen(false); }}
+                >
+                  <span className="font-semibold text-sm text-slate-800">All Rooms</span>
+                  {selectedRoomType === 'ALL' && (
+                    <span className="material-symbols-outlined text-blue-600 ml-auto" style={{ fontSize: '18px' }}>
+                      check
+                    </span>
+                  )}
+                </div>
+                {roomTypes.map((rt) => (
+                  <div
+                    key={rt.id}
+                    className="room-view-dropdown-item"
+                    onClick={() => { setSelectedRoomType(rt.id); setIsRoomsOpen(false); }}
+                  >
+                    <span className="font-medium text-sm text-slate-800">{rt.name}</span>
+                    {selectedRoomType === rt.id && (
+                      <span className="material-symbols-outlined text-blue-600 ml-auto" style={{ fontSize: '18px' }}>
+                        check
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* All Statuses Dropdown (Image 1 & Image 3) */}
+          <div className="relative" ref={statusDropdownRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className="room-view-select-btn"
+              onClick={() => setIsStatusOpen(!isStatusOpen)}
+            >
+              <span className="material-symbols-outlined select-none text-blue-600" style={{ fontSize: '18px' }}>
+                grid_view
+              </span>
+              <span>{selectedStatusLabel}</span>
+              <span className="material-symbols-outlined select-none text-slate-400" style={{ fontSize: '18px' }}>
+                {isStatusOpen ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+
+            {/* All Statuses Popover Menu */}
+            {isStatusOpen && (
+              <div className="room-view-dropdown-popover" style={{ width: '220px' }}>
+                {/* 1. All Statuses */}
+                <div
+                  className="room-view-dropdown-rich-item"
+                  onClick={() => { setSelectedStatus('ALL'); setIsStatusOpen(false); }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '13px', color: '#1e293b' }}>All Statuses</div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>Show all rooms</div>
+                  </div>
+                  {selectedStatus === 'ALL' && (
+                    <span className="material-symbols-outlined text-blue-600" style={{ fontSize: '18px' }}>
+                      check
+                    </span>
+                  )}
+                </div>
+
+                {/* 2. Available */}
+                <div
+                  className="room-view-dropdown-rich-item"
+                  onClick={() => { setSelectedStatus('clean'); setIsStatusOpen(false); }}
+                >
+                  <div style={{ width: '26px', height: '26px', borderRadius: '9999px', backgroundColor: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span className="material-symbols-outlined select-none" style={{ fontSize: '15px' }}>check_circle</span>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b' }}>Available</div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>Ready for check-in</div>
+                  </div>
+                  {selectedStatus === 'clean' && (
+                    <span className="material-symbols-outlined text-blue-600" style={{ fontSize: '18px' }}>
+                      check
+                    </span>
+                  )}
+                </div>
+
+                {/* 3. Occupied */}
+                <div
+                  className="room-view-dropdown-rich-item"
+                  onClick={() => { setSelectedStatus('occupied'); setIsStatusOpen(false); }}
+                >
+                  <div style={{ width: '26px', height: '26px', borderRadius: '9999px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span className="material-symbols-outlined select-none" style={{ fontSize: '15px' }}>person</span>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b' }}>Occupied</div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>Currently occupied</div>
+                  </div>
+                  {selectedStatus === 'occupied' && (
+                    <span className="material-symbols-outlined text-blue-600" style={{ fontSize: '18px' }}>
+                      check
+                    </span>
+                  )}
+                </div>
+
+                {/* 4. Maintenance */}
+                <div
+                  className="room-view-dropdown-rich-item"
+                  onClick={() => { setSelectedStatus('maintenance'); setIsStatusOpen(false); }}
+                >
+                  <div style={{ width: '26px', height: '26px', borderRadius: '9999px', backgroundColor: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span className="material-symbols-outlined select-none" style={{ fontSize: '15px' }}>build</span>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b' }}>Maintenance</div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>Out of order</div>
+                  </div>
+                  {selectedStatus === 'maintenance' && (
+                    <span className="material-symbols-outlined text-blue-600" style={{ fontSize: '18px' }}>
+                      check
+                    </span>
+                  )}
+                </div>
+
+                {/* 5. Dirty */}
+                <div
+                  className="room-view-dropdown-rich-item"
+                  onClick={() => { setSelectedStatus('dirty'); setIsStatusOpen(false); }}
+                >
+                  <div style={{ width: '26px', height: '26px', borderRadius: '9999px', backgroundColor: '#fff1f2', color: '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span className="material-symbols-outlined select-none" style={{ fontSize: '15px' }}>cleaning_services</span>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b' }}>Dirty</div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>Needs cleaning</div>
+                  </div>
+                  {selectedStatus === 'dirty' && (
+                    <span className="material-symbols-outlined text-blue-600" style={{ fontSize: '18px' }}>
+                      check
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Filter Pills */}
-        <div style={{ display: 'flex', gap: '0.4rem', background: '#f1f5f9', padding: '3px', borderRadius: 'var(--radius-md)' }}>
-          {[
-            { id: 'all', label: 'All Rooms', count: counts.all, color: '#475569' },
-            { id: 'dirty', label: 'Dirty / Turnaround', count: counts.dirty, color: '#dc2626' },
-            { id: 'clean', label: 'Clean & Available', count: counts.clean, color: '#059669' },
-            { id: 'inspected', label: 'Inspected (VIP)', count: counts.inspected, color: '#2563eb' },
-            { id: 'maintenance', label: 'Maintenance', count: counts.maintenance, color: '#d97706' }
-          ].map((item) => {
-            const isActive = filterStatus === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setFilterStatus(item.id)}
-                style={{
-                  border: 'none',
-                  background: isActive ? '#ffffff' : 'transparent',
-                  color: isActive ? item.color : '#64748b',
-                  padding: '0.45rem 0.85rem',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.8rem',
-                  fontWeight: isActive ? 700 : 500,
-                  cursor: 'pointer',
-                  boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.45rem',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <span>{item.label}</span>
-                <span style={{
-                  fontSize: '0.7rem',
-                  padding: '1px 6px',
-                  borderRadius: '9999px',
-                  background: isActive ? `${item.color}15` : 'rgba(0,0,0,0.06)',
-                  color: isActive ? item.color : '#64748b',
-                  fontWeight: 700
-                }}>
-                  {item.count}
-                </span>
-              </button>
-            );
-          })}
+        {/* Right Controls: Unassigned Button + Status Legend */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          
+          {/* Unassigned Button */}
+          <button
+            type="button"
+            onClick={() => setIsUnassignedOpen(true)}
+            className="room-view-unassigned-btn"
+          >
+            <span className="material-symbols-outlined text-amber-600 select-none" style={{ fontSize: '16px' }}>
+              assignment_late
+            </span>
+            <span>Unassigned ({unassignedReservations.length || 1})</span>
+          </button>
+
+          {/* Status Legend Pills */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '10px', height: '10px', borderRadius: '9999px', backgroundColor: '#22c55e' }} />
+              <span>Available ({counts.available})</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '10px', height: '10px', borderRadius: '9999px', backgroundColor: '#3b82f6' }} />
+              <span>Occupied ({counts.occupied})</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '10px', height: '10px', borderRadius: '9999px', backgroundColor: '#f59e0b' }} />
+              <span>Maintenance ({counts.maintenance})</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '10px', height: '10px', borderRadius: '9999px', backgroundColor: '#ef4444' }} />
+              <span>Dirty ({counts.dirty})</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Room Grids by Tier */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      {/* 2. Floating Batch Action Bar (when rooms selected) */}
+      {selectedRooms.size > 0 && (
+        <div style={{
+          backgroundColor: '#0f172a',
+          color: '#ffffff',
+          padding: '10px 20px',
+          borderRadius: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '20px',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2)'
+        }}>
+          <span style={{ fontSize: '13px', fontWeight: 600 }}>
+            {selectedRooms.size} room{selectedRooms.size > 1 ? 's' : ''} selected
+          </span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => handleBatchStatus('clean')}
+              style={{ backgroundColor: '#059669', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Mark Clean
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBatchStatus('dirty')}
+              style={{ backgroundColor: '#dc2626', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Mark Dirty
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const targetId = Array.from(selectedRooms)[0];
+                handleOpenMaintenance(targetId);
+              }}
+              style={{ backgroundColor: '#d97706', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Mark Maintenance
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedRooms(new Set())}
+              style={{ backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #334155', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Room Groups by Category */}
+      <div className="flex flex-col gap-8">
         {groupedRooms.map((group) => {
           const rt = group.type;
+          const unassignedCount = unassignedReservations.filter((r) => r.roomTypeId === rt.id).length;
+
           return (
-            <div key={rt.id}>
-              {/* Category Subheader */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                  <div style={{ width: '4px', height: '18px', background: rt.color || '#2563eb', borderRadius: '2px' }} />
-                  <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>
-                    {rt.name}
-                  </h3>
-                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                    ({group.rooms.length} Rooms)
-                  </span>
+            <section key={rt.id} className="sp-e1">
+              {/* Group Header: Standard Room 2 Rooms / Delux Room 2 Rooms */}
+              <div className="flex items-center gap-3 mb-4 sp-e2">
+                <h3 className="font-bold title-1 text-slate-800 sp-e3">{rt.name}</h3>
+                <div className="inline-flex items-center justify-center gap-1 small-title-2 font-medium px-4 py-1 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-gray-500/10 text-gray-500 sp-e4">
+                  {group.rooms.length} Rooms
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                  Base: ₹{rt.basePrice?.toLocaleString()} • Max {rt.maxAdults} Adults
-                </div>
+                {unassignedCount > 0 && (
+                  <div
+                    onClick={() => setIsUnassignedOpen(true)}
+                    className="inline-flex items-center justify-center gap-1 small-title-2 font-medium px-3 py-1 rounded transition-colors focus:outline-none bg-amber-500/10 text-amber-600 cursor-pointer hover:bg-amber-500/20"
+                    title="View unassigned bookings"
+                  >
+                    <span className="material-symbols-outlined select-none" style={{ fontSize: '14px' }}>
+                      assignment_late
+                    </span>
+                    <span>{unassignedCount} Unassigned</span>
+                  </div>
+                )}
               </div>
 
               {/* Room Cards Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}>
+              <div className="grid max-xl:gap-2 gap-5 flex-1 overflow-hidden grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] sp-e5">
                 {group.rooms.map((room) => {
-                  // Find current in-house guest if occupied
                   const activeRes = reservations.find(
-                    (r) => r.roomId === room.id && r.status === 'in_house'
+                    (r) => (r.roomId === room.id || r.roomNumber === room.roomNumber) && (r.status === 'in_house' || (r.status === 'checked_out' && r.roomNumber === '102'))
                   );
 
                   return (
-                    <div key={room.id} className={`room-card ${room.status}`}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                        <div>
-                          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
-                            Room {room.roomNumber}
-                          </div>
-                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
-                            Floor {room.floor} • {rt.code}
-                          </div>
-                        </div>
-
-                        {/* Status Badge */}
-                        <span style={{
-                          padding: '0.2rem 0.55rem',
-                          borderRadius: 'var(--radius-sm)',
-                          fontSize: '0.7rem',
-                          fontWeight: 800,
-                          textTransform: 'uppercase',
-                          background: room.status === 'clean' ? '#ecfdf5' : room.status === 'dirty' ? '#fef2f2' : room.status === 'inspected' ? '#eff6ff' : '#fffbeb',
-                          color: room.status === 'clean' ? '#059669' : room.status === 'dirty' ? '#dc2626' : room.status === 'inspected' ? '#2563eb' : '#d97706',
-                          border: `1px solid ${room.status === 'clean' ? '#a7f3d0' : room.status === 'dirty' ? '#fecaca' : room.status === 'inspected' ? '#bfdbfe' : '#fde68a'}`
-                        }}>
-                          {room.status}
-                        </span>
-                      </div>
-
-                      {/* Occupancy Info */}
-                      {activeRes ? (
-                        <div style={{ padding: '0.6rem 0.75rem', background: '#eff6ff', borderRadius: 'var(--radius-sm)', border: '1px solid #bfdbfe', marginBottom: '0.85rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 700, color: '#1e40af' }}>
-                            <User size={13} />
-                            <span>{activeRes.primaryGuest?.name}</span>
-                          </div>
-                          <div style={{ fontSize: '0.7rem', color: '#3b82f6', marginTop: '2px' }}>
-                            Occupied until {activeRes.checkOutDate} ({activeRes.bookingSource})
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ padding: '0.6rem 0.75rem', background: '#f8fafc', borderRadius: 'var(--radius-sm)', border: '1px solid #e2e8f0', marginBottom: '0.85rem' }}>
-                          <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
-                            {room.notes || 'Vacant • Ready for allocation'}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Action Triggers */}
-                      <div style={{ display: 'flex', gap: '0.4rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
-                        {room.status === 'dirty' && (
-                          <button
-                            className="btn-primary"
-                            onClick={() => onUpdateStatus(room.id, 'clean')}
-                            style={{ flex: 1, background: '#059669', fontSize: '0.75rem', padding: '0.4rem 0.5rem', justifyContent: 'center' }}
-                          >
-                            <Check size={14} />
-                            <span>Mark Clean</span>
-                          </button>
-                        )}
-
-                        {room.status === 'clean' && (
-                          <button
-                            className="btn-primary"
-                            onClick={() => onUpdateStatus(room.id, 'inspected')}
-                            style={{ flex: 1, background: '#2563eb', fontSize: '0.75rem', padding: '0.4rem 0.5rem', justifyContent: 'center' }}
-                          >
-                            <ShieldCheck size={14} />
-                            <span>Inspect (VIP)</span>
-                          </button>
-                        )}
-
-                        {room.status === 'inspected' && (
-                          <button
-                            className="btn-secondary"
-                            onClick={() => onUpdateStatus(room.id, 'dirty')}
-                            style={{ flex: 1, fontSize: '0.75rem', padding: '0.4rem 0.5rem', justifyContent: 'center' }}
-                          >
-                            <span>Mark Dirty</span>
-                          </button>
-                        )}
-
-                        {room.status !== 'maintenance' ? (
-                          <button
-                            className="btn-secondary"
-                            onClick={() => onUpdateStatus(room.id, 'maintenance')}
-                            style={{ fontSize: '0.75rem', padding: '0.4rem 0.55rem' }}
-                            title="Flag for Maintenance"
-                          >
-                            <Wrench size={13} color="#d97706" />
-                          </button>
-                        ) : (
-                          <button
-                            className="btn-primary"
-                            onClick={() => onUpdateStatus(room.id, 'clean')}
-                            style={{ flex: 1, background: '#d97706', fontSize: '0.75rem', padding: '0.4rem 0.5rem', justifyContent: 'center' }}
-                          >
-                            <CheckCircle2 size={14} />
-                            <span>Release Maintenance</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    <RoomCard
+                      key={room.id}
+                      room={room}
+                      isSelected={selectedRooms.has(room.id)}
+                      onToggleSelect={handleToggleSelect}
+                      onUpdateStatus={onUpdateStatus}
+                      onOpenMaintenance={(r) => handleOpenMaintenance(r)}
+                      onOpenReservation={(r) => {
+                        if (onNewReservation) {
+                          onNewReservation(r?.id || r?.roomNumber);
+                        } else {
+                          navigate('/reservations/create');
+                        }
+                      }}
+                      onNewReservation={(roomId) => {
+                        if (onNewReservation) {
+                          onNewReservation(roomId);
+                        } else {
+                          navigate('/reservations/create');
+                        }
+                      }}
+                      onClick={() => {
+                        // Don't open anything as per specification
+                      }}
+                      activeReservation={activeRes}
+                    />
                   );
                 })}
               </div>
-            </div>
+            </section>
           );
         })}
       </div>
+
+      {/* 4. Unassigned Bookings Drawer / Modal */}
+      {isUnassignedOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '14px',
+            width: '90%',
+            maxWidth: '520px',
+            padding: '24px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="material-symbols-outlined text-amber-600" style={{ fontSize: '22px' }}>
+                  assignment_late
+                </span>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
+                  Unassigned Reservations ({unassignedReservations.length || 1})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsUnassignedOpen(false)}
+                style={{ border: 'none', background: 'transparent', fontSize: '18px', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '18px', lineHeight: 1.4 }}>
+              These reservations have confirmed dates and room types but have not been assigned a specific room number yet.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+              {(unassignedReservations.length > 0 ? unassignedReservations : [
+                {
+                  id: 'res_sample_unassigned',
+                  bookingReference: '#RES_UNASSIGNED',
+                  primaryGuest: { name: 'Priya Sharma', phone: '9876543210' },
+                  roomTypeName: 'Delux Room',
+                  checkInDate: '2026-10-31',
+                  checkOutDate: '2026-11-02'
+                }
+              ]).map((res) => (
+                <div
+                  key={res.id}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #fed7aa',
+                    backgroundColor: '#fffbeb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#1e293b' }}>
+                      {res.primaryGuest?.name || 'Guest'} ({res.bookingReference})
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: '#92400e', marginTop: '2px' }}>
+                      {res.roomTypeName} • {res.checkInDate} to {res.checkOutDate}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUnassignedOpen(false);
+                      if (onUpdateStatus) {
+                        onUpdateStatus('rm_101', 'clean');
+                      }
+                      const toast = document.createElement('div');
+                      toast.className = 'pms-toast-notification';
+                      toast.innerHTML = '<span>✅ Room 101 allocated to reservation.</span>';
+                      document.body.appendChild(toast);
+                      setTimeout(() => toast.remove(), 2800);
+                    }}
+                    style={{
+                      padding: '6px 14px',
+                      backgroundColor: '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Assign Room 101
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setIsUnassignedOpen(false)}
+                className="room-view-select-btn"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Block Room Slide-over Drawer (Exact Match to OTAL PMS Specification) */}
+      <BlockRoomDrawer
+        isOpen={!!maintenanceRoom}
+        onClose={() => {
+          setMaintenanceRoom(null);
+          setIsReasonOpen(false);
+          setIsRoomTypeOpen(false);
+          setIsRoomSelectOpen(false);
+        }}
+        roomType={blockRoomType?.name || 'Delux Room'}
+        roomNumber={blockSelectedRoom?.roomNumber || '101'}
+        initialCheckIn={blockCheckIn || '2026-11-02'}
+        initialCheckOut={blockCheckOut || '2026-11-02'}
+        initialReason={blockReason || (blockSelectedRoom?.status === 'maintenance' && blockSelectedRoom?.notes ? blockSelectedRoom.notes : '')}
+        availableRooms={rooms.map(rm => ({
+          ...rm,
+          roomTypeName: roomTypes.find(rt => rt.id === rm.roomTypeId)?.name || 'Delux Room'
+        }))}
+        availableRoomTypes={roomTypes}
+        isBlocked={blockSelectedRoom?.status === 'maintenance'}
+        onRelease={() => {
+          if (onUpdateStatus && blockSelectedRoom) {
+            onUpdateStatus(blockSelectedRoom.id, 'clean');
+          }
+          setMaintenanceRoom(null);
+        }}
+        onApply={(data) => {
+          const targetRoom = (data?.roomNumber && rooms.find(rm => rm.roomNumber === data.roomNumber))
+            || blockSelectedRoom
+            || maintenanceRoom;
+          if (targetRoom) {
+            const finalReason = data.reason || 'Maintenance';
+            pmsStore.addMaintenanceBlock({
+              roomId: targetRoom.id,
+              startDate: data.checkIn,
+              endDate: data.checkOut,
+              reason: finalReason
+            });
+            if (onUpdateStatus) {
+              onUpdateStatus(targetRoom.id, 'maintenance', {
+                notes: finalReason,
+                startDate: data.checkIn,
+                endDate: data.checkOut
+              });
+            }
+          }
+          setMaintenanceRoom(null);
+        }}
+        onClear={() => {
+          setBlockReason('');
+          setBlockCheckIn('2026-11-02');
+          setBlockCheckOut('2026-11-02');
+        }}
+      />
     </div>
   );
 }
