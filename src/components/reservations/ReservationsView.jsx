@@ -30,6 +30,8 @@ import EditReservationView from './EditReservationView';
 import GuestCheckInModal from './GuestCheckInModal';
 import GuestCheckOutModal from './GuestCheckOutModal';
 import BookingDetailsDrawer from './BookingDetailsDrawer';
+import GroupReservationListDrawer from './GroupReservationListDrawer';
+import CancelReservationModal from './CancelReservationModal';
 import ReservationsToolbar from './ReservationsToolbar';
 import ReservationsListView from './ReservationsListView';
 import CashDrawerModal from './CashDrawerModal';
@@ -90,6 +92,8 @@ export default function ReservationsView({
 
   // OTAL Spec Booking Details Side Drawer (closed by default on navigation)
   const [drawerReservation, setDrawerReservation] = useState(null);
+  const [groupListReservation, setGroupListReservation] = useState(null);
+  const [cancellingRes, setCancellingRes] = useState(null);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('all');
@@ -358,10 +362,14 @@ export default function ReservationsView({
                 setCheckOutModalRes(target);
               }}
               onRoomMove={onOpenRoomMove}
-              onCancel={onCancelReservation}
+              onCancel={(r) => {
+                const target = typeof r === 'object' ? r : (reservations.find((x) => x.id === r) || { id: r });
+                setCancellingRes(target);
+              }}
               onNoShow={onNoShowReservation}
               onVoucher={onOpenVoucher}
               onInvoice={onOpenInvoice}
+              onGroupList={(r) => setGroupListReservation(r)}
             />
           ))}
         </div>
@@ -380,11 +388,15 @@ export default function ReservationsView({
             setCheckOutModalRes(target);
           }}
           onRoomMove={onOpenRoomMove}
-          onCancelReservation={onCancelReservation}
+          onCancelReservation={(r) => {
+            const target = typeof r === 'object' ? r : (reservations.find((x) => x.id === r) || { id: r });
+            setCancellingRes(target);
+          }}
           onNoShowReservation={onNoShowReservation}
           onOpenVoucher={onOpenVoucher}
           onOpenInvoice={onOpenInvoice}
           onOpenDetailsDrawer={(r) => setDrawerReservation(r)}
+          onGroupList={(r) => setGroupListReservation(r)}
         />
       )}
 
@@ -459,6 +471,33 @@ export default function ReservationsView({
           } else {
             setEditingReservation(res);
           }
+        }}
+      />
+
+      {/* Step 6: Group Reservation List Side Drawer (OTAL PMS Spec) */}
+      <GroupReservationListDrawer
+        isOpen={!!groupListReservation}
+        onClose={() => setGroupListReservation(null)}
+        reservation={
+          groupListReservation
+            ? (reservations.find((r) => r.id === groupListReservation.id) || groupListReservation)
+            : null
+        }
+        reservations={reservations}
+        rooms={rooms}
+        roomTypes={roomTypes}
+      />
+
+      {/* Step 7: Cancel Reservation Confirmation Modal (Exact OTAL PMS Match) */}
+      <CancelReservationModal
+        isOpen={!!cancellingRes}
+        onClose={() => setCancellingRes(null)}
+        reservation={cancellingRes}
+        onConfirm={() => {
+          if (cancellingRes && onCancelReservation) {
+            onCancelReservation(cancellingRes.id);
+          }
+          setCancellingRes(null);
         }}
       />
 

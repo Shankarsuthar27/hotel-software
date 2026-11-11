@@ -12,6 +12,7 @@ import {
 import BlockRoomDrawer from '../housekeeping/BlockRoomDrawer.jsx';
 import BookingDetailsDrawer from '../reservations/BookingDetailsDrawer.jsx';
 import { pmsStore } from '../../services/pmsStore';
+import { navigate } from '../../services/router';
 
 export default function TapeChartView({
   property,
@@ -20,6 +21,7 @@ export default function TapeChartView({
   reservations = [],
   maintenanceBlocks = [],
   onSelectReservation,
+  onEditReservation,
   onSlotClick,
   onSlotMaintenanceClick
 }) {
@@ -1112,8 +1114,11 @@ export default function TapeChartView({
           }
           onEditReservation={(res) => {
             setSelectedBookingDetails(null);
-            if (onSelectReservation) {
-              onSelectReservation(res);
+            const targetId = res?.id || (res?.bookingReference ? res.bookingReference.replace('#', '').toLowerCase() : 'res_1');
+            if (onEditReservation) {
+              onEditReservation(res);
+            } else {
+              navigate(`/reservations/${targetId}/edit`);
             }
           }}
         />

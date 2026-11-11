@@ -88,7 +88,13 @@ class PMSStore {
           }
         }
         this.mealPlans = parsed.mealPlans || initialMealPlans;
-        this.reservations = (parsed.reservations || initialReservations).filter(r => r.id !== 'res_unassigned_1');
+        this.reservations = (parsed.reservations || initialReservations).filter(r => {
+          if (r.id === 'res_unassigned_1') return false;
+          if (r.id === 'res_372' || r.bookingReference === '#RES_372' || r.bookingReference === 'RES_372') return false;
+          const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
+          if (name.includes('rahul kumar') && (r.status === 'cancelled' || !r.status)) return false;
+          return true;
+        });
         ['res_5', 'res_4', 'res_3', 'res_2', 'res_1'].forEach(id => {
           const initRes = initialReservations.find(r => r.id === id);
           if (initRes) {
@@ -373,7 +379,28 @@ class PMSStore {
           if (!snapshot.empty) {
             const cloudRes = snapshot.docs.map((d) => d.data());
             if (cloudRes.length > 0) {
-              const merged = [...cloudRes];
+              // Purge any cancelled residue such as #RES_372 / Mr. rahul kumar
+              cloudRes.forEach((r) => {
+                const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
+                if (
+                  r.id === 'res_372' ||
+                  r.bookingReference === '#RES_372' ||
+                  r.bookingReference === 'RES_372' ||
+                  (name.includes('rahul kumar') && r.status === 'cancelled')
+                ) {
+                  this.deleteDocFromFirestore('reservations', r.id);
+                  if (r.folioId) this.deleteDocFromFirestore('folios', r.folioId);
+                }
+              });
+
+              const validCloudRes = cloudRes.filter((r) => {
+                if (r.id === 'res_372' || r.bookingReference === '#RES_372' || r.bookingReference === 'RES_372') return false;
+                const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
+                if (name.includes('rahul kumar') && (r.status === 'cancelled' || !r.status)) return false;
+                return true;
+              });
+
+              const merged = [...validCloudRes];
               initialReservations.forEach((initR) => {
                 const existingIdx = merged.findIndex((r) => r.id === initR.id);
                 if (existingIdx === -1) {
@@ -878,16 +905,46 @@ class PMSStore {
   }
 
   cancelReservation(resId, reason = 'Guest requested') {
-    const res = this.reservations.find(r => r.id === resId);
+    const res = this.reservations.find(r => r.id === resId || r.bookingReference === resId);
     if (!res) return;
 
-    this.reservations = this.reservations.map(r =>
-      r.id === resId ? { ...r, status: 'cancelled', cancelReason: reason } : r
+    const targetResId = res.id;
+    const targetFolioId = res.folioId;
+
+    // 1. Remove from reservations array completely
+    this.reservations = this.reservations.filter(r => r.id !== targetResId);
+
+    // 2. Free up any allocated room
+    if (res.roomId) {
+      this.rooms = this.rooms.map(rm => {
+        if (rm.id === res.roomId && rm.operational === 'allocated') {
+          return { ...rm, operational: 'available' };
+        }
+        return rm;
+      });
+      const updatedRoom = this.rooms.find(rm => rm.id === res.roomId);
+      if (updatedRoom) {
+        this.syncDocToFirestore('rooms', updatedRoom.id, updatedRoom);
+      }
+    }
+
+    // 3. Remove associated folio from memory and delete from Firestore
+    if (targetFolioId) {
+      delete this.folios[targetFolioId];
+      this.deleteDocFromFirestore('folios', targetFolioId);
+    }
+
+    // 4. Log audit trail
+    this.logAudit(
+      'CANCEL_REMOVED',
+      'RESERVATION',
+      res.bookingReference,
+      `Reservation ${res.bookingReference} (${res.primaryGuest?.name || 'Guest'}) cancelled and removed from database. Reason: ${reason}`
     );
 
-    this.logAudit('CANCEL', 'RESERVATION', res.bookingReference, `Reservation cancelled. Reason: ${reason}`);
+    // 5. Save locally and delete from Cloud Firestore
     this.save();
-    this.syncDocToFirestore('reservations', resId, this.getReservation(resId));
+    this.deleteDocFromFirestore('reservations', targetResId);
   }
 
   markNoShow(resId) {
@@ -911,17 +968,34 @@ class PMSStore {
     if (!res || !targetRoom) return false;
 
     const oldRoomNumber = res.roomNumber;
+    const oldRoomId = res.roomId;
+    const targetRoomType = this.roomTypes.find(rt => rt.id === targetRoom.roomTypeId);
 
     this.reservations = this.reservations.map(r => {
       if (r.id === reservationId) {
         return {
           ...r,
           roomId: targetRoomId,
-          roomNumber: targetRoom.roomNumber
+          roomNumber: targetRoom.roomNumber,
+          roomTypeId: targetRoom.roomTypeId || r.roomTypeId,
+          roomTypeName: targetRoomType ? targetRoomType.name : (r.roomTypeName || '')
         };
       }
       return r;
     });
+
+    // Update rooms housekeeping & operational state
+    if (oldRoomId && oldRoomId !== targetRoomId) {
+      this.rooms = this.rooms.map(rm => {
+        if (rm.id === oldRoomId) {
+          return { ...rm, status: 'dirty', operational: 'available' };
+        }
+        if (rm.id === targetRoomId) {
+          return { ...rm, operational: 'allocated' };
+        }
+        return rm;
+      });
+    }
 
     if (res.folioId && this.folios[res.folioId]) {
       this.folios[res.folioId].roomNumber = targetRoom.roomNumber;

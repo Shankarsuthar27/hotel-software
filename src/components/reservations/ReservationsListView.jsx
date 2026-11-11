@@ -43,7 +43,8 @@ export default function ReservationsListView({
   onOpenInvoice,
   onCancelReservation,
   onNoShowReservation,
-  onOpenDetailsDrawer
+  onOpenDetailsDrawer,
+  onGroupList
 }) {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [showPrintSubmenu, setShowPrintSubmenu] = useState(false);
@@ -308,7 +309,8 @@ export default function ReservationsListView({
                                   e.stopPropagation();
                                   setOpenMenuId(null);
                                   setShowPrintSubmenu(false);
-                                  if (onSelectReservation) onSelectReservation(res);
+                                  if (onGroupList) onGroupList(res);
+                                  else if (onSelectReservation) onSelectReservation(res);
                                   else if (onOpenDetailsDrawer) onOpenDetailsDrawer(res);
                                 }}
                               >
@@ -405,7 +407,8 @@ export default function ReservationsListView({
                                   e.stopPropagation();
                                   setOpenMenuId(null);
                                   setShowPrintSubmenu(false);
-                                  if (onSelectReservation) onSelectReservation(res);
+                                  if (onGroupList) onGroupList(res);
+                                  else if (onSelectReservation) onSelectReservation(res);
                                   else if (onOpenDetailsDrawer) onOpenDetailsDrawer(res);
                                 }}
                               >
@@ -488,7 +491,8 @@ export default function ReservationsListView({
                                   e.stopPropagation();
                                   setOpenMenuId(null);
                                   setShowPrintSubmenu(false);
-                                  if (onSelectReservation) onSelectReservation(res);
+                                  if (onGroupList) onGroupList(res);
+                                  else if (onSelectReservation) onSelectReservation(res);
                                   else if (onOpenDetailsDrawer) onOpenDetailsDrawer(res);
                                 }}
                               >
@@ -598,7 +602,8 @@ export default function ReservationsListView({
                                   e.stopPropagation();
                                   setOpenMenuId(null);
                                   setShowPrintSubmenu(false);
-                                  if (onSelectReservation) onSelectReservation(res);
+                                  if (onGroupList) onGroupList(res);
+                                  else if (onSelectReservation) onSelectReservation(res);
                                   else if (onOpenDetailsDrawer) onOpenDetailsDrawer(res);
                                 }}
                               >

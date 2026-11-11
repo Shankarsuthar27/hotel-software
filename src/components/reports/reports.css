@@ -2,7 +2,7 @@
 /* Matching media_1793703049870_7244c6d5.jpg */
 
 .reports-page-container {
-  padding: 16px 28px 48px 28px;
+  padding: 16px 28px 160px 28px;
   background-color: #f8fafc;
   min-height: calc(100vh - 70px);
   box-sizing: border-box;
@@ -64,7 +64,12 @@
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  overflow: hidden;
+  position: relative;
+  overflow: visible;
+}
+
+.report-card-item.has-open-picker {
+  z-index: 50;
 }
 
 .report-card-item:hover {
@@ -82,6 +87,8 @@
   user-select: none;
   background-color: #ffffff;
   transition: background-color 0.12s ease;
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
 }
 
 .report-card-header:hover {
@@ -230,6 +237,11 @@
 .report-field-item {
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.report-field-item.active-picker-open {
+  z-index: 100;
 }
 
 .report-field-label {
@@ -507,4 +519,261 @@
   padding: 2px;
   margin-left: 8px;
 }
+
+/* ==========================================================================
+   Report Custom DatePicker Popover (Matching Reference Design)
+   ========================================================================== */
+.report-cal-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1000;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 16px;
+  width: 285px;
+  box-sizing: border-box;
+  user-select: none;
+  animation: calFadeIn 0.15s ease-out;
+}
+
+/* Flipped placement when near bottom of viewport / card */
+.report-cal-popover.popover-top {
+  top: auto;
+  bottom: calc(100% + 6px);
+  box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.12), 0 -8px 10px -6px rgba(0, 0, 0, 0.05);
+  animation: calFadeInTop 0.15s ease-out;
+}
+
+/* Aligned to right edge of input when near right screen edge */
+.report-cal-popover.popover-align-right {
+  left: auto;
+  right: 0;
+}
+
+@keyframes calFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes calFadeInTop {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.report-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.report-cal-nav-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #475569;
+  transition: all 0.12s ease;
+  padding: 0;
+}
+
+.report-cal-nav-btn:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.report-cal-selectors-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-cal-pill-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px 10px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.report-cal-pill-wrapper:hover {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+.report-cal-pill-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.report-cal-pill-chevron {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.report-cal-hidden-select {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Month & Year Custom Dropdown Menus */
+.report-cal-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 8px;
+  z-index: 1050;
+  animation: calFadeIn 0.12s ease-out;
+}
+
+.report-cal-dropdown-menu.month-menu {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  width: 175px;
+}
+
+.report-cal-dropdown-menu.year-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 90px;
+  max-height: 175px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.report-cal-dropdown-menu.year-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.report-cal-dropdown-menu.year-menu::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+
+.report-cal-dropdown-item {
+  padding: 5px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #334155;
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  user-select: none;
+}
+
+.report-cal-dropdown-item:hover {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.report-cal-dropdown-item.active {
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.report-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.report-cal-weekday {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748b;
+  padding: 2px 0;
+}
+
+.report-cal-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  text-align: center;
+}
+
+.report-cal-day-cell {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  font-size: 12.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  padding: 0;
+}
+
+.report-cal-day-cell.muted {
+  color: #cbd5e1;
+  font-weight: 400;
+}
+
+.report-cal-day-cell.muted:hover {
+  background-color: #f8fafc;
+  color: #94a3b8;
+}
+
+.report-cal-day-cell.current {
+  color: #0f172a;
+}
+
+.report-cal-day-cell.current:hover {
+  background-color: #f1f5f9;
+}
+
+.report-cal-day-cell.selected {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+}
+
 

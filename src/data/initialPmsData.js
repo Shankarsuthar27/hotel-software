@@ -106,6 +106,88 @@ export const initialRatePlans = [
 
 export const initialReservations = [
   {
+    id: 'res_7',
+    bookingReference: '#RES_7',
+    primaryGuest: {
+      name: 'Mr Hitesh Suthar',
+      title: 'Mr.',
+      firstName: 'Hitesh',
+      lastName: 'Suthar',
+      phone: '9898398335',
+      email: 'hitesh@example.com',
+      country: 'India',
+      isPrimary: true
+    },
+    roomId: 'rm_102',
+    roomNumber: '102',
+    roomTypeId: 'rt_deluxe',
+    roomTypeName: 'Deluxe Room',
+    ratePlanCode: 'BAR_EP',
+    ratePlanName: 'Best Available Rate - Room Only',
+    checkInDate: '2026-10-26',
+    checkOutDate: '2026-10-27',
+    actualCheckOutDate: null,
+    isEarlyCheckOut: false,
+    nights: 1,
+    adults: 1,
+    children: 2,
+    baseRatePerNight: 0.00,
+    totalRoomCharges: 0.00,
+    taxAmount: 0.00,
+    totalAmount: 0.00,
+    paidAmount: 0.00,
+    balanceDue: 0.00,
+    status: 'no_show',
+    bookingSource: 'walk-in',
+    marketSegment: 'FIT',
+    createdAt: '2026-11-02 10:00 AM',
+    bookingDateFormatted: '02 Nov 2026, 10:00 AM',
+    specialRequests: '',
+    notes: 'No show reservation',
+    folioId: 'fol_7'
+  },
+  {
+    id: 'res_6',
+    bookingReference: '#RES_6',
+    primaryGuest: {
+      name: 'Mr Kkk Suthar',
+      title: 'Mr.',
+      firstName: 'Kkk',
+      lastName: 'Suthar',
+      phone: '9898398334',
+      email: 'ss2137789@gmail.com',
+      country: 'India',
+      isPrimary: true
+    },
+    roomId: 'rm_101',
+    roomNumber: '101',
+    roomTypeId: 'rt_standard',
+    roomTypeName: 'Standard Room',
+    ratePlanCode: 'BAR_EP',
+    ratePlanName: 'Best Available Rate - Room Only',
+    checkInDate: '2026-11-02',
+    checkOutDate: '2026-10-27',
+    actualCheckOutDate: null,
+    isEarlyCheckOut: false,
+    nights: 1,
+    adults: 1,
+    children: 0,
+    baseRatePerNight: 3500.00,
+    totalRoomCharges: 3500.00,
+    taxAmount: 175.00,
+    totalAmount: 3675.00,
+    paidAmount: 0.00,
+    balanceDue: 3675.00,
+    status: 'in_house',
+    bookingSource: 'walk-in',
+    marketSegment: 'FIT',
+    createdAt: '2026-11-02 10:00 AM',
+    bookingDateFormatted: '02 Nov 2026, 10:00 AM',
+    specialRequests: '',
+    notes: '',
+    folioId: 'fol_6'
+  },
+  {
     id: 'res_5',
     bookingReference: '#RES_5',
     primaryGuest: {
@@ -125,8 +207,8 @@ export const initialReservations = [
     ratePlanCode: 'test_plan',
     ratePlanName: 'test plan',
     checkInDate: '2026-10-26', // Mon 26, Oct 2026
-    checkOutDate: '2026-10-27', // Tue 27, Oct 2026
-    actualCheckOutDate: null,
+    checkOutDate: '2026-10-26', // Mon 26, Oct 2026
+    actualCheckOutDate: '2026-10-26',
     isEarlyCheckOut: false,
     nights: 1,
     adults: 1,
@@ -137,7 +219,7 @@ export const initialReservations = [
     totalAmount: 2625.00,
     paidAmount: 2625.00,
     balanceDue: 0.00,
-    status: 'in_house',
+    status: 'checked_out',
     bookingSource: 'walk-in',
     marketSegment: 'FIT',
     createdAt: '2026-10-26 1:08 PM',
@@ -178,7 +260,7 @@ export const initialReservations = [
     totalAmount: 2625.00,
     paidAmount: 2625.00,
     balanceDue: 0.00,
-    status: 'in_house',
+    status: 'checked_out',
     bookingSource: 'WALK_IN',
     marketSegment: 'FIT',
     specialRequests: '..',
@@ -215,7 +297,7 @@ export const initialReservations = [
     totalAmount: 3500.00,
     paidAmount: 0.00,
     balanceDue: 3500.00,
-    status: 'confirmed',
+    status: 'cancelled',
     bookingSource: 'WALK_IN',
     marketSegment: 'FIT',
     createdAt: '2026-10-26 1:02 PM',
@@ -294,7 +376,7 @@ export const initialReservations = [
     roomTypeName: 'Standard Room',
     ratePlanCode: 'BAR_EP',
     checkInDate: '2026-10-24', // Sat 24, Oct 2026
-    checkOutDate: '2026-10-26', // Mon 26, Oct 2026
+    checkOutDate: '2026-10-31', // Sat 31, Oct 2026
     nights: 2,
     adults: 1,
     children: 2,
@@ -304,7 +386,7 @@ export const initialReservations = [
     totalAmount: 5250.00,
     paidAmount: 2500.00,
     balanceDue: 2750.00,
-    status: 'in_house',
+    status: 'checked_out',
     bookingSource: 'WALK_IN',
     marketSegment: 'corporate',
     billTo: 'Guest',
@@ -368,6 +450,22 @@ export const initialFolios = {
       { id: 'tx_51', date: '2026-10-26', particulars: 'Room', type: 'ROOM_CHARGE', desc: 'Room Tariff (1 Night)', reference: '-', direction: 'Debit', amount: 2625, tax: 0 },
       { id: 'tx_52', date: '2026-10-26', particulars: 'Payment', type: 'PAYMENT', desc: 'Settlement Payment', reference: 'CASH', direction: 'Credit', amount: -2625, tax: 0 }
     ]
+  },
+  fol_6: {
+    folioNumber: 'FOL_6',
+    reservationId: 'res_6',
+    roomNumber: '101',
+    status: 'OPEN',
+    transactions: [
+      { id: 'tx_61', date: '2026-11-02', particulars: 'Room', type: 'ROOM_CHARGE', desc: 'Room Tariff (1 Night)', reference: '-', direction: 'Debit', amount: 3500, tax: 175 }
+    ]
+  },
+  fol_7: {
+    folioNumber: 'FOL_7',
+    reservationId: 'res_7',
+    roomNumber: '102',
+    status: 'CLOSED',
+    transactions: []
   }
 };
 
@@ -424,6 +522,46 @@ export const initialTeamMembers = [
 ];
 
 export const initialNightAudits = [
+  {
+    id: 'na_20261105',
+    auditDate: '05 Nov 2026',
+    rawDate: '2026-11-05',
+    isCurrent: false,
+    status: 'completed',
+    statusLabel: 'Completed',
+    startedAt: 'Nov 06, 2026 01:00',
+    startedBy: 'System',
+    completedAt: 'Nov 06, 2026 01:00',
+    completedBy: 'Amit Patel',
+    occupiedRooms: 0,
+    vacantRooms: 4,
+    totalRevenue: 0,
+    totalTax: 0,
+    adr: 0,
+    revPar: 0,
+    chargesPostedCount: 0,
+    roomChargesLog: []
+  },
+  {
+    id: 'na_20261102',
+    auditDate: '02 Nov 2026',
+    rawDate: '2026-11-02',
+    isCurrent: false,
+    status: 'completed',
+    statusLabel: 'Completed',
+    startedAt: 'Nov 03, 2026 01:00',
+    startedBy: 'System',
+    completedAt: 'Nov 03, 2026 01:00',
+    completedBy: 'Amit Patel',
+    occupiedRooms: 0,
+    vacantRooms: 4,
+    totalRevenue: 0,
+    totalTax: 0,
+    adr: 0,
+    revPar: 0,
+    chargesPostedCount: 0,
+    roomChargesLog: []
+  },
   {
     id: 'na_20261026',
     auditDate: '26 Oct 2026',
@@ -556,5 +694,34 @@ export const initialAuditTrail = [
     entity: 'RESERVATION',
     entityId: '#RES_002',
     details: 'Guest Pooja Verma checked out. Room 102 transitioned to CLEAN.'
+  }
+];
+
+export const initialGuests = [
+  {
+    id: 'gst_1',
+    name: 'Mr Krishna Suthar',
+    email: 'ss2137789@gmail.com',
+    phone: '+91 9292748397',
+    gender: 'Male',
+    guestType: 'Adult',
+    nationality: '—',
+    birthDate: '2002-09-27', // Fri 27, Sep 2002
+    addedOn: '2026-10-23',   // Fri 23, Oct 2026
+    isVIP: false,
+    reservationIds: ['res_6', 'res_5', 'res_4', 'res_3', 'res_7', 'res_1', 'res_2']
+  },
+  {
+    id: 'gst_2',
+    name: 'Mr Test Name',
+    email: 'info@asthasoftindia.com',
+    phone: '+91 7023318111',
+    gender: 'Male',
+    guestType: 'Adult',
+    nationality: '—',
+    birthDate: null,
+    addedOn: '2026-10-22',   // Thu 22, Oct 2026
+    isVIP: true,
+    reservationIds: []
   }
 ];

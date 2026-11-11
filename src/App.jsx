@@ -37,14 +37,14 @@ export default function App() {
 
   const editingReservation = useMemo(() => {
     if (router.type === 'RESERVATIONS_EDIT' && router.params.id) {
-      const targetId = router.params.id;
+      const targetId = router.params.id.toLowerCase();
       return (
         state.reservations.find(
           (r) =>
-            r.id === targetId ||
-            r.bookingReference === targetId ||
-            r.bookingReference === `#${targetId}`
-        ) || { id: targetId }
+            r.id?.toLowerCase() === targetId ||
+            r.bookingReference?.toLowerCase() === targetId ||
+            r.bookingReference?.toLowerCase() === `#${targetId}`
+        ) || { id: router.params.id }
       );
     }
     return null;
@@ -193,7 +193,7 @@ export default function App() {
 
   const handleCancelReservation = (resId) => {
     pmsStore.cancelReservation(resId);
-    showToast(`🚫 Reservation cancelled successfully.`);
+    showToast(`🚫 Reservation cancelled and removed from database.`);
   };
 
   const handleNoShowReservation = (resId) => {
@@ -250,7 +250,13 @@ export default function App() {
             property={state.property}
             rooms={state.rooms}
             roomTypes={state.roomTypes}
-            onBack={() => navigate('/reservations')}
+            onBack={() => {
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                navigate('/reservations');
+              }
+            }}
             onNavigate={(tab) => navigate(tab === 'dashboard' ? '/dashboard' : '/' + tab)}
             onSave={(updated) => {
               pmsStore.updateReservation(updated.id, updated);
@@ -331,7 +337,7 @@ export default function App() {
           {/* Main Content Area */}
           <div className="main-wrapper">
             {/* Top Navbar for secondary screens */}
-            {activeTab !== 'dashboard' && activeTab !== 'reservations' && (
+            {activeTab !== 'dashboard' && activeTab !== 'reservations' && activeTab !== 'guests' && (
               <TopNav
                 property={state.property}
                 activeTab={activeTab}
@@ -348,7 +354,7 @@ export default function App() {
             )}
 
         {/* Dynamic Viewport with Page Transitions */}
-        <main className={`content-viewport ${activeTab === 'reservations' || activeTab === 'dashboard' || activeTab === 'rates' ? 'no-pad-viewport' : ''}`}>
+        <main className={`content-viewport ${activeTab === 'reservations' || activeTab === 'dashboard' || activeTab === 'rates' || activeTab === 'guests' ? 'no-pad-viewport' : ''}`}>
           <div key={activeTab} className="pms-page-view">
             {activeTab === 'dashboard' && (
             <DashboardView
@@ -380,6 +386,10 @@ export default function App() {
               onSelectReservation={(res) => {
                 setSelectedReservation(res);
                 setIsFolioOpen(true);
+              }}
+              onEditReservation={(res) => {
+                const targetId = res?.id || (res?.bookingReference ? res.bookingReference.replace('#', '').toLowerCase() : 'res_1');
+                navigate(`/reservations/${targetId}/edit`);
               }}
               onSlotClick={handleSlotClick}
               onSlotMaintenanceClick={handleSlotMaintenanceClick}
@@ -532,6 +542,7 @@ export default function App() {
           {activeTab === 'guests' && (
             <GuestCrmView
               reservations={state.reservations}
+              onShowToast={showToast}
             />
           )}
 
@@ -613,6 +624,7 @@ export default function App() {
         onClose={() => setIsRoomMoveOpen(false)}
         reservation={selectedResForMove}
         rooms={state.rooms}
+        roomTypes={state.roomTypes}
         onMoveRoom={handleMoveRoom}
       />
 

@@ -19,7 +19,8 @@ export default function ReservationCard({
   onCancel,
   onNoShow,
   onVoucher,
-  onInvoice
+  onInvoice,
+  onGroupList
 }) {
   const statusNormalized = (reservation.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
   const isCheckedOut = statusNormalized === 'checked_out';
@@ -201,7 +202,8 @@ export default function ReservationCard({
                       role="menuitem"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onSelect) onSelect(reservation);
+                        if (onGroupList) onGroupList(reservation);
+                        else if (onSelect) onSelect(reservation);
                         else if (onCardClick) onCardClick(reservation);
                         if (onToggleMenu) onToggleMenu(e);
                       }}
@@ -295,7 +297,8 @@ export default function ReservationCard({
                       role="menuitem"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onSelect) onSelect(reservation);
+                        if (onGroupList) onGroupList(reservation);
+                        else if (onSelect) onSelect(reservation);
                         else if (onCardClick) onCardClick(reservation);
                         if (onToggleMenu) onToggleMenu(e);
                       }}
@@ -376,7 +379,8 @@ export default function ReservationCard({
                       role="menuitem"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onSelect) onSelect(reservation);
+                        if (onGroupList) onGroupList(reservation);
+                        else if (onSelect) onSelect(reservation);
                         else if (onCardClick) onCardClick(reservation);
                         if (onToggleMenu) onToggleMenu(e);
                       }}
@@ -482,7 +486,8 @@ export default function ReservationCard({
                       role="menuitem"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onSelect) onSelect(reservation);
+                        if (onGroupList) onGroupList(reservation);
+                        else if (onSelect) onSelect(reservation);
                         else if (onCardClick) onCardClick(reservation);
                         if (onToggleMenu) onToggleMenu(e);
                       }}

@@ -18,6 +18,10 @@ import {
   exportToExcel,
   exportMultipleSheetsToExcel,
   exportManagerReportExcel,
+  exportGuestDetailsExcel,
+  exportFolioListExcel,
+  exportNightAuditExcel,
+  exportReservationReportExcel,
   generateManagerReportData,
   generateGuestDetailsExport,
   generateFolioListExport,
@@ -26,6 +30,7 @@ import {
   generate7SheetsReservationExport,
   generateOtaCommissionExport
 } from '../../services/exportService';
+import ReportDatePicker from './ReportDatePicker';
 import './reports.css';
 
 export default function ReportsView({
@@ -47,6 +52,9 @@ export default function ReportsView({
     reservation: true
   });
 
+  // Track which card has an open date picker to elevate its z-index over sibling cards
+  const [activeCardPicker, setActiveCardPicker] = useState(null);
+
   const toggleCard = (cardKey) => {
     setExpandedCards((prev) => ({
       ...prev,
@@ -55,18 +63,18 @@ export default function ReportsView({
   };
 
   // Card 1: Manager Report Form State
-  const defaultManagerDate = '03/11/2026';
+  const defaultManagerDate = '28/10/2026';
   const [managerDate, setManagerDate] = useState(defaultManagerDate);
 
   // Card 2: Guest Details Report Form State
-  const defaultGuestStartDate = '03/11/2026';
-  const defaultGuestEndDate = '03/11/2026';
+  const defaultGuestStartDate = '05/09/2026';
+  const defaultGuestEndDate = '06/11/2026';
   const [guestStartDate, setGuestStartDate] = useState(defaultGuestStartDate);
   const [guestEndDate, setGuestEndDate] = useState(defaultGuestEndDate);
 
   // Card 3: Folio List Report Form State
   const defaultFolioStartDate = '01/11/2026';
-  const defaultFolioEndDate = '03/11/2026';
+  const defaultFolioEndDate = '06/11/2026';
   const defaultFolioMode = 'Both';
   const defaultFolioInclude = 'Confirmed +5';
   const [folioStartDate, setFolioStartDate] = useState(defaultFolioStartDate);
@@ -75,7 +83,7 @@ export default function ReportsView({
   const [folioInclude, setFolioInclude] = useState(defaultFolioInclude);
 
   // Card 4: Night Audit Report Form State
-  const defaultAuditDate = '03/11/2026';
+  const defaultAuditDate = '05/11/2026';
   const [auditDate, setAuditDate] = useState(defaultAuditDate);
 
   // Card 5: Reservation Report Form State
@@ -125,44 +133,92 @@ export default function ReportsView({
 
   // 2. Generate Guest Details Report
   const handleGenerateGuestReport = () => {
-    const data = generateGuestDetailsExport(reservations);
-    const fileName = `Guest_Details_Report_${guestStartDate.replace(/\//g, '-')}_to_${guestEndDate.replace(/\//g, '-')}.xlsx`;
-    exportToExcel(data, fileName, 'Guest Details');
-    showToast(`Guest Details Report (${guestStartDate} to ${guestEndDate}) exported successfully (.xlsx)`);
+    try {
+      const ok = exportGuestDetailsExcel(
+        guestStartDate,
+        guestEndDate,
+        property,
+        reservations
+      );
+      if (ok) {
+        showToast(`Guest Details Report (${guestStartDate} to ${guestEndDate}) exported successfully (.xlsx)`);
+      } else {
+        const data = generateGuestDetailsExport(reservations);
+        const fileName = `Guest_Details_Report_${guestStartDate.replace(/\//g, '-')}_to_${guestEndDate.replace(/\//g, '-')}.xlsx`;
+        exportToExcel(data, fileName, 'Guest Details');
+        showToast(`Guest Details Report (${guestStartDate} to ${guestEndDate}) exported successfully (.xlsx)`);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Error generating Guest Details Report');
+    }
   };
 
   // 3. Generate Folio List Report
   const handleGenerateFolioReport = () => {
-    const data = generateFolioListExport(reservations, folios, folioMode);
-    const fileName = `Folio_List_Report_${folioMode}_${folioStartDate.replace(/\//g, '-')}.xlsx`;
-    exportToExcel(data, fileName, `Folios_${folioMode}`);
-    showToast(`Folio List Report (${folioMode} Mode) exported successfully (.xlsx)`);
+    try {
+      const ok = exportFolioListExcel(
+        folioStartDate,
+        folioEndDate,
+        folioMode,
+        folioInclude,
+        property,
+        reservations,
+        folios
+      );
+      if (ok) {
+        showToast(`Folio List Report (${folioStartDate} to ${folioEndDate}) exported successfully (.xlsx)`);
+      } else {
+        const data = generateFolioListExport(reservations, folios, folioMode, folioInclude);
+        const fileName = `Folio_List_Report_${folioMode}_${folioStartDate.replace(/\//g, '-')}.xlsx`;
+        exportToExcel(data, fileName, `Folios_${folioMode}`);
+        showToast(`Folio List Report (${folioMode} Mode) exported successfully (.xlsx)`);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Error generating Folio List Report');
+    }
   };
 
   // 4. Generate Night Audit Report
   const handleGenerateNightAuditReport = () => {
-    const data = generateNightAuditExport(nightAudits);
-    const fileName = `Night_Audit_Report_${auditDate.replace(/\//g, '-')}.xlsx`;
-    exportToExcel(data, fileName, 'Night Audit Archive');
-    showToast(`Night Audit Report for ${auditDate} exported successfully (.xlsx)`);
+    try {
+      const ok = exportNightAuditExcel(
+        auditDate,
+        property,
+        rooms,
+        reservations,
+        folios,
+        nightAudits
+      );
+      if (ok) {
+        showToast(`Night Audit Report for ${auditDate} exported successfully (.xlsx)`);
+      } else {
+        const data = generateNightAuditExport(nightAudits);
+        const fileName = `Night_Audit_Report_${auditDate.replace(/\//g, '-')}.xlsx`;
+        exportToExcel(data, fileName, 'Night Audit Archive');
+        showToast(`Night Audit Report for ${auditDate} exported successfully (.xlsx)`);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Error generating Night Audit Report');
+    }
   };
 
   // 5. Generate Reservation Report
   const handleGenerateReservationReport = () => {
-    if (resType === 'All (7 sheets)') {
-      const sheets = generate7SheetsReservationExport(reservations);
-      const fileName = `Reservation_Report_All_7_Sheets_${resStartDate.replace(/\//g, '-')}.xlsx`;
-      exportMultipleSheetsToExcel(sheets, fileName);
-      showToast(`Reservation Report (All 7 Sheets) exported successfully (.xlsx)`);
-    } else {
-      const allRows = generateReservationsExport(reservations);
-      const filtered = allRows.filter((r) =>
-        r.Status.toLowerCase().includes(resType.toLowerCase())
-      );
-      const dataToExport = filtered.length > 0 ? filtered : allRows;
-      const fileName = `Reservation_${resType.replace(/\s+/g, '_')}_${resStartDate.replace(/\//g, '-')}.xlsx`;
-      exportToExcel(dataToExport, fileName, resType);
+    const success = exportReservationReportExcel(
+      resStartDate,
+      resEndDate,
+      resType,
+      marketSegment,
+      property,
+      reservations
+    );
+    if (success) {
       showToast(`Reservation Report (${resType}) exported successfully (.xlsx)`);
+    } else {
+      showToast(`Reservation Report export failed. Check parameters.`, 'error');
     }
   };
 
@@ -199,7 +255,7 @@ export default function ReportsView({
           {/* ========================================================
               CARD 1: Manager Report (Financial)
              ======================================================== */}
-          <div className="report-card-item">
+          <div className={`report-card-item ${activeCardPicker === 'manager' ? 'has-open-picker' : ''}`}>
             <div className="report-card-header" onClick={() => toggleCard('manager')}>
               <div className="report-card-header-left">
                 <div className="report-card-icon-badge">
@@ -229,18 +285,12 @@ export default function ReportsView({
 
                 <div className="report-form-row">
                   <div className="report-inputs-group">
-                    <div className="report-field-item">
-                      <label className="report-field-label">As on Date</label>
-                      <div className="report-input-wrapper">
-                        <input
-                          type="text"
-                          className="report-text-input"
-                          value={managerDate}
-                          onChange={(e) => setManagerDate(e.target.value)}
-                        />
-                        <Calendar size={15} className="report-input-icon" />
-                      </div>
-                    </div>
+                    <ReportDatePicker
+                      label="As on Date"
+                      value={managerDate}
+                      onChange={setManagerDate}
+                      onOpenChange={(open) => setActiveCardPicker(open ? 'manager' : null)}
+                    />
                   </div>
 
                   <div className="report-actions-group">
@@ -269,7 +319,7 @@ export default function ReportsView({
           {/* ========================================================
               CARD 2: Guest Details Report (Operational)
              ======================================================== */}
-          <div className="report-card-item">
+          <div className={`report-card-item ${activeCardPicker === 'guest' ? 'has-open-picker' : ''}`}>
             <div className="report-card-header" onClick={() => toggleCard('guest')}>
               <div className="report-card-header-left">
                 <div className="report-card-icon-badge">
@@ -299,31 +349,18 @@ export default function ReportsView({
 
                 <div className="report-form-row">
                   <div className="report-inputs-group">
-                    <div className="report-field-item">
-                      <label className="report-field-label">Start Date</label>
-                      <div className="report-input-wrapper">
-                        <input
-                          type="text"
-                          className="report-text-input"
-                          value={guestStartDate}
-                          onChange={(e) => setGuestStartDate(e.target.value)}
-                        />
-                        <Calendar size={15} className="report-input-icon" />
-                      </div>
-                    </div>
-
-                    <div className="report-field-item">
-                      <label className="report-field-label">End Date</label>
-                      <div className="report-input-wrapper">
-                        <input
-                          type="text"
-                          className="report-text-input"
-                          value={guestEndDate}
-                          onChange={(e) => setGuestEndDate(e.target.value)}
-                        />
-                        <Calendar size={15} className="report-input-icon" />
-                      </div>
-                    </div>
+                    <ReportDatePicker
+                      label="Start Date"
+                      value={guestStartDate}
+                      onChange={setGuestStartDate}
+                      onOpenChange={(open) => setActiveCardPicker(open ? 'guest' : null)}
+                    />
+                    <ReportDatePicker
+                      label="End Date"
+                      value={guestEndDate}
+                      onChange={setGuestEndDate}
+                      onOpenChange={(open) => setActiveCardPicker(open ? 'guest' : null)}
+                    />
                   </div>
 
                   <div className="report-actions-group">
@@ -355,7 +392,7 @@ export default function ReportsView({
           {/* ========================================================
               CARD 3: Folio List Report (Financial)
              ======================================================== */}
-          <div className="report-card-item">
+          <div className={`report-card-item ${activeCardPicker === 'folio' ? 'has-open-picker' : ''}`}>
             <div className="report-card-header" onClick={() => toggleCard('folio')}>
               <div className="report-card-header-left">
                 <div className="report-card-icon-badge">
@@ -385,31 +422,18 @@ export default function ReportsView({
 
                 <div className="report-form-row">
                   <div className="report-inputs-group">
-                    <div className="report-field-item">
-                      <label className="report-field-label">Start Date</label>
-                      <div className="report-input-wrapper">
-                        <input
-                          type="text"
-                          className="report-text-input"
-                          value={folioStartDate}
-                          onChange={(e) => setFolioStartDate(e.target.value)}
-                        />
-                        <Calendar size={15} className="report-input-icon" />
-                      </div>
-                    </div>
-
-                    <div className="report-field-item">
-                      <label className="report-field-label">End Date</label>
-                      <div className="report-input-wrapper">
-                        <input
-                          type="text"
-                          className="report-text-input"
-                          value={folioEndDate}
-                          onChange={(e) => setFolioEndDate(e.target.value)}
-                        />
-                        <Calendar size={15} className="report-input-icon" />
-                      </div>
-                    </div>
+                    <ReportDatePicker
+                      label="Start Date"
+                      value={folioStartDate}
+                      onChange={setFolioStartDate}
+                      onOpenChange={(open) => setActiveCardPicker(open ? 'folio' : null)}
+                    />
+                    <ReportDatePicker
+                      label="End Date"
+                      value={folioEndDate}
+                      onChange={setFolioEndDate}
+                      onOpenChange={(open) => setActiveCardPicker(open ? 'folio' : null)}
+                    />
 
                     <div className="report-field-item">
                       <label className="report-field-label">Folio Mode</label>
@@ -473,7 +497,7 @@ export default function ReportsView({
           {/* ========================================================
               CARD 4: Night Audit Report (Audit)
              ======================================================== */}
-          <div className="report-card-item">
+          <div className={`report-card-item ${activeCardPicker === 'nightaudit' ? 'has-open-picker' : ''}`}>
             <div className="report-card-header" onClick={() => toggleCard('nightaudit')}>
               <div className="report-card-header-left">
                 <div className="report-card-icon-badge">
@@ -503,18 +527,12 @@ export default function ReportsView({
 
                 <div className="report-form-row">
                   <div className="report-inputs-group">
-                    <div className="report-field-item">
-                      <label className="report-field-label">Audit Date</label>
-                      <div className="report-input-wrapper">
-                        <input
-                          type="text"
-                          className="report-text-input"
-                          value={auditDate}
-                          onChange={(e) => setAuditDate(e.target.value)}
-                        />
-                        <Calendar size={15} className="report-input-icon" />
-                      </div>
-                    </div>
+                    <ReportDatePicker
+                      label="Audit Date"
+                      value={auditDate}
+                      onChange={setAuditDate}
+                      onOpenChange={(open) => setActiveCardPicker(open ? 'nightaudit' : null)}
+                    />
                   </div>
 
                   <div className="report-actions-group">
@@ -543,7 +561,7 @@ export default function ReportsView({
           {/* ========================================================
               CARD 5: Reservation Report (Operational)
              ======================================================== */}
-          <div className="report-card-item">
+          <div className={`report-card-item ${activeCardPicker === 'reservation' ? 'has-open-picker' : ''}`}>
             <div className="report-card-header" onClick={() => toggleCard('reservation')}>
               <div className="report-card-header-left">
                 <div className="report-card-icon-badge">
@@ -608,31 +626,18 @@ export default function ReportsView({
                       </select>
                     </div>
 
-                    <div className="report-field-item">
-                      <label className="report-field-label">Start Date</label>
-                      <div className="report-input-wrapper">
-                        <input
-                          type="text"
-                          className="report-text-input"
-                          value={resStartDate}
-                          onChange={(e) => setResStartDate(e.target.value)}
-                        />
-                        <Calendar size={15} className="report-input-icon" />
-                      </div>
-                    </div>
-
-                    <div className="report-field-item">
-                      <label className="report-field-label">End Date</label>
-                      <div className="report-input-wrapper">
-                        <input
-                          type="text"
-                          className="report-text-input"
-                          value={resEndDate}
-                          onChange={(e) => setResEndDate(e.target.value)}
-                        />
-                        <Calendar size={15} className="report-input-icon" />
-                      </div>
-                    </div>
+                    <ReportDatePicker
+                      label="Start Date"
+                      value={resStartDate}
+                      onChange={setResStartDate}
+                      onOpenChange={(open) => setActiveCardPicker(open ? 'reservation' : null)}
+                    />
+                    <ReportDatePicker
+                      label="End Date"
+                      value={resEndDate}
+                      onChange={setResEndDate}
+                      onOpenChange={(open) => setActiveCardPicker(open ? 'reservation' : null)}
+                    />
                   </div>
 
                   <div className="report-actions-group">
