@@ -70,6 +70,7 @@ export default function ReservationsView({
   onOpenVoucher,
   onOpenInvoice,
   onCancelReservation,
+  onDeleteReservation,
   onNoShowReservation,
   onUpdateReservation,
   onPostPendingCharges,
@@ -195,7 +196,7 @@ export default function ReservationsView({
 
       return true;
     }).sort((a, b) => {
-      const idOrder = ['res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
+      const idOrder = ['res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
       const idxA = idOrder.indexOf(a.id);
       const idxB = idOrder.indexOf(b.id);
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
@@ -222,9 +223,26 @@ export default function ReservationsView({
     exportReservationsToExcel(filteredReservations, property?.name || 'HOTEL ASTHA');
   };
 
+  const handleEditReservation = (r) => {
+    if (!r) return;
+    if (r.status === 'cancelled' || r.status === 'Cancelled') {
+      alert('Cancelled reservations cannot be edited.');
+      return;
+    }
+    if (onEditReservation) {
+      onEditReservation(r);
+    } else {
+      setEditingReservation(r);
+    }
+  };
+
   // If editing a reservation, render full Edit Reservation view matching OTAL spec
   if (editingReservation) {
     const currentRes = reservations.find((r) => r.id === editingReservation.id) || editingReservation;
+    if (currentRes?.status === 'cancelled' || currentRes?.status === 'Cancelled') {
+      setEditingReservation(null);
+      return null;
+    }
     return (
       <div className="edit-res-fullscreen-overlay">
         <EditReservationView
@@ -315,7 +333,12 @@ export default function ReservationsView({
       {/* 3. Horizontal Filter Bar & Actions (Exact OTAL PMS Specification) */}
       <ReservationsToolbar
         statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
+        onStatusFilterChange={(val) => {
+          setStatusFilter(val);
+          if (val === 'cancelled' || val === 'no_show' || val === 'all' || val === 'unmapped') {
+            setActiveTab('all');
+          }
+        }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         fromDate={fromDate}
@@ -346,7 +369,7 @@ export default function ReservationsView({
               reservation={res}
               onCardClick={(r) => setDrawerReservation(r)}
               onSelect={onSelectReservation}
-              onEdit={(r) => (onEditReservation ? onEditReservation(r) : setEditingReservation(r))}
+              onEdit={handleEditReservation}
               isMenuOpen={openMenuId === res.id}
               onToggleMenu={(e) => {
                 e.stopPropagation();
@@ -366,6 +389,7 @@ export default function ReservationsView({
                 const target = typeof r === 'object' ? r : (reservations.find((x) => x.id === r) || { id: r });
                 setCancellingRes(target);
               }}
+              onDelete={onDeleteReservation}
               onNoShow={onNoShowReservation}
               onVoucher={onOpenVoucher}
               onInvoice={onOpenInvoice}
@@ -378,7 +402,7 @@ export default function ReservationsView({
         <ReservationsListView
           reservations={filteredReservations}
           onSelectReservation={onSelectReservation}
-          onEditReservation={(r) => (onEditReservation ? onEditReservation(r) : setEditingReservation(r))}
+          onEditReservation={handleEditReservation}
           onCheckIn={(r) => {
             const target = typeof r === 'object' ? r : (reservations.find((x) => x.id === r) || r);
             setCheckInModalRes(target);
@@ -466,11 +490,7 @@ export default function ReservationsView({
         }
         onEditReservation={(res) => {
           setDrawerReservation(null);
-          if (onEditReservation) {
-            onEditReservation(res);
-          } else {
-            setEditingReservation(res);
-          }
+          handleEditReservation(res);
         }}
       />
 

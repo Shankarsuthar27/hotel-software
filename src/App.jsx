@@ -9,7 +9,11 @@ import NightAuditView from './components/nightaudit/NightAuditView';
 import ReportsView from './components/reports/ReportsView';
 import GuestCrmView from './components/guests/GuestCrmView';
 import TeamPermissionsView from './components/permissions/TeamPermissionsView';
+import MyTeamView from './components/team/MyTeamView';
+import AcceptInviteView from './components/team/AcceptInviteView';
 import PropertySettingsView from './components/settings/PropertySettingsView';
+import SettingsView from './components/settings/SettingsView';
+import PropertiesView from './components/properties/PropertiesView';
 
 import CreateReservationModal from './components/reservations/CreateReservationModal';
 import FolioModal from './components/folios/FolioModal';
@@ -120,12 +124,25 @@ export default function App() {
         nightaudit: 'Night Audit | Hotel Astha PMS',
         reports: 'Reports | Hotel Astha PMS',
         guests: 'Guests CRM | Hotel Astha PMS',
+        myteam: 'My Team | Hotel Astha PMS',
         permissions: 'Team Permissions | Hotel Astha PMS',
-        properties: 'Property Settings | Hotel Astha PMS'
+        properties: 'Property Settings | Hotel Astha PMS',
+        settings: 'Settings | Hotel Astha PMS'
       };
       document.title = titles[activeTab] || 'Hotel Astha PMS';
     }
   }, [isCreatingReservation, editingReservation, activeTab]);
+
+  // Disallow editing cancelled reservations - redirect to /reservations with toast
+  useEffect(() => {
+    if (editingReservation) {
+      const target = state.reservations.find((r) => r.id === editingReservation.id) || editingReservation;
+      if (target?.status === 'cancelled' || target?.status === 'Cancelled') {
+        showToast('⚠️ Cancelled reservations cannot be edited.');
+        navigate('/reservations');
+      }
+    }
+  }, [editingReservation, state.reservations]);
 
   // --- Handlers ---
 
@@ -193,7 +210,12 @@ export default function App() {
 
   const handleCancelReservation = (resId) => {
     pmsStore.cancelReservation(resId);
-    showToast(`🚫 Reservation cancelled and removed from database.`);
+    showToast(`🚫 Reservation cancelled and updated in database.`);
+  };
+
+  const handleDeleteReservation = (resId) => {
+    pmsStore.deleteReservation(resId);
+    showToast(`🗑️ Reservation permanently deleted from database.`);
   };
 
   const handleNoShowReservation = (resId) => {
@@ -243,7 +265,7 @@ export default function App() {
       )}
 
       {/* Full-Screen Edit Reservation View - Edge-to-Edge with NO Sidebar */}
-      {editingReservation ? (
+      {editingReservation && !['cancelled', 'Cancelled'].includes((state.reservations.find((r) => r.id === editingReservation.id) || editingReservation).status) ? (
         <div className="edit-res-fullscreen-overlay">
           <EditReservationView
             reservation={state.reservations.find((r) => r.id === editingReservation.id) || editingReservation}
@@ -320,16 +342,43 @@ export default function App() {
             }}
           />
         </div>
+      ) : activeTab === 'accept-invite' ? (
+        <AcceptInviteView
+          token={currentRoute.queryParams?.token}
+          pmsStore={pmsStore}
+          onAcceptSuccess={(member) => {
+            showToast(`🎉 Welcome ${member.name}! Account activated.`);
+            navigate('/dashboard');
+          }}
+          onNavigateHome={() => navigate('/dashboard')}
+        />
       ) : (
         <>
           {/* Global Sidebar with Collapse Support */}
           <Sidebar
             activeTab={activeTab}
-            setActiveTab={(tab) => {
+            activeSubtab={router.subtab}
+            setActiveTab={(tab, subtab) => {
+              if (tab === 'cashier') {
+                setIsCashDrawerOpen(true);
+                return;
+              }
+              if (tab === 'myteam') {
+                navigate('/my-team');
+                return;
+              }
+              if (tab === 'properties') {
+                navigate(subtab ? `/properties/${subtab}` : '/properties/all');
+                return;
+              }
               navigate(tab === 'dashboard' ? '/dashboard' : '/' + tab);
             }}
             counts={counts}
             property={state.property}
+            currentUser={state.currentUser}
+            teamMembers={state.teamMembers}
+            onSwitchUser={(uId) => pmsStore.switchUser(uId)}
+            hasPermission={(path) => pmsStore.hasPermission(path)}
             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
           />
@@ -337,7 +386,7 @@ export default function App() {
           {/* Main Content Area */}
           <div className="main-wrapper">
             {/* Top Navbar for secondary screens */}
-            {activeTab !== 'dashboard' && activeTab !== 'reservations' && activeTab !== 'guests' && (
+            {activeTab !== 'dashboard' && activeTab !== 'reservations' && activeTab !== 'guests' && activeTab !== 'myteam' && activeTab !== 'permissions' && activeTab !== 'properties' && (
               <TopNav
                 property={state.property}
                 activeTab={activeTab}
@@ -354,7 +403,7 @@ export default function App() {
             )}
 
         {/* Dynamic Viewport with Page Transitions */}
-        <main className={`content-viewport ${activeTab === 'reservations' || activeTab === 'dashboard' || activeTab === 'rates' || activeTab === 'guests' ? 'no-pad-viewport' : ''}`}>
+        <main className={`content-viewport ${activeTab === 'reservations' || activeTab === 'dashboard' || activeTab === 'rates' || activeTab === 'guests' || activeTab === 'myteam' || activeTab === 'permissions' || activeTab === 'properties' ? 'no-pad-viewport' : ''}`}>
           <div key={activeTab} className="pms-page-view">
             {activeTab === 'dashboard' && (
             <DashboardView
@@ -388,6 +437,10 @@ export default function App() {
                 setIsFolioOpen(true);
               }}
               onEditReservation={(res) => {
+                if (res?.status === 'cancelled' || res?.status === 'Cancelled') {
+                  showToast('⚠️ Cancelled reservations cannot be edited.');
+                  return;
+                }
                 const targetId = res?.id || (res?.bookingReference ? res.bookingReference.replace('#', '').toLowerCase() : 'res_1');
                 navigate(`/reservations/${targetId}/edit`);
               }}
@@ -440,8 +493,13 @@ export default function App() {
                 setIsInvoiceOpen(true);
               }}
               onCancelReservation={handleCancelReservation}
+              onDeleteReservation={handleDeleteReservation}
               onNoShowReservation={handleNoShowReservation}
               onEditReservation={(res) => {
+                if (res?.status === 'cancelled' || res?.status === 'Cancelled') {
+                  showToast('⚠️ Cancelled reservations cannot be edited.');
+                  return;
+                }
                 navigate(`/reservations/${res.id}/edit`);
               }}
               onUpdateReservation={(updated) => {
@@ -546,32 +604,109 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'myteam' && (
+            <MyTeamView
+              teamMembers={state.teamMembers}
+              propertiesList={state.propertiesList || ['HOTEL ASTHA', 'HOTEL ASTHA RESORT']}
+              currentProperty={state.property?.name || 'HOTEL ASTHA'}
+              onInviteMembers={({ emails, assignments }) => {
+                pmsStore.inviteTeamMembers({
+                  emails,
+                  assignments,
+                  invitedBy: state.currentUser?.name || 'Astha India'
+                });
+              }}
+              onUpdateMember={(id, patch) => {
+                pmsStore.updateTeamMember(id, patch);
+              }}
+              onManagePermissions={(memberId) => {
+                navigate(`/permissions?memberId=${memberId}&subtab=manage_team`);
+              }}
+              onRemoveInvitation={(id) => pmsStore.removeInvitation(id)}
+              onRemoveMember={(id) => pmsStore.removeTeamMember(id)}
+              onOpenCashDrawer={() => setIsCashDrawerOpen(true)}
+              showToast={showToast}
+              onNavigateToAccept={(tok) => navigate(`/accept-invite?token=${tok}`)}
+            />
+          )}
+
           {activeTab === 'permissions' && (
             <TeamPermissionsView
               teamMembers={state.teamMembers}
-              property={state.property}
-              onInviteMember={(data) => {
-                pmsStore.inviteTeamMember(data);
-                showToast(`✉️ Invitation sent to ${data.email} as ${data.role}`);
+              currentUser={state.currentUser}
+              propertiesList={state.propertiesList || ['HOTEL ASTHA', 'HOTEL ASTHA RESORT']}
+              currentProperty={state.property?.name || 'HOTEL ASTHA'}
+              initialMemberId={router.queryParams?.memberId}
+              initialSubtab={router.queryParams?.subtab}
+              onSaveGranularPermissions={(userId, perms, targetProps, copyIds) => {
+                pmsStore.updateGranularPermissions(userId, perms, targetProps, copyIds);
               }}
-              onUpdatePermissions={(userId, perms) => {
-                pmsStore.updatePermissions(userId, perms);
-                showToast(`🛡️ Permissions updated.`);
-              }}
+              onOpenCashDrawer={() => setIsCashDrawerOpen(true)}
+              onBack={() => navigate('/my-team')}
+              showToast={showToast}
             />
           )}
 
           {activeTab === 'properties' && (
-            <PropertySettingsView
+            <PropertiesView
+              subtab={router.subtab || 'all'}
               property={state.property}
-              roomTypes={state.roomTypes}
-              rooms={state.rooms}
-              mealPlans={state.mealPlans}
+              propertiesList={state.propertiesList || ['HOTEL ASTHA', 'HOTEL ASTHA RESORT']}
+              mealPlans={state.mealPlans || []}
+              roomTypes={state.roomTypes || []}
+              rooms={state.rooms || []}
+              ratePlans={state.ratePlans || []}
+              onOpenCashDrawer={() => setIsCashDrawerOpen(true)}
               onSaveProperty={(patch) => {
-                pmsStore.property = { ...pmsStore.property, ...patch };
-                pmsStore.save();
-                showToast(`🏢 Property settings updated.`);
+                pmsStore.updateProperty(patch);
               }}
+              onCreateMealPlan={(planData) => {
+                pmsStore.addMealPlan(planData);
+              }}
+              onUpdateMealPlan={(planId, patch) => {
+                pmsStore.updateMealPlan(planId, patch);
+              }}
+              onDeleteMealPlan={(planId) => {
+                pmsStore.deleteMealPlan(planId);
+              }}
+              onAddRoomType={(data) => {
+                pmsStore.addRoomType(data);
+              }}
+              onUpdateRoomType={(id, patch) => {
+                pmsStore.updateRoomType(id, patch);
+              }}
+              onDeleteRoomType={(id) => {
+                pmsStore.deleteRoomType(id);
+              }}
+              onAddRooms={(roomsList) => {
+                pmsStore.addRooms(roomsList);
+              }}
+              onUpdateRoom={(id, patch) => {
+                pmsStore.updateRoom(id, patch);
+              }}
+              onDeleteRoom={(id) => {
+                pmsStore.deleteRoom(id);
+              }}
+              onCreateRatePlan={(data) => {
+                pmsStore.addRatePlan(data);
+              }}
+              onUpdateRatePlan={(id, patch) => {
+                pmsStore.updateRatePlan(id, patch);
+              }}
+              onDeleteRatePlan={(id) => {
+                pmsStore.deleteRatePlan(id);
+              }}
+              showToast={showToast}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsView
+              property={state.property}
+              onSaveProperty={(patch) => {
+                pmsStore.updateProperty(patch);
+              }}
+              showToast={showToast}
             />
           )}
           </div>

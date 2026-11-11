@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RefreshCw, Calendar, Search, Bell, CheckCircle } from 'lucide-react';
+import { Plus, RefreshCw, Calendar, Search, Bell, CheckCircle, Home, ChevronDown } from 'lucide-react';
 
 export default function TopNav({
   property,
@@ -19,7 +19,10 @@ export default function TopNav({
       case 'reports': return 'Financial & Manager Reports';
       case 'guests': return 'Guest Directory & CRM';
       case 'permissions': return 'Staff & Granular RBAC Permissions';
-      case 'properties': return 'Property Configuration & Meal Plans';
+      case 'settings':
+      case 'properties': return 'Settings';
+      case 'myteam': return 'My Team';
+      case 'cashier': return 'Cashier';
       default: return 'Overview';
     }
   };
@@ -28,8 +31,11 @@ export default function TopNav({
     <header className="top-nav">
       <div className="top-nav-left">
         <div className="breadcrumbs">
-          <span>PMS</span>
-          <span>/</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Home size={14} color="#64748B" />
+            <span>PMS</span>
+          </span>
+          <span style={{ color: '#94A3B8' }}>&gt;</span>
           <span className="current">{getTabLabel(activeTab)}</span>
         </div>
 

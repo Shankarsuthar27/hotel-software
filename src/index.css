@@ -34,6 +34,8 @@
   --color-amber-200: oklch(0.924 0.12 95.746);
   --color-amber-600: oklch(0.666 0.179 58.318);
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sidebar: 'Mulish', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Color Palette */
@@ -107,6 +109,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
   overflow-x: hidden;
+}
+
+/* Main Headings & Titles - Plus Jakarta Sans */
+h1, h2, h3, h4, h5, h6,
+.font-heading,
+.main-heading,
+.page-heading,
+.section-heading,
+.card-heading,
+.brand-logo-text,
+.sidebar-brand h1,
+.properties-crumb-active,
+.properties-empty-title,
+.meal-plan-drawer-title,
+.top-nav .breadcrumbs .current,
+.title-1, .title-2, .title-3, .title-4 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.015em;
 }
 
 /* Layout Shell */
@@ -978,6 +998,26 @@ body.drawer-open .content-viewport {
   z-index: 40;
   height: 100vh;
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: var(--font-heading, 'Plus Jakarta Sans', sans-serif);
+}
+
+.sidebar-light,
+.sidebar-light button,
+.sidebar-light .sidebar-nav-btn,
+.sidebar-light .sidebar-sub-nav-btn,
+.sidebar-light .nav-btn-label,
+.sidebar-light .nav-pill-badge,
+.sidebar-light .hotel-name,
+.sidebar-light .hotel-sub,
+.sidebar-light .hotel-avatar-ha,
+.sidebar-light .lang-label-text,
+.sidebar-light .lang-pill-btn,
+.sidebar-light .sidebar-user-card,
+.sidebar-light .user-name,
+.sidebar-light .user-role,
+.sidebar-light .user-avatar-ai,
+.sidebar-light .sidebar-user-switcher-menu {
+  font-family: var(--font-sidebar, 'Mulish', sans-serif);
 }
 
 .sidebar-light.collapsed {
@@ -1109,11 +1149,12 @@ body.drawer-open .content-viewport {
 /* Sidebar Menu List */
 .sidebar-menu-list {
   flex: 1;
-  padding: 0.25rem 0.65rem;
+  padding: 0.35rem 0.65rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.35rem;
   overflow-y: auto;
+  font-family: var(--font-sidebar, 'Mulish', sans-serif);
 }
 
 .sidebar-nav-btn {
@@ -1121,17 +1162,27 @@ body.drawer-open .content-viewport {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 0.62rem 0.85rem;
-  border-radius: 8px;
+  padding: 0.68rem 0.85rem;
+  border-radius: 12px;
   border: none;
   background: transparent;
-  color: #475569;
-  font-size: 0.86rem;
-  font-weight: 500;
+  color: #1e293b;
+  font-family: var(--font-sidebar, 'Mulish', sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: left;
   position: relative;
+}
+
+.sidebar-nav-btn .nav-btn-label {
+  font-family: var(--font-sidebar, 'Mulish', sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: inherit;
 }
 
 .sidebar-nav-btn:hover {
@@ -1141,8 +1192,9 @@ body.drawer-open .content-viewport {
 
 .sidebar-nav-btn.active {
   background-color: #eff6ff;
-  color: #2563eb;
-  font-weight: 600;
+  color: #0066ff;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .sidebar-nav-btn.active::before {
@@ -1152,7 +1204,7 @@ body.drawer-open .content-viewport {
   top: 15%;
   height: 70%;
   width: 3.5px;
-  background-color: #2563eb;
+  background-color: #0066ff;
   border-radius: 0 4px 4px 0;
 }
 
@@ -1169,7 +1221,7 @@ body.drawer-open .content-viewport {
 }
 
 .sidebar-nav-btn.active .nav-btn-icon {
-  color: #2563eb;
+  color: #0066ff;
 }
 
 .sidebar-nav-btn:hover .nav-btn-icon {
@@ -1191,6 +1243,47 @@ body.drawer-open .content-viewport {
 .nav-pill-badge.badge-danger {
   background: #fee2e2;
   color: #dc2626;
+}
+
+/* Sidebar Accordion Sub-Menu (Matches Properties in Images 1 & 4) */
+.sidebar-group-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-sub-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0 6px 0;
+}
+
+.sidebar-sub-nav-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 12px 8px 38px;
+  font-family: var(--font-sidebar, 'Mulish', sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #1e293b;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+}
+
+.sidebar-sub-nav-btn:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.sidebar-sub-nav-btn.active {
+  background-color: #eff6ff;
+  color: #0066ff;
+  font-weight: 700;
 }
 
 /* Sidebar Bottom Section */

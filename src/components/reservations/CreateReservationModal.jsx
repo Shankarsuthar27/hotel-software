@@ -55,21 +55,64 @@ export default function CreateReservationModal({
     return roomTypes.find((rt) => rt.id === selectedRoomTypeId) || roomTypes[0];
   }, [roomTypes, selectedRoomTypeId]);
 
-  const [ratePlanCode, setRatePlanCode] = useState('BAR_CP');
+  const getRoomTypeRatesFromPlan = (rp, roomTypeId) => {
+    if (!rp || !rp.roomTypeRates || typeof rp.roomTypeRates !== 'object') return null;
+    if (rp.roomTypeRates[roomTypeId]) return rp.roomTypeRates[roomTypeId];
+    if (roomTypeId === 'rt_standard' && rp.roomTypeRates.rt_normal) return rp.roomTypeRates.rt_normal;
+    if (roomTypeId === 'rt_normal' && rp.roomTypeRates.rt_standard) return rp.roomTypeRates.rt_standard;
+    const currentRt = roomTypes.find((t) => t.id === roomTypeId);
+    if (currentRt) {
+      const rtNameLower = currentRt.name.trim().toLowerCase();
+      for (const [key, val] of Object.entries(rp.roomTypeRates)) {
+        const matchedRt = roomTypes.find((t) => t.id === key);
+        if (matchedRt && matchedRt.name.trim().toLowerCase() === rtNameLower) {
+          return val;
+        }
+      }
+    }
+    return null;
+  };
+
+  const isRoomTypeActiveInRatePlan = (rp, roomTypeId) => {
+    if (!rp) return false;
+    if (rp.status && rp.status !== 'ACTIVE') return false;
+    const rates = getRoomTypeRatesFromPlan(rp, roomTypeId);
+    return rates?.active === true;
+  };
+
+  const availableRatePlans = useMemo(() => {
+    return (ratePlans || []).filter((rp) => isRoomTypeActiveInRatePlan(rp, selectedRoomTypeId));
+  }, [ratePlans, selectedRoomTypeId]);
+
+  const [ratePlanCode, setRatePlanCode] = useState(() => availableRatePlans[0]?.code || 'BAR_CP');
   const [adults, setAdults] = useState(selectedRoomType?.baseAdults || 2);
   const [children, setChildren] = useState(0);
   const [baseRate, setBaseRate] = useState(selectedRoomType?.basePrice || 4800);
 
-  // Update base rate when room type changes
+  // Update base rate and rate plan when room type changes
   useEffect(() => {
     if (selectedRoomType) {
-      setBaseRate(selectedRoomType.basePrice);
       setAdults(selectedRoomType.baseAdults || 2);
       if (availableRoomsForType.length > 0 && !availableRoomsForType.some(r => r.id === selectedRoomId)) {
         setSelectedRoomId(availableRoomsForType[0].id);
       }
+      const activePlan = availableRatePlans.find(p => p.code === ratePlanCode || p.id === ratePlanCode);
+      if (activePlan) {
+        const rtRates = getRoomTypeRatesFromPlan(activePlan, selectedRoomTypeId);
+        const autoRate = rtRates?.basePrice || activePlan.basePrice;
+        if (autoRate) setBaseRate(autoRate);
+      } else if (availableRatePlans.length > 0) {
+        const first = availableRatePlans[0];
+        setRatePlanCode(first.code || first.id);
+        const rtRates = getRoomTypeRatesFromPlan(first, selectedRoomTypeId);
+        const autoRate = rtRates?.basePrice || first.basePrice;
+        if (autoRate) setBaseRate(autoRate);
+      } else {
+        setRatePlanCode('');
+        setBaseRate(selectedRoomType.basePrice || 1000);
+      }
     }
-  }, [selectedRoomType]);
+  }, [selectedRoomType, selectedRoomTypeId, availableRatePlans]);
 
   // Guest Details
   const [guestName, setGuestName] = useState('');
@@ -310,12 +353,25 @@ export default function CreateReservationModal({
                     <select
                       className="form-select"
                       value={ratePlanCode}
-                      onChange={(e) => setRatePlanCode(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setRatePlanCode(val);
+                        const selectedPlan = availableRatePlans.find(
+                          (p) => p.code === val || p.id === val
+                        );
+                        if (selectedPlan) {
+                          const rtRates = getRoomTypeRatesFromPlan(selectedPlan, selectedRoomTypeId);
+                          const autoRate = rtRates?.basePrice || selectedPlan.basePrice;
+                          if (autoRate && autoRate > 0) setBaseRate(autoRate);
+                        }
+                      }}
                     >
-                      <option value="BAR_EP">EP (Room Only)</option>
-                      <option value="BAR_CP">CP (With Breakfast)</option>
-                      <option value="CORP_MAP">MAP (Breakfast + Dinner)</option>
-                      <option value="LUX_CP">Luxury Package</option>
+                      <option value="">Select Rate Plan</option>
+                      {availableRatePlans.map((rp) => (
+                        <option key={rp.id || rp.code} value={rp.code || rp.id}>
+                          {rp.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="form-group" style={{ marginBottom: '0.5rem' }}>

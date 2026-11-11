@@ -14,7 +14,10 @@ import {
   DollarSign,
   Maximize2,
   Minimize2,
-  ArrowLeft
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Check
 } from 'lucide-react';
 import { calculateRoomTax } from '../../services/taxEngine';
 import ReservationConfirmationModal from './ReservationConfirmationModal';
@@ -370,58 +373,192 @@ export default function AddReservationView({
   };
 
   // Room Configuration: Multi-room support
-  const defaultRoomTypeId = initialData?.room?.roomTypeId || roomTypes[0]?.id || 'rt_deluxe';
-  const defaultRate = roomTypes.find((rt) => rt.id === defaultRoomTypeId)?.basePrice || 2500;
+  const defaultRoomTypeId =
+    initialData?.room?.roomTypeId ||
+    roomTypes.find((rt) => rt.name.toLowerCase().includes('delux'))?.id ||
+    roomTypes[0]?.id ||
+    'rt_deluxe';
 
   const [configuredRooms, setConfiguredRooms] = useState([
     {
       id: 1,
       roomTypeId: defaultRoomTypeId,
-      ratePlanCode: 'BAR_EP',
-      roomId: initialData?.room?.id || rooms[0]?.id || 'rm_102',
+      ratePlanCode: '',
+      ratePlanName: '',
+      roomId: initialData?.room?.id || 'unassigned',
+      roomsCount: 1,
       adults: 1,
-      children: 0,
-      rate: defaultRate
+      children: 2,
+      rate: ''
     }
   ]);
 
+  const [activeDropdown, setActiveDropdown] = useState(null); // `${rm.id}-roomType` | `${rm.id}-ratePlan` | `${rm.id}-roomNo`
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (!e.target.closest('.room-config-dropdown-container')) {
+        setActiveDropdown(null);
+      }
+    }
+    if (activeDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeDropdown]);
+
+  const getRoomTypeRatesFromPlan = (rp, roomTypeId) => {
+    if (!rp || !rp.roomTypeRates || typeof rp.roomTypeRates !== 'object') return null;
+    if (rp.roomTypeRates[roomTypeId]) return rp.roomTypeRates[roomTypeId];
+    if (roomTypeId === 'rt_standard' && rp.roomTypeRates.rt_normal) return rp.roomTypeRates.rt_normal;
+    if (roomTypeId === 'rt_normal' && rp.roomTypeRates.rt_standard) return rp.roomTypeRates.rt_standard;
+    const currentRt = roomTypes.find((t) => t.id === roomTypeId);
+    if (currentRt) {
+      const rtNameLower = currentRt.name.trim().toLowerCase();
+      for (const [key, val] of Object.entries(rp.roomTypeRates)) {
+        const matchedRt = roomTypes.find((t) => t.id === key);
+        if (matchedRt && matchedRt.name.trim().toLowerCase() === rtNameLower) {
+          return val;
+        }
+      }
+    }
+    return null;
+  };
+
+  const isRoomTypeActiveInRatePlan = (rp, roomTypeId) => {
+    if (!rp) return false;
+    if (rp.status && rp.status !== 'ACTIVE') return false;
+    const rates = getRoomTypeRatesFromPlan(rp, roomTypeId);
+    return rates?.active === true;
+  };
+
+  const handleSelectRoomType = (rmId, rt) => {
+    setConfiguredRooms((prev) =>
+      prev.map((r) => {
+        if (r.id !== rmId) return r;
+
+        let updatedRatePlanCode = r.ratePlanCode;
+        let updatedRatePlanName = r.ratePlanName;
+        let updatedRate = '';
+
+        if (r.ratePlanCode) {
+          const rp = ratePlans.find((p) => p.code === r.ratePlanCode || p.id === r.ratePlanCode);
+          if (rp && isRoomTypeActiveInRatePlan(rp, rt.id)) {
+            const rtRates = getRoomTypeRatesFromPlan(rp, rt.id);
+            updatedRate = rtRates?.basePrice || rp.basePrice || rt.basePrice || '';
+          } else {
+            // Not active for this new room type: clear rate plan
+            updatedRatePlanCode = '';
+            updatedRatePlanName = '';
+            updatedRate = '';
+          }
+        }
+
+        return {
+          ...r,
+          roomTypeId: rt.id,
+          roomId: 'unassigned',
+          ratePlanCode: updatedRatePlanCode,
+          ratePlanName: updatedRatePlanName,
+          adults: rt.baseAdults || 1,
+          children: rt.baseChildren ?? 0,
+          rate: updatedRate
+        };
+      })
+    );
+    setActiveDropdown(null);
+  };
+
+  const handleSelectRatePlan = (rmId, rp) => {
+    setConfiguredRooms((prev) =>
+      prev.map((r) => {
+        if (r.id !== rmId) return r;
+        const rtRates = getRoomTypeRatesFromPlan(rp, r.roomTypeId);
+        const autoRate = rtRates?.basePrice || rp.basePrice || '';
+
+        return {
+          ...r,
+          ratePlanCode: rp.code,
+          ratePlanName: rp.name,
+          rate: autoRate && autoRate > 0 ? autoRate : r.rate
+        };
+      })
+    );
+    setActiveDropdown(null);
+  };
+
+  const handleSelectRoomNo = (rmId, roomIdVal) => {
+    setConfiguredRooms((prev) =>
+      prev.map((r) => (r.id === rmId ? { ...r, roomId: roomIdVal } : r))
+    );
+    setActiveDropdown(null);
+  };
+
+  const handleSelectAdults = (rmId, count) => {
+    setConfiguredRooms((prev) =>
+      prev.map((r) => (r.id === rmId ? { ...r, adults: count } : r))
+    );
+    setActiveDropdown(null);
+  };
+
+  const handleSelectChildren = (rmId, count) => {
+    setConfiguredRooms((prev) =>
+      prev.map((r) => (r.id === rmId ? { ...r, children: count } : r))
+    );
+    setActiveDropdown(null);
+  };
+
   const handleAddRoomRow = () => {
-    const newId = configuredRooms.length + 1;
-    setConfiguredRooms([
-      ...configuredRooms,
+    const defaultRt = roomTypes.find((rt) => rt.id === defaultRoomTypeId);
+    setConfiguredRooms((prev) => [
+      ...prev,
       {
-        id: newId,
+        id: prev.length + 1,
         roomTypeId: defaultRoomTypeId,
-        ratePlanCode: 'BAR_EP',
-        roomId: rooms[0]?.id || 'rm_102',
-        adults: 1,
-        children: 0,
-        rate: defaultRate
+        ratePlanCode: '',
+        ratePlanName: '',
+        roomId: 'unassigned',
+        roomsCount: 1,
+        adults: defaultRt?.baseAdults || 1,
+        children: defaultRt?.baseChildren ?? 0,
+        rate: ''
       }
     ]);
   };
 
   const handleRemoveRoomRow = (id) => {
-    if (configuredRooms.length <= 1) return;
-    setConfiguredRooms(configuredRooms.filter((r) => r.id !== id));
+    setConfiguredRooms((prev) => {
+      if (prev.length <= 1) {
+        const defaultRt = roomTypes.find((rt) => rt.id === defaultRoomTypeId);
+        return [
+          {
+            id: 1,
+            roomTypeId: defaultRoomTypeId,
+            ratePlanCode: '',
+            ratePlanName: '',
+            roomId: 'unassigned',
+            roomsCount: 1,
+            adults: defaultRt?.baseAdults || 1,
+            children: defaultRt?.baseChildren ?? 0,
+            rate: ''
+          }
+        ];
+      }
+      return prev.filter((r) => r.id !== id);
+    });
   };
 
-  const handleUpdateRoomRow = (id, field, value) => {
-    setConfiguredRooms(
-      configuredRooms.map((r) => {
+  const handleUpdateRoomRow = (id, fieldOrPatch, maybeValue) => {
+    setConfiguredRooms((prev) =>
+      prev.map((r) => {
         if (r.id !== id) return r;
-        if (field === 'roomTypeId') {
-          const rt = roomTypes.find((t) => t.id === value);
-          const newRate = rt ? rt.basePrice : r.rate;
-          const matchingRoom = rooms.find((rm) => rm.roomTypeId === value);
-          return {
-            ...r,
-            roomTypeId: value,
-            rate: newRate,
-            roomId: matchingRoom?.id || r.roomId
-          };
+        if (typeof fieldOrPatch === 'object') {
+          return { ...r, ...fieldOrPatch };
         }
-        return { ...r, [field]: value };
+        return { ...r, [fieldOrPatch]: maybeValue };
       })
     );
   };
@@ -497,7 +634,11 @@ export default function AddReservationView({
       return;
     }
     if (!phone.trim()) {
-      alert('Please enter guest Mobile Number');
+      alert('Please enter guest Phone Number');
+      return;
+    }
+    if (!email.trim()) {
+      alert('Please enter guest Email Address');
       return;
     }
 
@@ -514,7 +655,7 @@ export default function AddReservationView({
       checkInTime,
       checkOutTime,
       nights,
-      roomId: primaryRoom.roomId,
+      roomId: primaryRoom.roomId === 'unassigned' ? '' : primaryRoom.roomId,
       roomTypeId: primaryRoom.roomTypeId,
       ratePlanCode: primaryRoom.ratePlanCode || 'BAR_EP',
       baseRatePerNight: Number(primaryRoom.rate) || 2500,
@@ -772,8 +913,8 @@ export default function AddReservationView({
             </div>
           </div>
 
-          {/* Card 2: Room Configuration */}
-          <div className="add-res-card">
+          {/* Card 2: Room Configuration (Matching User Screenshots) */}
+          <div className="add-res-card" style={{ overflow: 'visible' }}>
             <div className="add-res-card-header">
               <div>
                 <h2 className="add-res-card-title">Room Configuration</h2>
@@ -789,183 +930,391 @@ export default function AddReservationView({
               </button>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table className="add-res-room-table">
+            <div style={{ overflow: 'visible', width: '100%' }}>
+              <table className="room-config-table">
                 <thead>
                   <tr>
-                    <th>Room Type *</th>
-                    <th>Rate Plan *</th>
-                    <th>Room No *</th>
-                    <th style={{ width: '80px' }}>Adult</th>
-                    <th style={{ width: '80px' }}>Child</th>
-                    <th style={{ width: '130px' }}>Rate (₹)</th>
-                    {configuredRooms.length > 1 && <th style={{ width: '50px' }}>Action</th>}
+                    <th style={{ width: '22%' }}>
+                      Room Type <span className="required-star">*</span>
+                    </th>
+                    <th style={{ width: '20%' }}>
+                      Rate Plan <span className="required-star">*</span>
+                    </th>
+                    <th style={{ width: '9%', textAlign: 'center' }}>
+                      Rooms
+                    </th>
+                    <th style={{ width: '18%' }}>
+                      Room No
+                    </th>
+                    <th style={{ width: '16%', textAlign: 'center' }}>
+                      Guests (A / C)
+                    </th>
+                    <th style={{ width: '11%' }}>
+                      Rate (₹)
+                    </th>
+                    <th style={{ width: '4%', textAlign: 'center' }} />
                   </tr>
                 </thead>
                 <tbody>
-                  {configuredRooms.map((rm) => (
-                    <tr key={rm.id}>
-                      <td>
-                        <select
-                          className="add-res-select"
-                          value={rm.roomTypeId}
-                          onChange={(e) => handleUpdateRoomRow(rm.id, 'roomTypeId', e.target.value)}
-                        >
-                          {roomTypes.map((rt) => (
-                            <option key={rt.id} value={rt.id}>
-                              {rt.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <select
-                          className="add-res-select"
-                          value={rm.ratePlanCode}
-                          onChange={(e) => handleUpdateRoomRow(rm.id, 'ratePlanCode', e.target.value)}
-                        >
-                          <option value="test plan">test plan</option>
-                          <option value="BAR_EP">Best Available Rate (Room Only)</option>
-                          <option value="BAR_CP">Continental Plan (Breakfast)</option>
-                          <option value="CORP_DISC">Corporate Discount Plan</option>
-                        </select>
-                      </td>
-                      <td>
-                        <select
-                          className="add-res-select"
-                          value={rm.roomId}
-                          onChange={(e) => handleUpdateRoomRow(rm.id, 'roomId', e.target.value)}
-                        >
-                          {rooms.map((room) => (
-                            <option key={room.id} value={room.id}>
-                              Room {room.roomNumber} ({room.status})
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          className="add-res-input"
-                          min="1"
-                          max="4"
-                          value={rm.adults}
-                          onChange={(e) => handleUpdateRoomRow(rm.id, 'adults', e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          className="add-res-input"
-                          min="0"
-                          max="3"
-                          value={rm.children}
-                          onChange={(e) => handleUpdateRoomRow(rm.id, 'children', e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          className="add-res-input"
-                          value={rm.rate}
-                          onChange={(e) => handleUpdateRoomRow(rm.id, 'rate', e.target.value)}
-                        />
-                      </td>
-                      {configuredRooms.length > 1 && (
+                  {configuredRooms.map((rm) => {
+                    const currentRoomType = roomTypes.find((rt) => rt.id === rm.roomTypeId);
+                    const matchingRooms = rooms.filter(
+                      (r) =>
+                        r.roomTypeId === rm.roomTypeId ||
+                        (rm.roomTypeId === 'rt_standard' && r.roomTypeId === 'rt_normal') ||
+                        (rm.roomTypeId === 'rt_normal' && r.roomTypeId === 'rt_standard')
+                    );
+                    const selectedRoom = rooms.find((r) => r.id === rm.roomId);
+                    const selectedRatePlan = ratePlans.find((rp) => rp.code === rm.ratePlanCode || rp.id === rm.ratePlanCode);
+                    const availableRatePlans = ratePlans.filter((rp) => isRoomTypeActiveInRatePlan(rp, rm.roomTypeId));
+
+                    // Occupancy options based on room type
+                    const maxAdultsCount = currentRoomType?.maxAdults || 4;
+                    const maxChildrenCount = currentRoomType?.maxChildren ?? 2;
+                    const adultOptions = Array.from({ length: maxAdultsCount }, (_, i) => i + 1);
+                    const childOptions = Array.from({ length: maxChildrenCount + 1 }, (_, i) => i);
+
+                    return (
+                      <tr key={rm.id}>
+                        {/* 1. Room Type */}
                         <td>
+                          <div className="room-config-dropdown-container" style={{ position: 'relative' }}>
+                            <button
+                              type="button"
+                              className="room-config-select-btn"
+                              onClick={() => setActiveDropdown(activeDropdown === `${rm.id}-roomType` ? null : `${rm.id}-roomType`)}
+                            >
+                              <span>{currentRoomType?.name || 'Delux Room'}</span>
+                              {activeDropdown === `${rm.id}-roomType` ? (
+                                <ChevronUp size={15} color="#475569" />
+                              ) : (
+                                <ChevronDown size={15} color="#475569" />
+                              )}
+                            </button>
+
+                            {activeDropdown === `${rm.id}-roomType` && (
+                              <div className="room-config-popover" style={{ top: 'calc(100% + 4px)', left: 0 }}>
+                                {roomTypes.map((rt) => (
+                                  <div
+                                    key={rt.id}
+                                    className="room-config-popover-item"
+                                    onClick={() => handleSelectRoomType(rm.id, rt)}
+                                  >
+                                    <span style={{ fontWeight: rt.id === rm.roomTypeId ? 600 : 400 }}>{rt.name}</span>
+                                    {rt.id === rm.roomTypeId && <Check size={14} color="#2563EB" />}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 2. Rate Plan (Filtered by Room Type Activation) */}
+                        <td>
+                          <div className="room-config-dropdown-container" style={{ position: 'relative' }}>
+                            <button
+                              type="button"
+                              className="room-config-select-btn"
+                              onClick={() => setActiveDropdown(activeDropdown === `${rm.id}-ratePlan` ? null : `${rm.id}-ratePlan`)}
+                            >
+                              <span style={{ color: rm.ratePlanName || selectedRatePlan?.name ? '#0F172A' : '#64748B' }}>
+                                {rm.ratePlanName || selectedRatePlan?.name || 'Select Type'}
+                              </span>
+                              {activeDropdown === `${rm.id}-ratePlan` ? (
+                                <ChevronUp size={15} color="#475569" />
+                              ) : (
+                                <ChevronDown size={15} color="#475569" />
+                              )}
+                            </button>
+
+                            {activeDropdown === `${rm.id}-ratePlan` && (
+                              <div className="room-config-popover" style={{ top: 'calc(100% + 4px)', left: 0, minWidth: '150px' }}>
+                                {availableRatePlans.length > 0 ? (
+                                  availableRatePlans.map((rp) => {
+                                    const isSelected = rm.ratePlanCode === rp.code || rm.ratePlanName === rp.name;
+                                    return (
+                                      <div
+                                        key={rp.id || rp.code}
+                                        className="room-config-popover-item"
+                                        onClick={() => handleSelectRatePlan(rm.id, rp)}
+                                      >
+                                        <span style={{ fontWeight: isSelected ? 600 : 400 }}>
+                                          {rp.name}
+                                        </span>
+                                        {isSelected && <Check size={14} color="#2563EB" />}
+                                      </div>
+                                    );
+                                  })
+                                ) : (
+                                  <div className="room-config-popover-item" style={{ color: '#94a3b8', cursor: 'default' }}>
+                                    <span>No active rate plans</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 3. Rooms (Aligned Center) */}
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="number"
+                            min="1"
+                            className="room-config-rooms-input"
+                            value={rm.roomsCount || 1}
+                            onChange={(e) => handleUpdateRoomRow(rm.id, 'roomsCount', Number(e.target.value) || 1)}
+                          />
+                        </td>
+
+                        {/* 4. Room No (Matching Image 2 - Opens Upward with Checkmark) */}
+                        <td>
+                          <div className="room-config-dropdown-container" style={{ position: 'relative' }}>
+                            <button
+                              type="button"
+                              className="room-config-select-btn"
+                              onClick={() => setActiveDropdown(activeDropdown === `${rm.id}-roomNo` ? null : `${rm.id}-roomNo`)}
+                            >
+                              <span>
+                                {selectedRoom
+                                  ? selectedRoom.roomNumber
+                                  : rm.roomId && rm.roomId !== 'unassigned'
+                                  ? rm.roomId
+                                  : 'Unassigned'}
+                              </span>
+                              {activeDropdown === `${rm.id}-roomNo` ? (
+                                <ChevronUp size={15} color="#475569" />
+                              ) : (
+                                <ChevronDown size={15} color="#475569" />
+                              )}
+                            </button>
+
+                            {activeDropdown === `${rm.id}-roomNo` && (
+                              <div className="room-config-popover" style={{ bottom: 'calc(100% + 4px)', left: 0, minWidth: '150px' }}>
+                                {/* Unassigned Option */}
+                                <div
+                                  className="room-config-popover-item"
+                                  onClick={() => handleSelectRoomNo(rm.id, 'unassigned')}
+                                >
+                                  <span style={{ fontWeight: (!rm.roomId || rm.roomId === 'unassigned') ? 600 : 400 }}>
+                                    Unassigned
+                                  </span>
+                                  {(!rm.roomId || rm.roomId === 'unassigned') && (
+                                    <Check size={14} color="#2563EB" />
+                                  )}
+                                </div>
+
+                                {/* Available Rooms of Selected Room Type */}
+                                {matchingRooms.map((r) => {
+                                  const isSelected = rm.roomId === r.id;
+                                  return (
+                                    <div
+                                      key={r.id}
+                                      className="room-config-popover-item"
+                                      onClick={() => handleSelectRoomNo(rm.id, r.id)}
+                                    >
+                                      <span style={{ fontWeight: isSelected ? 600 : 400 }}>{r.roomNumber}</span>
+                                      {isSelected && <Check size={14} color="#2563EB" />}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 5. Guests (A / C) (Aligned Center & Custom Popover matching Image 2) */}
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '8px', margin: '0 auto' }}>
+                            {/* Adults */}
+                            <div className="room-config-dropdown-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                              <button
+                                type="button"
+                                className="room-config-mini-btn"
+                                onClick={() => setActiveDropdown(activeDropdown === `${rm.id}-adults` ? null : `${rm.id}-adults`)}
+                              >
+                                <span>{rm.adults}</span>
+                                {activeDropdown === `${rm.id}-adults` ? (
+                                  <ChevronUp size={13} color="#64748B" />
+                                ) : (
+                                  <ChevronDown size={13} color="#64748B" />
+                                )}
+                              </button>
+                              <span className="room-config-sublabel">Adults</span>
+
+                              {activeDropdown === `${rm.id}-adults` && (
+                                <div
+                                  className="room-config-popover room-config-mini-popover"
+                                  style={{ top: '46px', left: '50%', transform: 'translateX(-50%)' }}
+                                >
+                                  {adultOptions.map((num) => {
+                                    const isSelected = rm.adults === num;
+                                    return (
+                                      <div
+                                        key={num}
+                                        className="room-config-popover-item room-config-mini-popover-item"
+                                        onClick={() => handleSelectAdults(rm.id, num)}
+                                      >
+                                        <span style={{ fontWeight: isSelected ? 600 : 400 }}>{num}</span>
+                                        {isSelected && <Check size={13} color="#2563EB" />}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Children */}
+                            <div className="room-config-dropdown-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                              <button
+                                type="button"
+                                className="room-config-mini-btn"
+                                onClick={() => setActiveDropdown(activeDropdown === `${rm.id}-children` ? null : `${rm.id}-children`)}
+                              >
+                                <span>{rm.children}</span>
+                                {activeDropdown === `${rm.id}-children` ? (
+                                  <ChevronUp size={13} color="#64748B" />
+                                ) : (
+                                  <ChevronDown size={13} color="#64748B" />
+                                )}
+                              </button>
+                              <span className="room-config-sublabel">Children</span>
+
+                              {activeDropdown === `${rm.id}-children` && (
+                                <div
+                                  className="room-config-popover room-config-mini-popover"
+                                  style={{ top: '46px', left: '50%', transform: 'translateX(-50%)' }}
+                                >
+                                  {childOptions.map((num) => {
+                                    const isSelected = rm.children === num;
+                                    return (
+                                      <div
+                                        key={num}
+                                        className="room-config-popover-item room-config-mini-popover-item"
+                                        onClick={() => handleSelectChildren(rm.id, num)}
+                                      >
+                                        <span style={{ fontWeight: isSelected ? 600 : 400 }}>{num}</span>
+                                        {isSelected && <Check size={13} color="#2563EB" />}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 6. Rate (₹) */}
+                        <td>
+                          <input
+                            type="number"
+                            className="room-config-rate-input"
+                            placeholder="Enter amount"
+                            value={rm.rate}
+                            onChange={(e) => handleUpdateRoomRow(rm.id, 'rate', e.target.value)}
+                          />
+                        </td>
+
+                        {/* 7. Action (Red Trash Bin) */}
+                        <td style={{ textAlign: 'center' }}>
                           <button
                             type="button"
-                            className="btn-remove-room-row"
+                            className="room-config-trash-btn"
                             onClick={() => handleRemoveRoomRow(rm.id)}
                             title="Remove Room"
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={16} color="#EF4444" />
                           </button>
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Card 3: Guest Information */}
-          <div className="add-res-card">
-            <div className="add-res-card-header">
-              <div>
-                <h2 className="add-res-card-title">Guest Information</h2>
-                <p className="add-res-card-subtitle">Primary guest details for check-in and billing ledger.</p>
-              </div>
+          {/* Card 3: Guest Information (Matching User Screenshot) */}
+          <div className="guest-info-card">
+            <h2 className="guest-info-title">Guest Information</h2>
+            <p className="guest-info-subtitle">
+              Please provide the primary guest's contact and identification details for this reservation.
+            </p>
+
+            <div className="guest-info-room-badge">
+              Room 1
             </div>
 
             {/* Row 1: Title, First Name, Last Name */}
-            <div className="add-res-grid-4">
+            <div className="guest-info-row-1">
               <div className="add-res-field-group">
-                <label className="add-res-field-label">
-                  Title <span className="add-res-required">*</span>
-                </label>
-                <select
-                  className="add-res-select"
-                  value={guestTitle}
-                  onChange={(e) => setGuestTitle(e.target.value)}
-                >
-                  <option value="Mr.">Mr.</option>
-                  <option value="Mrs.">Mrs.</option>
-                  <option value="Ms.">Ms.</option>
-                  <option value="Dr.">Dr.</option>
-                </select>
+                <label className="guest-field-label">Title</label>
+                <div className="guest-select-wrapper">
+                  <select
+                    className="guest-select"
+                    value={guestTitle}
+                    onChange={(e) => setGuestTitle(e.target.value)}
+                  >
+                    <option value="Mr.">Mr.</option>
+                    <option value="Mrs.">Mrs.</option>
+                    <option value="Ms.">Ms.</option>
+                    <option value="Dr.">Dr.</option>
+                  </select>
+                  <ChevronDown size={14} className="guest-select-arrow" />
+                </div>
               </div>
 
-              <div className="add-res-field-group" style={{ gridColumn: 'span 2' }}>
-                <label className="add-res-field-label">
-                  First Name <span className="add-res-required">*</span>
+              <div className="add-res-field-group">
+                <label className="guest-field-label">
+                  First Name <span className="guest-required">*</span>
                 </label>
                 <input
                   type="text"
-                  className="add-res-input"
-                  placeholder="e.g. Rahul"
+                  className="guest-input"
+                  placeholder="Enter first name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                 />
               </div>
 
               <div className="add-res-field-group">
-                <label className="add-res-field-label">
-                  Last Name <span className="add-res-required">*</span>
-                </label>
+                <label className="guest-field-label">Last Name</label>
                 <input
                   type="text"
-                  className="add-res-input"
-                  placeholder="e.g. Sharma"
+                  className="guest-input"
+                  placeholder="Enter last name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                 />
               </div>
             </div>
 
-            {/* Row 2: Mobile, Email, Nationality */}
-            <div className="add-res-grid-3">
+            {/* Row 2: Phone Number, Email Address */}
+            <div className="guest-info-row-2">
               <div className="add-res-field-group">
-                <label className="add-res-field-label">
-                  Mobile <span className="add-res-required">*</span>
+                <label className="guest-field-label">
+                  Phone Number <span className="guest-required">*</span>
                 </label>
-                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                  <select
-                    className="add-res-select"
-                    style={{ width: '85px', flexShrink: 0 }}
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                  >
-                    <option value="+91">+91</option>
-                    <option value="+1">+1</option>
-                    <option value="+44">+44</option>
-                    <option value="+971">+971</option>
-                  </select>
+                <div className="guest-phone-group">
+                  <div className="guest-phone-prefix">
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                    >
+                      <option value="+91">+91</option>
+                      <option value="+1">+1</option>
+                      <option value="+44">+44</option>
+                      <option value="+971">+971</option>
+                    </select>
+                    <ChevronDown
+                      size={12}
+                      color="#64748B"
+                      style={{ position: 'absolute', right: '6px', pointerEvents: 'none' }}
+                    />
+                  </div>
                   <input
                     type="tel"
-                    className="add-res-input"
-                    placeholder="9876543210"
+                    className="guest-phone-input"
+                    placeholder="Enter phone number"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                   />
@@ -973,63 +1322,15 @@ export default function AddReservationView({
               </div>
 
               <div className="add-res-field-group">
-                <label className="add-res-field-label">Email</label>
+                <label className="guest-field-label">
+                  Email Address <span className="guest-required">*</span>
+                </label>
                 <input
                   type="email"
-                  className="add-res-input"
-                  placeholder="guest@example.com"
+                  className="guest-input"
+                  placeholder="Enter email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-
-              <div className="add-res-field-group">
-                <label className="add-res-field-label">Nationality</label>
-                <input
-                  type="text"
-                  className="add-res-input"
-                  placeholder="Indian"
-                  value={nationality}
-                  onChange={(e) => setNationality(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Row 3: ID Type, ID Number, Address */}
-            <div className="add-res-grid-3">
-              <div className="add-res-field-group">
-                <label className="add-res-field-label">ID Type</label>
-                <select
-                  className="add-res-select"
-                  value={idType}
-                  onChange={(e) => setIdType(e.target.value)}
-                >
-                  <option value="Aadhaar Card">Aadhaar Card</option>
-                  <option value="Passport">Passport</option>
-                  <option value="Driving License">Driving License</option>
-                  <option value="Voter ID">Voter ID</option>
-                </select>
-              </div>
-
-              <div className="add-res-field-group">
-                <label className="add-res-field-label">ID Number</label>
-                <input
-                  type="text"
-                  className="add-res-input"
-                  placeholder="e.g. 1234 5678 9012"
-                  value={idNumber}
-                  onChange={(e) => setIdNumber(e.target.value)}
-                />
-              </div>
-
-              <div className="add-res-field-group">
-                <label className="add-res-field-label">Address</label>
-                <input
-                  type="text"
-                  className="add-res-input"
-                  placeholder="Street / City address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
                 />
               </div>
             </div>

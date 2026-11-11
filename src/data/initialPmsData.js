@@ -6,25 +6,32 @@ export const initialProperty = {
   name: 'HOTEL ASTHA',
   tagline: 'HOTEL ASTHA',
   initials: 'HA',
-  addressLine: 'Station Road, Civil Lines',
-  city: 'Jaipur',
+  email: 'info@asthasoftindia.com',
+  phone: '7023318111',
+  phoneCode: '+91',
+  propertyType: 'Hotel',
+  addressLine: 'Jalore',
+  city: 'Jalore',
   state: 'Rajasthan',
   country: 'India',
-  postalCode: '302006',
-  phone: '+91 141 234 5678',
-  email: 'stay@hotelastha.com',
+  postalCode: '343001',
+  location: 'Jalore, Jalore, India',
   website: 'https://hotelastha.com',
-  currency: 'INR',
-  currencySymbol: 'Rs',
+  currency: '₹ (Indian Rupee)',
+  currencySymbol: '₹',
   timezone: 'Asia/Kolkata',
+  timezoneLabel: 'IST, Indian Standard Time (Asia/Kolkata)',
   checkInTime: '14:00',
   checkOutTime: '11:00',
+  createdAt: '22 Oct 2026',
+  status: 'ACTIVE',
   businessDate: '2026-11-03', // System operational date
-  gstin: '08ABCDE1234F1Z5',
-  legalName: 'HOTEL ASTHA INDIA',
+  gstin: '',
+  legalName: 'HOTEL ASTHA',
   tradeName: 'HOTEL ASTHA',
   sacCode: '996311', // Accommodation SAC
   fnbSacCode: '996331', // F&B SAC
+  terms: [],
   userProfile: {
     name: 'Astha India',
     role: 'Owner',
@@ -34,73 +41,103 @@ export const initialProperty = {
 
 export const initialRoomTypes = [
   {
-    id: 'rt_deluxe',
-    name: 'Delux Room',
-    code: '132',
-    description: 'Spacious deluxe room with premium linen, balcony, and mini-bar.',
-    baseAdults: 2,
-    maxAdults: 3,
-    baseChildren: 0,
-    maxChildren: 2,
-    basePrice: 2500,
-    extraAdultPrice: 1000,
-    extraChildPrice: 500,
-    color: '#3b82f6'
-  },
-  {
     id: 'rt_standard',
     name: 'Normal',
-    code: '132',
+    code: 'NRM',
     description: 'Comfortable air-conditioned room with king bed and work desk.',
     baseAdults: 2,
-    maxAdults: 2,
-    baseChildren: 0,
+    maxAdults: 4,
+    baseChildren: 1,
     maxChildren: 1,
     basePrice: 1000,
     extraAdultPrice: 800,
     extraChildPrice: 400,
+    status: 'ACTIVE',
     color: '#06b6d4'
+  },
+  {
+    id: 'rt_deluxe',
+    name: 'Delux Room',
+    code: 'DXL',
+    description: 'Spacious deluxe room with premium linen, balcony, and mini-bar.',
+    baseAdults: 1,
+    maxAdults: 2,
+    baseChildren: 2,
+    maxChildren: 2,
+    basePrice: 2500,
+    extraAdultPrice: 1000,
+    extraChildPrice: 500,
+    status: 'ACTIVE',
+    color: '#3b82f6'
+  },
+  {
+    id: 'rt_premium',
+    name: 'Premium',
+    code: 'PRM',
+    description: 'Luxury premium suite with jacuzzi and executive lounge access.',
+    baseAdults: 4,
+    maxAdults: 6,
+    baseChildren: 2,
+    maxChildren: 4,
+    basePrice: 4500,
+    extraAdultPrice: 1500,
+    extraChildPrice: 750,
+    status: 'ACTIVE',
+    color: '#8b5cf6'
   }
 ];
 
 export const initialRooms = [
-  { id: 'rm_101', roomNumber: '101', roomTypeId: 'rt_standard', floor: '1', status: 'clean', operational: 'allocated', notes: 'In-house' },
-  { id: 'rm_102', roomNumber: '102', roomTypeId: 'rt_standard', floor: '1', status: 'clean', operational: 'allocated', notes: 'In-house' },
-  { id: 'rm_201', roomNumber: '201', roomTypeId: 'rt_deluxe', floor: '2', status: 'dirty', operational: 'available', notes: 'Ready for check-in' },
-  { id: 'rm_202', roomNumber: '202', roomTypeId: 'rt_deluxe', floor: '2', status: 'clean', operational: 'available', notes: 'Ready for check-in' }
+  { id: 'rm_101', roomNumber: '101', roomTypeId: 'rt_deluxe', floor: '1', status: 'clean', operational: 'available', notes: '' },
+  { id: 'rm_102', roomNumber: '102', roomTypeId: 'rt_deluxe', floor: '1', status: 'dirty', operational: 'available', notes: '' },
+  { id: 'rm_201', roomNumber: '201', roomTypeId: 'rt_standard', floor: '2', status: 'clean', operational: 'available', notes: '' },
+  { id: 'rm_202', roomNumber: '202', roomTypeId: 'rt_standard', floor: '2', status: 'clean', operational: 'available', notes: '' }
 ];
 
 export const initialMealPlans = [
   {
-    id: 'mp_ep',
-    code: 'EP',
-    name: 'European Plan (Room Only)',
-    inclusions: [],
-    pricingModel: 'INCLUDED_IN_TARIFF',
-    adultPrice: 0,
-    childPrice: 0,
-    status: 'ACTIVE'
-  },
-  {
-    id: 'mp_cp',
-    code: 'CP',
-    name: 'Continental Plan (Bed & Breakfast)',
-    inclusions: ['Breakfast (07:30 - 10:30)'],
-    pricingModel: 'INCLUDED_IN_TARIFF',
-    adultPrice: 350,
-    childPrice: 200,
+    id: 'mp_std',
+    code: 'STD',
+    name: 'Standard',
+    inclusions: ['Breakfast', 'Lunch', 'Dinner'],
+    inclusionDetails: [
+      { type: 'Breakfast', from: '7:30 AM', to: '10:30 AM' },
+      { type: 'Lunch', from: '12:30 PM', to: '3:30 PM' },
+      { type: 'Dinner', from: '7:30 PM', to: '10:30 PM' }
+    ],
+    pricingModel: 'PER_PERSON',
+    adultPrice: 1000,
+    childPrice: 500,
     status: 'ACTIVE'
   }
 ];
 
 export const initialRatePlans = [
   {
-    id: 'rp_bar_ep',
-    roomTypeId: 'rt_standard',
-    mealPlanId: 'mp_ep',
-    code: 'BAR_EP',
-    name: 'Best Available Rate - Room Only',
-    status: 'ACTIVE'
+    id: 'rp_starting',
+    name: 'Starting',
+    code: 'STR',
+    status: 'ACTIVE',
+    mealPlanId: 'mp_std',
+    mealPlanName: 'Standard',
+    roomTypeRates: {
+      rt_deluxe: { active: true, basePrice: 2500, extraAdult: 800, extraChild: 400 },
+      rt_normal: { active: true, basePrice: 1500, extraAdult: 500, extraChild: 250 },
+      rt_standard: { active: true, basePrice: 1500, extraAdult: 500, extraChild: 250 }
+    }
+  },
+  {
+    id: 'rp_test_plan',
+    name: 'test plan',
+    code: '132',
+    status: 'ACTIVE',
+    mealPlanId: null,
+    mealPlanName: '-',
+    roomTypeRates: {
+      rt_deluxe: { active: false, basePrice: 0, extraAdult: 0, extraChild: 0 },
+      rt_normal: { active: false, basePrice: 0, extraAdult: 0, extraChild: 0 },
+      rt_standard: { active: false, basePrice: 0, extraAdult: 0, extraChild: 0 }
+    }
   }
 ];
 
@@ -518,6 +555,17 @@ export const initialTeamMembers = [
       piiAccess: true,
       ledger: { view: true, settle: true, override: true }
     }
+  },
+  {
+    id: 'usr_02',
+    name: 'Shankar L',
+    initials: 'S',
+    email: 'ss2137789@gmail.com',
+    role: 'Hotel Manager / GM',
+    status: 'ACTIVE',
+    properties: ['HOTEL ASTHA'],
+    invitedAt: '3 Nov 2026',
+    hasAccount: true
   }
 ];
 

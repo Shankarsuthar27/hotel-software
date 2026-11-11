@@ -78,8 +78,9 @@ async function transferAllData() {
       operationalStatus: "ACTIVE_LIVE"
     };
     await setDoc(doc(db, "properties", PROPERTY_ID), propertyDoc);
+    await setDoc(doc(db, "properties", "prop_hotel_astha"), { ...propertyDoc, id: "prop_hotel_astha" });
     await setDoc(doc(db, "settings", "property_config"), propertyDoc);
-    console.log("✅ Property Settings successfully written.");
+    console.log("✅ Property Settings successfully written to prop_astha_01 & prop_hotel_astha.");
 
     // 2. Room Types
     console.log("📦 Transferring Room Types...");
@@ -100,12 +101,20 @@ async function transferAllData() {
     // 4. Meal Plans & Rate Plans
     console.log("📦 Transferring Meal & Rate Plans...");
     for (const mp of initialMealPlans) {
-      await setDoc(doc(db, "properties", PROPERTY_ID, "mealPlans", mp.code), mp);
-      await setDoc(doc(db, "mealPlans", mp.code), mp);
+      const key = mp.id || mp.code;
+      await setDoc(doc(db, "properties", PROPERTY_ID, "mealPlans", key), mp);
+      await setDoc(doc(db, "mealPlans", key), mp);
+      if (mp.code && mp.code !== key) {
+        await setDoc(doc(db, "properties", PROPERTY_ID, "mealPlans", mp.code), mp);
+      }
     }
     for (const rp of initialRatePlans) {
-      await setDoc(doc(db, "properties", PROPERTY_ID, "ratePlans", rp.code), rp);
-      await setDoc(doc(db, "ratePlans", rp.code), rp);
+      const key = rp.id || rp.code;
+      await setDoc(doc(db, "properties", PROPERTY_ID, "ratePlans", key), rp);
+      await setDoc(doc(db, "ratePlans", key), rp);
+      if (rp.code && rp.code !== key) {
+        await setDoc(doc(db, "properties", PROPERTY_ID, "ratePlans", rp.code), rp);
+      }
     }
     console.log("✅ Meal & Rate Plans transferred.");
 

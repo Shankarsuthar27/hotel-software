@@ -17,6 +17,7 @@ export default function ReservationCard({
   onCheckOut,
   onRoomMove,
   onCancel,
+  onDelete,
   onNoShow,
   onVoucher,
   onInvoice,
@@ -104,6 +105,7 @@ export default function ReservationCard({
       className={`res-card-wrapper ${isMenuOpen ? 'menu-active' : ''}`}
       onClick={() => {
         if (onCardClick) onCardClick(reservation);
+        else if (isCancelled) return;
         else if (onEdit) onEdit(reservation);
         else if (onSelect) onSelect(reservation);
       }}
@@ -357,6 +359,23 @@ export default function ReservationCard({
                         </div>
                       )}
                     </div>
+                    {onDelete && (
+                      <button
+                        className="radix-menu-item"
+                        style={{ color: '#EF4444' }}
+                        role="menuitem"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Are you sure you want to permanently delete reservation ${reservation.bookingReference || ''} from Firebase database?`)) {
+                            onDelete(reservation.id);
+                          }
+                          if (onToggleMenu) onToggleMenu(e);
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ color: '#EF4444' }}>delete</span>
+                        <span>Delete Permanently</span>
+                      </button>
+                    )}
                   </>
                 ) : (isCancelled || isNoShow) ? (
                   /* Cancelled / No-Show Menu: View, Group List, Print */
@@ -439,6 +458,23 @@ export default function ReservationCard({
                         </div>
                       )}
                     </div>
+                    {onDelete && (
+                      <button
+                        className="radix-menu-item"
+                        style={{ color: '#EF4444' }}
+                        role="menuitem"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Are you sure you want to permanently delete reservation ${reservation.bookingReference || ''} from Firebase database?`)) {
+                            onDelete(reservation.id);
+                          }
+                          if (onToggleMenu) onToggleMenu(e);
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ color: '#EF4444' }}>delete</span>
+                        <span>Delete Permanently</span>
+                      </button>
+                    )}
                   </>
                 ) : (
                   /* Confirmed Reservation Menu matching exact specification image */

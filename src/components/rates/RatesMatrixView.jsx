@@ -134,31 +134,36 @@ export default function RatesMatrixView({
     setIsDatePickerOpen(false);
   };
 
-  // Rooms configuration matching image: Delux Room first, Normal second
+  // Rooms configuration: dynamically mapped from roomTypes and physical rooms in store
   const allRooms = useMemo(() => {
-    return [
-      {
-        id: 'rt_deluxe',
-        name: 'Delux Room',
-        code: '132',
-        rateCode: '132',
-        totalRooms: 2,
-        basePrice: 2500,
-        extraAdultPrice: 1000,
-        extraChildPrice: 500
-      },
-      {
-        id: 'rt_standard',
-        name: 'Normal',
-        code: '132',
-        rateCode: '132',
-        totalRooms: 2,
-        basePrice: 1000,
-        extraAdultPrice: 800,
-        extraChildPrice: 400
-      }
-    ];
-  }, []);
+    if (!roomTypes || roomTypes.length === 0) {
+      return [];
+    }
+
+    // Default sort order: Delux Room first, Normal second, then others
+    const priorityOrder = { 'Delux Room': 1, 'Normal': 2, 'Premium': 3 };
+    const sorted = [...roomTypes].sort((a, b) => (priorityOrder[a.name] || 99) - (priorityOrder[b.name] || 99));
+
+    return sorted.map((rt) => {
+      const matchingPhysicalRooms = (rooms || []).filter(
+        (r) =>
+          r.roomTypeId === rt.id ||
+          (rt.id === 'rt_standard' && r.roomTypeId === 'rt_normal') ||
+          (rt.id === 'rt_normal' && r.roomTypeId === 'rt_standard')
+      );
+
+      return {
+        id: rt.id,
+        name: rt.name,
+        code: rt.code || '132',
+        rateCode: rt.code || '132',
+        totalRooms: matchingPhysicalRooms.length,
+        basePrice: rt.basePrice || 1000,
+        extraAdultPrice: rt.extraAdultPrice || 800,
+        extraChildPrice: rt.extraChildPrice || 400
+      };
+    });
+  }, [roomTypes, rooms]);
 
   // Filtered rooms based on dropdown
   const visibleRooms = useMemo(() => {
@@ -166,21 +171,44 @@ export default function RatesMatrixView({
     return allRooms.filter((r) => r.id === selectedRoomFilter);
   }, [allRooms, selectedRoomFilter]);
 
-  // Inventory numbers: Delux has 1 on Nov 3 (today), 2 on other dates; Normal has 2 on all dates
+  // Inventory numbers: dynamically computed from total physical rooms, active reservations, and maintenance blocks
   const getRoomInventory = (room, col) => {
-    if (room.id === 'rt_deluxe') {
-      const isNov3 = col.isoStr === '2026-11-03';
-      const available = isNov3 ? 1 : 2;
-      return {
-        available,
-        total: 2,
-        sold: 0
-      };
-    }
+    const matchingPhysicalRooms = (rooms || []).filter(
+      (r) =>
+        r.roomTypeId === room.id ||
+        (room.id === 'rt_standard' && r.roomTypeId === 'rt_normal') ||
+        (room.id === 'rt_normal' && r.roomTypeId === 'rt_standard')
+    );
+    const total = matchingPhysicalRooms.length;
+
+    // Check active reservations overlapping col.isoStr
+    const bookedCount = (reservations || []).filter((r) => {
+      if (r.status === 'cancelled' || r.status === 'no_show') return false;
+      const isRoomTypeMatch =
+        r.roomTypeId === room.id ||
+        (room.id === 'rt_standard' && r.roomTypeId === 'rt_normal') ||
+        (room.id === 'rt_normal' && r.roomTypeId === 'rt_standard') ||
+        matchingPhysicalRooms.some((rm) => rm.id === r.roomId);
+
+      if (!isRoomTypeMatch) return false;
+      return col.isoStr >= r.checkInDate && col.isoStr < r.checkOutDate;
+    }).length;
+
+    // Check maintenance blocks on col.isoStr
+    const maintenanceCount = (maintenanceBlocks || []).filter((mb) => {
+      const isRoomMatch = matchingPhysicalRooms.some((rm) => rm.id === mb.roomId);
+      if (!isRoomMatch) return false;
+      const start = mb.startDate;
+      const end = mb.endDate || mb.startDate;
+      return col.isoStr >= start && col.isoStr <= end;
+    }).length;
+
+    const available = Math.max(0, total - bookedCount - maintenanceCount);
+
     return {
-      available: 2,
-      total: 2,
-      sold: 0
+      available,
+      total,
+      sold: bookedCount
     };
   };
 
@@ -195,18 +223,26 @@ export default function RatesMatrixView({
     if (dailyRates && dailyRates[tier] && dailyRates[tier][key] !== undefined) {
       return dailyRates[tier][key];
     }
-    // 3. Fallback to image default rates
+    if (rtId === 'rt_standard') {
+      const altKey = `rt_normal_${dateStr}`;
+      if (dailyRates && dailyRates[tier] && dailyRates[tier][altKey] !== undefined) {
+        return dailyRates[tier][altKey];
+      }
+    }
+
+    // 3. Fallback to room type configured base/extra rates
+    const currentRt = (roomTypes || []).find((r) => r.id === rtId);
     if (tier === 'base') {
       if (rtId === 'rt_deluxe') {
         if (dateStr === '2026-11-05' || dateStr === '2026-11-06') {
           return 1000;
         }
-        return 2500;
+        return currentRt?.basePrice || 2500;
       }
-      return 1000;
+      return currentRt?.basePrice || 1000;
     }
-    if (tier === 'extra_adult') return rtId === 'rt_deluxe' ? 1000 : 800;
-    if (tier === 'extra_child') return rtId === 'rt_deluxe' ? 500 : 400;
+    if (tier === 'extra_adult') return currentRt?.extraAdultPrice || (rtId === 'rt_deluxe' ? 1000 : 800);
+    if (tier === 'extra_child') return currentRt?.extraChildPrice || (rtId === 'rt_deluxe' ? 500 : 400);
     return 1000;
   };
 

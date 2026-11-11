@@ -17,6 +17,7 @@ import {
   initialAuditTrail
 } from '../data/initialPmsData';
 import { calculateRoomTax } from './taxEngine';
+import { getRoleDefaultPermissions } from '../data/rolePresets';
 import {
   doc,
   setDoc,
@@ -52,42 +53,119 @@ class PMSStore {
         this.roomTypes = parsed.roomTypes || initialRoomTypes;
         this.rooms = parsed.rooms || initialRooms;
 
-        // Apply room mapping: Standard Room 101, 102 & Delux Room 201, 202
+        // Apply room mapping: 101, 102 are Delux Room & 201, 202 are Normal
         const r101 = this.rooms.find(r => r.id === 'rm_101');
         if (r101) {
-          r101.roomTypeId = 'rt_standard';
+          r101.roomTypeId = 'rt_deluxe';
           r101.roomNumber = '101';
-          r101.operational = 'allocated';
-          r101.notes = 'In-house';
+          if (r101.status !== 'dirty' && r101.status !== 'maintenance') {
+            r101.status = 'clean';
+          }
         }
         const r102 = this.rooms.find(r => r.id === 'rm_102');
         if (r102) {
-          r102.roomTypeId = 'rt_standard';
+          r102.roomTypeId = 'rt_deluxe';
           r102.roomNumber = '102';
-          r102.operational = 'allocated';
-          r102.notes = 'In-house';
+          r102.status = 'dirty';
         }
         const r201 = this.rooms.find(r => r.id === 'rm_201');
         if (r201) {
-          r201.roomTypeId = 'rt_deluxe';
+          r201.roomTypeId = 'rt_standard';
           r201.roomNumber = '201';
-          if (r201.status !== 'maintenance') {
-            r201.status = 'dirty';
-            r201.notes = 'Ready for check-in';
-            r201.operational = 'available';
+          if (r201.status !== 'dirty' && r201.status !== 'maintenance') {
+            r201.status = 'clean';
           }
         }
         const r202 = this.rooms.find(r => r.id === 'rm_202');
         if (r202) {
-          r202.roomTypeId = 'rt_deluxe';
+          r202.roomTypeId = 'rt_standard';
           r202.roomNumber = '202';
-          if (r202.status !== 'maintenance') {
+          if (r202.status !== 'dirty' && r202.status !== 'maintenance') {
             r202.status = 'clean';
-            r202.notes = 'Ready for check-in';
-            r202.operational = 'available';
           }
         }
-        this.mealPlans = parsed.mealPlans || initialMealPlans;
+
+        const rtNormal = this.roomTypes.find(rt => rt.id === 'rt_standard' || rt.name === 'Normal' || rt.name === 'Standard Room');
+        if (rtNormal) {
+          rtNormal.name = 'Normal';
+          rtNormal.baseAdults = 2;
+          rtNormal.maxAdults = 4;
+          rtNormal.baseChildren = 1;
+          rtNormal.maxChildren = 1;
+          rtNormal.status = 'ACTIVE';
+        }
+        const rtDeluxe = this.roomTypes.find(rt => rt.id === 'rt_deluxe' || rt.name === 'Delux Room');
+        if (rtDeluxe) {
+          rtDeluxe.name = 'Delux Room';
+          rtDeluxe.baseAdults = 1;
+          rtDeluxe.maxAdults = 2;
+          rtDeluxe.baseChildren = 2;
+          rtDeluxe.maxChildren = 2;
+          rtDeluxe.status = 'ACTIVE';
+        }
+        let rtPremium = this.roomTypes.find(rt => rt.id === 'rt_premium' || rt.name === 'Premium');
+        if (!rtPremium) {
+          rtPremium = {
+            id: 'rt_premium',
+            name: 'Premium',
+            code: 'PRM',
+            description: 'Luxury premium suite with jacuzzi and executive lounge access.',
+            baseAdults: 4,
+            maxAdults: 6,
+            baseChildren: 2,
+            maxChildren: 4,
+            basePrice: 4500,
+            status: 'ACTIVE',
+            color: '#8b5cf6'
+          };
+          this.roomTypes.push(rtPremium);
+        } else {
+          rtPremium.name = 'Premium';
+          rtPremium.baseAdults = 4;
+          rtPremium.maxAdults = 6;
+          rtPremium.baseChildren = 2;
+          rtPremium.maxChildren = 4;
+          rtPremium.status = 'ACTIVE';
+        }
+
+        const roomTypeOrder = { 'Normal': 1, 'Delux Room': 2, 'Premium': 3 };
+        this.roomTypes.sort((a, b) => (roomTypeOrder[a.name] || 99) - (roomTypeOrder[b.name] || 99));
+        let loadedPlans = (parsed.mealPlans || initialMealPlans).filter(
+          mp => mp.id !== 'mp_ep' && mp.code !== 'EP'
+        );
+        if (!loadedPlans || !loadedPlans.some(mp => mp.code === 'STD')) {
+          loadedPlans = [
+            {
+              id: 'mp_std',
+              code: 'STD',
+              name: 'Standard',
+              inclusions: ['Breakfast', 'Lunch', 'Dinner'],
+              inclusionDetails: [
+                { type: 'Breakfast', from: '7:30 AM', to: '10:30 AM' },
+                { type: 'Lunch', from: '12:30 PM', to: '3:30 PM' },
+                { type: 'Dinner', from: '7:30 PM', to: '10:30 PM' }
+              ],
+              pricingModel: 'PER_PERSON',
+              adultPrice: 1000,
+              childPrice: 500,
+              status: 'ACTIVE'
+            },
+            ...loadedPlans
+          ];
+        } else {
+          loadedPlans = loadedPlans.map(mp => {
+            if (mp.code === 'STD') {
+              return {
+                ...mp,
+                inclusions: ['Breakfast', 'Lunch', 'Dinner'],
+                adultPrice: 1000,
+                childPrice: 500
+              };
+            }
+            return mp;
+          });
+        }
+        this.mealPlans = loadedPlans;
         this.reservations = (parsed.reservations || initialReservations).filter(r => {
           if (r.id === 'res_unassigned_1') return false;
           if (r.id === 'res_372' || r.bookingReference === '#RES_372' || r.bookingReference === 'RES_372') return false;
@@ -95,7 +173,7 @@ class PMSStore {
           if (name.includes('rahul kumar') && (r.status === 'cancelled' || !r.status)) return false;
           return true;
         });
-        ['res_5', 'res_4', 'res_3', 'res_2', 'res_1'].forEach(id => {
+        ['res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'].forEach(id => {
           const initRes = initialReservations.find(r => r.id === id);
           if (initRes) {
             const existingIdx = this.reservations.findIndex(r => r.id === id);
@@ -202,6 +280,19 @@ class PMSStore {
         this.announcements = parsed.announcements || initialStaffNotes || [];
         this.otaChannels = parsed.otaChannels || initialOtaChannels;
         this.teamMembers = parsed.teamMembers || initialTeamMembers;
+        if (!this.teamMembers.some(m => m.email === 'ss2137789@gmail.com')) {
+          this.teamMembers.push({
+            id: 'usr_02',
+            name: 'Shankar L',
+            initials: 'S',
+            email: 'ss2137789@gmail.com',
+            role: 'Hotel Manager / GM',
+            status: 'ACTIVE',
+            properties: ['HOTEL ASTHA'],
+            invitedAt: '3 Nov 2026',
+            hasAccount: true
+          });
+        }
         this.nightAudits = (parsed.nightAudits && parsed.nightAudits.length >= 5) ? parsed.nightAudits : initialNightAudits;
         this.auditTrail = parsed.auditTrail || initialAuditTrail;
         this.stopouts = parsed.stopouts || {};
@@ -219,6 +310,21 @@ class PMSStore {
         }
         if (this.dailyRates.base['rt_deluxe_2026-11-06'] === undefined) {
           this.dailyRates.base['rt_deluxe_2026-11-06'] = 1000;
+        }
+        this.propertiesList = parsed.propertiesList || ['HOTEL ASTHA', 'HOTEL ASTHA RESORT'];
+        this.currentUser = parsed.currentUser || {
+          id: 'usr_owner',
+          name: 'Astha India',
+          email: 'owner@hotelastha.com',
+          role: 'Owner',
+          initials: 'AI',
+          status: 'ACTIVE'
+        };
+        this.invitationTokens = parsed.invitationTokens || [];
+        if (!parsed.ratePlans || parsed.ratePlans.length === 0 || !parsed.ratePlans.some(rp => rp.code === 'STR')) {
+          this.ratePlans = JSON.parse(JSON.stringify(initialRatePlans));
+        } else {
+          this.ratePlans = parsed.ratePlans;
         }
         if (this.property) {
           this.property.businessDate = '2026-11-03';
@@ -288,7 +394,10 @@ class PMSStore {
       stopouts: this.stopouts,
       dailyRates: this.dailyRates,
       restrictions: this.restrictions,
-      maintenanceBlocks: this.maintenanceBlocks
+      maintenanceBlocks: this.maintenanceBlocks,
+      propertiesList: this.propertiesList || ['HOTEL ASTHA', 'HOTEL ASTHA RESORT'],
+      currentUser: this.currentUser || { id: 'usr_owner', name: 'Astha India', role: 'Owner', email: 'owner@hotelastha.com', initials: 'AI', status: 'ACTIVE' },
+      invitationTokens: this.invitationTokens || []
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -332,9 +441,20 @@ class PMSStore {
       dailyRates: this.dailyRates,
       restrictions: this.restrictions,
       maintenanceBlocks: this.maintenanceBlocks,
+      propertiesList: this.propertiesList || ['HOTEL ASTHA', 'HOTEL ASTHA RESORT'],
+      currentUser: this.currentUser || { id: 'usr_owner', name: 'Astha India', role: 'Owner', email: 'owner@hotelastha.com', initials: 'AI', status: 'ACTIVE' },
+      invitationTokens: this.invitationTokens || [],
       cloudStatus: this.cloudStatus,
       isCloudLive: this.cloudStatus === 'LIVE'
     };
+  }
+
+  updateProperty(patch) {
+    this.property = { ...this.property, ...patch };
+    this.save();
+    this.syncDocToFirestore('', this.propertyId, this.property);
+    this.notify();
+    return this.property;
   }
 
   getReservation(resId) {
@@ -362,6 +482,22 @@ class PMSStore {
 
   // --- FIREBASE CLOUD FIRESTORE REAL-TIME SYNCHRONIZATION ---
 
+  cleanDataForFirestore(obj) {
+    if (obj === undefined) return null;
+    if (obj === null) return null;
+    if (typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.cleanDataForFirestore(item));
+    }
+    const cleaned = {};
+    for (const [key, val] of Object.entries(obj)) {
+      if (val !== undefined) {
+        cleaned[key] = this.cleanDataForFirestore(val);
+      }
+    }
+    return cleaned;
+  }
+
   async initFirebaseSync() {
     try {
       // 1. Ensure property seed exists in Cloud Firestore
@@ -376,55 +512,29 @@ class PMSStore {
       const unsubRes = onSnapshot(
         resCol,
         (snapshot) => {
-          if (!snapshot.empty) {
-            const cloudRes = snapshot.docs.map((d) => d.data());
-            if (cloudRes.length > 0) {
-              // Purge any cancelled residue such as #RES_372 / Mr. rahul kumar
-              cloudRes.forEach((r) => {
-                const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
-                if (
-                  r.id === 'res_372' ||
-                  r.bookingReference === '#RES_372' ||
-                  r.bookingReference === 'RES_372' ||
-                  (name.includes('rahul kumar') && r.status === 'cancelled')
-                ) {
-                  this.deleteDocFromFirestore('reservations', r.id);
-                  if (r.folioId) this.deleteDocFromFirestore('folios', r.folioId);
-                }
-              });
+          const cloudRes = snapshot.docs.map((d) => d.data());
+          // Purge obsolete/cancelled residue
+          const validCloudRes = cloudRes.filter((r) => {
+            if (r.id === 'res_372' || r.bookingReference === '#RES_372' || r.bookingReference === 'RES_372') return false;
+            const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
+            if (name.includes('rahul kumar') && (r.status === 'cancelled' || !r.status)) return false;
+            return true;
+          });
 
-              const validCloudRes = cloudRes.filter((r) => {
-                if (r.id === 'res_372' || r.bookingReference === '#RES_372' || r.bookingReference === 'RES_372') return false;
-                const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
-                if (name.includes('rahul kumar') && (r.status === 'cancelled' || !r.status)) return false;
-                return true;
-              });
+          const idOrder = ['res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
+          validCloudRes.sort((a, b) => {
+            const idxA = idOrder.indexOf(a.id);
+            const idxB = idOrder.indexOf(b.id);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return 0;
+          });
 
-              const merged = [...validCloudRes];
-              initialReservations.forEach((initR) => {
-                const existingIdx = merged.findIndex((r) => r.id === initR.id);
-                if (existingIdx === -1) {
-                  merged.push(initR);
-                  const resRef = doc(db, 'properties', this.propertyId, 'reservations', initR.id);
-                  setDoc(resRef, initR).catch(() => {});
-                }
-              });
-
-              const idOrder = ['res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
-              merged.sort((a, b) => {
-                const idxA = idOrder.indexOf(a.id);
-                const idxB = idOrder.indexOf(b.id);
-                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                if (idxA !== -1) return -1;
-                if (idxB !== -1) return 1;
-                return 0;
-              });
-
-              this.reservations = merged;
-              this.cloudStatus = 'LIVE';
-              this.save();
-            }
-          }
+          this.reservations = validCloudRes;
+          this.cloudStatus = 'LIVE';
+          this.save();
+          this.notify();
         },
         (err) => {
           console.warn('[Firebase Firestore] Reservations listener note:', err.message);
@@ -439,14 +549,16 @@ class PMSStore {
       const unsubRooms = onSnapshot(
         roomsCol,
         (snapshot) => {
-          if (!snapshot.empty) {
-            const cloudRooms = snapshot.docs.map((d) => d.data());
-            if (cloudRooms.length > 0) {
-              this.rooms = cloudRooms;
-              this.cloudStatus = 'LIVE';
-              this.save();
-            }
-          }
+          const cloudRooms = snapshot.docs.map((d) => d.data());
+          const map = new Map();
+          cloudRooms.forEach((r) => {
+            const key = r.id || r.roomNumber;
+            if (key && !map.has(key)) map.set(key, r);
+          });
+          this.rooms = Array.from(map.values());
+          this.cloudStatus = 'LIVE';
+          this.save();
+          this.notify();
         },
         (err) => {
           console.warn('[Firebase Firestore] Rooms listener note:', err.message);
@@ -459,15 +571,14 @@ class PMSStore {
       const unsubFolios = onSnapshot(
         foliosCol,
         (snapshot) => {
-          if (!snapshot.empty) {
-            const newFolios = { ...this.folios };
-            snapshot.docs.forEach((d) => {
-              newFolios[d.id] = d.data();
-            });
-            this.folios = newFolios;
-            this.cloudStatus = 'LIVE';
-            this.save();
-          }
+          const newFolios = {};
+          snapshot.docs.forEach((d) => {
+            newFolios[d.id] = d.data();
+          });
+          this.folios = newFolios;
+          this.cloudStatus = 'LIVE';
+          this.save();
+          this.notify();
         },
         (err) => {
           console.warn('[Firebase Firestore] Folios listener note:', err.message);
@@ -480,14 +591,125 @@ class PMSStore {
       const unsubMb = onSnapshot(
         mbCol,
         (snapshot) => {
-          if (!snapshot.empty) {
-            this.maintenanceBlocks = snapshot.docs.map((d) => d.data());
-            this.save();
-          }
+          this.maintenanceBlocks = snapshot.docs.map((d) => d.data());
+          this.save();
+          this.notify();
         },
         () => {}
       );
       this.unsubscribers.push(unsubMb);
+
+      // 6. Real-time Listener: Root Property Master Information
+      const propRef = doc(db, 'properties', this.propertyId);
+      const unsubProp = onSnapshot(
+        propRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const cloudProp = snapshot.data();
+            this.property = { ...this.property, ...cloudProp };
+            this.save();
+            this.notify();
+          }
+        },
+        (err) => {
+          console.warn('[Firebase Firestore] Property listener note:', err.message);
+        }
+      );
+      this.unsubscribers.push(unsubProp);
+
+      // 7. Real-time Listener: Meal Plans
+      const mpCol = collection(db, 'properties', this.propertyId, 'mealPlans');
+      const unsubMp = onSnapshot(
+        mpCol,
+        (snapshot) => {
+          const cloudMp = snapshot.docs.map((d) => d.data());
+          const map = new Map();
+          cloudMp.forEach((mp) => {
+            const key = mp.id || mp.code;
+            if (key && !map.has(key)) map.set(key, mp);
+          });
+          this.mealPlans = Array.from(map.values());
+          this.save();
+          this.notify();
+        },
+        () => {}
+      );
+      this.unsubscribers.push(unsubMp);
+
+      // 8. Real-time Listener: Rate Plans
+      const rpCol = collection(db, 'properties', this.propertyId, 'ratePlans');
+      const unsubRp = onSnapshot(
+        rpCol,
+        (snapshot) => {
+          const cloudRp = snapshot.docs.map((d) => d.data());
+          const map = new Map();
+          cloudRp.forEach((rp) => {
+            const key = rp.id || rp.code;
+            if (key && !map.has(key)) map.set(key, rp);
+          });
+          this.ratePlans = Array.from(map.values());
+          this.save();
+          this.notify();
+        },
+        () => {}
+      );
+      this.unsubscribers.push(unsubRp);
+
+      // 9. Real-time Listener: Room Types
+      const rtCol = collection(db, 'properties', this.propertyId, 'roomTypes');
+      const unsubRt = onSnapshot(
+        rtCol,
+        (snapshot) => {
+          const cloudRt = snapshot.docs.map((d) => d.data());
+          const map = new Map();
+          cloudRt.forEach((rt) => {
+            const key = rt.id || rt.code;
+            if (key && !map.has(key)) map.set(key, rt);
+          });
+          this.roomTypes = Array.from(map.values());
+          this.save();
+          this.notify();
+        },
+        () => {}
+      );
+      this.unsubscribers.push(unsubRt);
+
+      // 10. Real-time Listener: Team Members
+      const tmCol = collection(db, 'properties', this.propertyId, 'teamMembers');
+      const unsubTm = onSnapshot(
+        tmCol,
+        (snapshot) => {
+          const cloudTm = snapshot.docs.map((d) => d.data());
+          if (cloudTm.length > 0) {
+            const map = new Map();
+            cloudTm.forEach((tm) => {
+              const key = tm.id || tm.email;
+              if (key && !map.has(key)) map.set(key, tm);
+            });
+            this.teamMembers = Array.from(map.values());
+            this.save();
+            this.notify();
+          }
+        },
+        () => {}
+      );
+      this.unsubscribers.push(unsubTm);
+
+      // 11. Real-time Listener: Announcements / Staff Notes
+      const annCol = collection(db, 'properties', this.propertyId, 'announcements');
+      const unsubAnn = onSnapshot(
+        annCol,
+        (snapshot) => {
+          const cloudAnn = snapshot.docs.map((d) => d.data());
+          if (cloudAnn.length > 0) {
+            this.announcements = cloudAnn;
+            this.save();
+            this.notify();
+          }
+        },
+        () => {}
+      );
+      this.unsubscribers.push(unsubAnn);
 
       this.cloudStatus = 'LIVE';
       this.notify();
@@ -499,23 +721,36 @@ class PMSStore {
   }
 
   async syncDocToFirestore(collectionName, docId, data) {
-    if (!docId || !data) return;
+    if (!data) return;
     try {
-      const payload = {
+      const payload = this.cleanDataForFirestore({
         ...data,
         propertyId: this.propertyId,
         lastSyncedAt: new Date().toISOString()
-      };
+      });
 
-      // 1. Nested under property collection
+      // If syncing the property profile itself (empty collectionName or 'properties')
+      if (!collectionName || collectionName === 'property' || collectionName === 'properties') {
+        const propRef = doc(db, 'properties', this.propertyId);
+        await setDoc(propRef, payload, { merge: true });
+
+        // Also update settings/property_config for global settings resolution
+        try {
+          const configRef = doc(db, 'settings', 'property_config');
+          await setDoc(configRef, payload, { merge: true });
+        } catch (_) {}
+
+        console.info(`🔥 [Firebase Cloud] Synced property master config for ${this.propertyId}`);
+        return;
+      }
+
+      // 1. Nested under property subcollection
       const nestedRef = doc(db, 'properties', this.propertyId, collectionName, String(docId));
       await setDoc(nestedRef, payload, { merge: true });
 
-      // 2. Root collection for universal root querying & direct console visibility
-      if (collectionName) {
-        const rootRef = doc(db, collectionName, String(docId));
-        await setDoc(rootRef, payload, { merge: true });
-      }
+      // 2. Root collection for universal querying & direct console visibility
+      const rootRef = doc(db, collectionName, String(docId));
+      await setDoc(rootRef, payload, { merge: true });
 
       console.info(`🔥 [Firebase Cloud] Synced ${collectionName}/${docId}`);
     } catch (err) {
@@ -524,15 +759,14 @@ class PMSStore {
   }
 
   async deleteDocFromFirestore(collectionName, docId) {
-    if (!docId) return;
+    if (!docId || !collectionName) return;
     try {
       const nestedRef = doc(db, 'properties', this.propertyId, collectionName, String(docId));
       await deleteDoc(nestedRef);
 
-      if (collectionName) {
-        const rootRef = doc(db, collectionName, String(docId));
-        await deleteDoc(rootRef);
-      }
+      const rootRef = doc(db, collectionName, String(docId));
+      await deleteDoc(rootRef);
+      console.info(`🔥 [Firebase Cloud] Deleted ${collectionName}/${docId}`);
     } catch (err) {
       console.warn(`[Firebase Sync Note] Could not delete ${collectionName}/${docId}:`, err.message);
     }
@@ -596,7 +830,10 @@ class PMSStore {
     const ref = `#RES_${count}`;
     const id = `res_${count}`;
     const folioId = `fol_${count}`;
-    const roomNumber = bookingData.roomNumber || (this.rooms.find(r => r.id === bookingData.roomId)?.roomNumber || '101');
+    const isUnassigned = !bookingData.roomId || bookingData.roomId === 'unassigned' || bookingData.roomId === '';
+    const room = !isUnassigned ? this.rooms.find(r => r.id === bookingData.roomId) : null;
+    const roomNumber = isUnassigned ? '' : (bookingData.roomNumber || room?.roomNumber || '');
+    const finalRoomId = isUnassigned ? '' : bookingData.roomId;
 
     const taxCalc = calculateRoomTax(bookingData.baseRatePerNight, bookingData.nights, {
       isComplimentary: bookingData.isComplimentary,
@@ -622,7 +859,7 @@ class PMSStore {
         idNumber: bookingData.idNumber || '',
         idDocumentUrl: bookingData.idDocumentUrl || ''
       },
-      roomId: bookingData.roomId,
+      roomId: finalRoomId,
       roomNumber,
       roomTypeId: bookingData.roomTypeId,
       ratePlanCode: bookingData.ratePlanCode || 'BAR_CP',
@@ -773,6 +1010,10 @@ class PMSStore {
     const idx = this.reservations.findIndex((r) => r.id === resId);
     if (idx !== -1) {
       const target = this.reservations[idx];
+      if (target.status === 'cancelled' || target.status === 'Cancelled') {
+        console.warn(`[PMSStore] Cannot modify cancelled reservation ${resId}. Details are locked.`);
+        return null;
+      }
       if (target.status === 'checked_out' || target.status === 'Checked Out' || target.status === 'checked-out') {
         console.warn(`[PMSStore] Cannot modify checked-out reservation ${resId}. Details are locked.`);
         return null;
@@ -785,6 +1026,7 @@ class PMSStore {
       this.logAudit('UPDATE_RESERVATION', 'RESERVATION', resId, `Updated reservation details for ${updated.primaryGuest?.name || resId}`, 'Astha India');
       this.save();
       this.syncDocToFirestore('reservations', resId, updated);
+      this.notify();
       return updated;
     }
     return null;
@@ -817,6 +1059,7 @@ class PMSStore {
 
     this.save();
     this.syncDocToFirestore('reservations', resId, this.getReservation(resId));
+    this.notify();
     return true;
   }
 
@@ -862,6 +1105,7 @@ class PMSStore {
     this.logAudit('CHECK_IN', 'RESERVATION', res.bookingReference, `Guest ${res.primaryGuest.name} checked in to Room ${roomNumber}.`);
     this.save();
     this.syncDocToFirestore('reservations', resId, this.getReservation(resId));
+    this.notify();
     return true;
   }
 
@@ -901,6 +1145,7 @@ class PMSStore {
     this.logAudit('CHECK_OUT', 'RESERVATION', res.bookingReference, `Guest ${res.primaryGuest.name} checked out. Room ${res.roomNumber} auto-flagged DIRTY.`);
     this.save();
     this.syncDocToFirestore('reservations', resId, this.getReservation(resId));
+    this.notify();
     return { success: true, message: 'Check-out successful' };
   }
 
@@ -911,8 +1156,19 @@ class PMSStore {
     const targetResId = res.id;
     const targetFolioId = res.folioId;
 
-    // 1. Remove from reservations array completely
-    this.reservations = this.reservations.filter(r => r.id !== targetResId);
+    // 1. Mark status as cancelled in reservations array (do not delete so it remains visible under All Statuses & Cancelled filter)
+    this.reservations = this.reservations.map(r =>
+      (r.id === targetResId || r.bookingReference === targetResId)
+        ? {
+            ...r,
+            status: 'cancelled',
+            cancelledAt: new Date().toISOString(),
+            cancellationReason: reason,
+            roomId: '',
+            roomNumber: 'Unassigned'
+          }
+        : r
+    );
 
     // 2. Free up any allocated room
     if (res.roomId) {
@@ -928,23 +1184,30 @@ class PMSStore {
       }
     }
 
-    // 3. Remove associated folio from memory and delete from Firestore
-    if (targetFolioId) {
-      delete this.folios[targetFolioId];
-      this.deleteDocFromFirestore('folios', targetFolioId);
+    // 3. Mark associated folio as CANCELLED if present
+    if (targetFolioId && this.folios[targetFolioId]) {
+      this.folios[targetFolioId] = {
+        ...this.folios[targetFolioId],
+        status: 'CANCELLED'
+      };
+      this.syncDocToFirestore('folios', targetFolioId, this.folios[targetFolioId]);
     }
 
     // 4. Log audit trail
     this.logAudit(
-      'CANCEL_REMOVED',
+      'CANCEL_RESERVATION',
       'RESERVATION',
       res.bookingReference,
-      `Reservation ${res.bookingReference} (${res.primaryGuest?.name || 'Guest'}) cancelled and removed from database. Reason: ${reason}`
+      `Reservation ${res.bookingReference} (${res.primaryGuest?.name || 'Guest'}) marked cancelled. Reason: ${reason}`
     );
 
-    // 5. Save locally and delete from Cloud Firestore
+    // 5. Save locally and sync cancelled record to Cloud Firestore
     this.save();
-    this.deleteDocFromFirestore('reservations', targetResId);
+    const updated = this.getReservation(targetResId);
+    if (updated) {
+      this.syncDocToFirestore('reservations', targetResId, updated);
+    }
+    this.notify();
   }
 
   markNoShow(resId) {
@@ -958,6 +1221,7 @@ class PMSStore {
     this.logAudit('NO_SHOW', 'RESERVATION', res.bookingReference, `Guest did not arrive. Marked No-Show.`);
     this.save();
     this.syncDocToFirestore('reservations', resId, this.getReservation(resId));
+    this.notify();
   }
 
   // --- ROOM MOVES & REASSIGNMENT ---
@@ -1011,6 +1275,7 @@ class PMSStore {
 
     this.save();
     this.syncDocToFirestore('reservations', reservationId, this.getReservation(reservationId));
+    this.notify();
     return true;
   }
 
@@ -1027,6 +1292,7 @@ class PMSStore {
     if (room) {
       this.syncDocToFirestore('rooms', roomId, room);
     }
+    this.notify();
   }
 
   addMaintenanceBlock(blockData) {
@@ -1048,6 +1314,7 @@ class PMSStore {
     this.logAudit('MAINTENANCE_LOCK', 'ROOM', room ? room.roomNumber : '', `Blocked ${blockData.startDate} to ${blockData.endDate}. Reason: ${blockData.reason}`);
     this.save();
     this.syncDocToFirestore('maintenanceBlocks', newBlock.id, newBlock);
+    this.notify();
     return newBlock;
   }
 
@@ -1060,6 +1327,7 @@ class PMSStore {
       this.deleteDocFromFirestore('maintenanceBlocks', blockId);
     }
     this.save();
+    this.notify();
   }
 
   // --- FOLIO & SETTLEMENT ENGINE ---
@@ -1598,46 +1866,575 @@ class PMSStore {
     return auditRecord;
   }
 
-  // --- TEAM & PERMISSIONS ---
+  // --- MULTI-PROPERTY TEAM INVITATION & GRANULAR RBAC ENGINE ---
+
+  inviteTeamMembers({ emails = [], assignments = [], invitedBy = 'Astha India' }) {
+    if (!emails.length) return [];
+
+    const newMembers = [];
+    const formattedDate = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    emails.forEach((email, idx) => {
+      const trimmedEmail = email.trim().toLowerCase();
+      const namePart = trimmedEmail.split('@')[0];
+      const displayName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+      const initials = (namePart.charAt(0) || 'U').toUpperCase();
+
+      const propNames = assignments.map(a => a.property).filter(Boolean);
+      const primaryRole = assignments[0]?.role || 'Front Desk / Receptionist';
+
+      const token = `inv_token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const memberId = `usr_${Date.now()}_${idx}`;
+
+      const initialPermissions = getRoleDefaultPermissions(primaryRole);
+
+      const member = {
+        id: memberId,
+        name: displayName,
+        email: trimmedEmail,
+        initials,
+        role: primaryRole,
+        properties: propNames.length ? propNames : [this.property.name],
+        propertyAssignments: assignments,
+        status: 'INVITED',
+        invitedAt: formattedDate,
+        invitedBy,
+        invitationToken: token,
+        permissions: initialPermissions,
+        hasAccount: trimmedEmail === 'ss2137789@gmail.com'
+      };
+
+      newMembers.push(member);
+
+      if (!this.invitationTokens) this.invitationTokens = [];
+      this.invitationTokens.push({
+        token,
+        email: trimmedEmail,
+        memberId,
+        organizationName: this.property.name,
+        properties: member.properties,
+        role: member.role,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+        status: 'PENDING'
+      });
+
+      this.logAudit('INVITE_MEMBER', 'TEAM', trimmedEmail, `Invited to ${member.properties.join(', ')} as ${primaryRole}`);
+    });
+
+    this.teamMembers = [...this.teamMembers, ...newMembers];
+    this.save();
+    newMembers.forEach(m => {
+      this.syncDocToFirestore('teamMembers', m.id, m);
+    });
+    this.notify();
+    return newMembers;
+  }
 
   inviteTeamMember(memberData) {
-    const newMember = {
-      id: `usr_${Date.now()}`,
-      name: memberData.name,
-      email: memberData.email,
-      role: memberData.role || 'Front Desk Agent',
-      avatar: '👤',
-      status: 'INVITED',
-      properties: [this.property.name],
-      permissions: memberData.permissions || {
-        reservations: { view: true, create: true, edit: true, cancel: false },
-        nightAudit: { view: false, execute: false },
-        ratesAndInventory: { view: true, edit: false, bulkUpdate: false, stopSell: false },
-        team: { view: false, manage: false },
-        dashboard: { view: true },
-        piiAccess: false,
-        ledger: { view: true, settle: true, override: false }
+    return this.inviteTeamMembers({
+      emails: [memberData.email],
+      assignments: [{ property: this.property.name, role: memberData.role || 'Front Desk / Receptionist' }],
+      invitedBy: 'Astha India'
+    })[0];
+  }
+
+  removeInvitation(memberId) {
+    const member = this.teamMembers.find(m => m.id === memberId);
+    this.teamMembers = this.teamMembers.filter(m => m.id !== memberId);
+    if (this.invitationTokens) {
+      this.invitationTokens = this.invitationTokens.filter(t => t.memberId !== memberId);
+    }
+    if (member) {
+      this.logAudit('REVOKE_INVITE', 'TEAM', member.email, `Invitation revoked.`);
+      this.deleteDocFromFirestore('teamMembers', memberId);
+    }
+    this.save();
+    this.notify();
+  }
+
+  removeTeamMember(memberId) {
+    const member = this.teamMembers.find(m => m.id === memberId);
+    this.teamMembers = this.teamMembers.filter(m => m.id !== memberId);
+    if (member) {
+      this.logAudit('REMOVE_MEMBER', 'TEAM', member.email, `Member removed from organization.`);
+      this.deleteDocFromFirestore('teamMembers', memberId);
+    }
+    this.save();
+    this.notify();
+  }
+
+  updateTeamMember(memberId, patch) {
+    let updatedMember = null;
+    this.teamMembers = this.teamMembers.map(m => {
+      if (m.id === memberId) {
+        updatedMember = { ...m, ...patch };
+        return updatedMember;
       }
+      return m;
+    });
+    this.save();
+    if (updatedMember) {
+      this.syncDocToFirestore('teamMembers', memberId, updatedMember);
+    }
+    this.notify();
+  }
+
+  verifyInviteToken(token) {
+    if (!token) return { valid: false, error: 'No invitation token provided.' };
+    const member = this.teamMembers.find(m => m.invitationToken === token);
+    const tokenRecord = this.invitationTokens?.find(t => t.token === token);
+
+    if (!member && !tokenRecord) {
+      return { valid: false, error: 'Invalid or expired invitation token.' };
+    }
+
+    const email = member?.email || tokenRecord?.email;
+    const properties = member?.properties || tokenRecord?.properties || [this.property.name];
+    const role = member?.role || tokenRecord?.role || 'Team Member';
+    const accountExists = member?.hasAccount ?? (email === 'ss2137789@gmail.com');
+
+    return {
+      valid: true,
+      token,
+      memberId: member?.id,
+      email,
+      name: member?.name,
+      properties,
+      role,
+      accountExists,
+      organizationName: this.property.name
+    };
+  }
+
+  acceptInvitation({ token, email, name, password }) {
+    const verification = this.verifyInviteToken(token);
+    if (!verification.valid) {
+      return { success: false, error: verification.error };
+    }
+
+    const member = this.teamMembers.find(m => m.invitationToken === token || m.email?.toLowerCase() === email?.toLowerCase());
+    if (!member) {
+      return { success: false, error: 'Member record not found.' };
+    }
+
+    const updatedName = name || member.name || email.split('@')[0];
+    const initials = (updatedName.charAt(0) || 'U').toUpperCase();
+
+    member.status = 'ACTIVE';
+    member.name = updatedName;
+    member.initials = initials;
+    member.acceptedAt = new Date().toISOString();
+    member.hasAccount = true;
+
+    // Switch active session to this newly accepted member
+    this.currentUser = {
+      id: member.id,
+      name: updatedName,
+      email: member.email,
+      role: member.role,
+      initials,
+      status: 'ACTIVE',
+      permissions: member.permissions
     };
 
-    this.teamMembers = [...this.teamMembers, newMember];
-    this.logAudit('INVITE_MEMBER', 'TEAM', newMember.email, `Invited ${newMember.name} as ${newMember.role}`);
+    this.logAudit('ACCEPT_INVITE', 'TEAM', member.email, `Invitation accepted. Account activated.`);
     this.save();
-    this.syncDocToFirestore('teamMembers', newMember.id, newMember);
-    return newMember;
+    this.syncDocToFirestore('teamMembers', member.id, member);
+    this.notify();
+    return { success: true, member };
+  }
+
+  switchUser(userId) {
+    if (userId === 'usr_owner' || userId === 'owner') {
+      this.currentUser = {
+        id: 'usr_owner',
+        name: 'Astha India',
+        email: 'owner@hotelastha.com',
+        role: 'Owner',
+        initials: 'AI',
+        status: 'ACTIVE'
+      };
+    } else {
+      const member = this.teamMembers.find(m => m.id === userId);
+      if (member) {
+        this.currentUser = {
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          role: member.role,
+          initials: member.initials || (member.name ? member.name.charAt(0).toUpperCase() : 'U'),
+          status: member.status,
+          permissions: member.permissions
+        };
+      }
+    }
+    this.save();
+    this.notify();
+  }
+
+  hasPermission(permissionPath) {
+    if (this.currentUser?.role === 'Owner') return true;
+
+    const perms = this.currentUser?.permissions;
+    if (!perms) return true;
+
+    if (perms.allowAll) return true;
+
+    const keys = permissionPath.split('.');
+    let curr = perms;
+    for (const key of keys) {
+      if (curr === undefined || curr === null) return false;
+      curr = curr[key];
+    }
+    return curr === true;
+  }
+
+  updateGranularPermissions(userId, permissions, targetPropertyNames = [], copyToUserIds = []) {
+    const applyToIds = new Set([userId, ...copyToUserIds]);
+
+    this.teamMembers = this.teamMembers.map(m => {
+      if (applyToIds.has(m.id)) {
+        const updated = {
+          ...m,
+          permissions: JSON.parse(JSON.stringify(permissions)),
+          ...(targetPropertyNames.length ? { properties: targetPropertyNames } : {})
+        };
+        this.syncDocToFirestore('teamMembers', m.id, updated);
+        return updated;
+      }
+      return m;
+    });
+
+    if (this.currentUser && applyToIds.has(this.currentUser.id)) {
+      this.currentUser.permissions = JSON.parse(JSON.stringify(permissions));
+    }
+
+    this.logAudit('UPDATE_PERMISSIONS', 'RBAC', userId, `Updated granular operational permissions.`);
+    this.save();
+    this.notify();
   }
 
   updatePermissions(userId, permissions) {
-    this.teamMembers = this.teamMembers.map(m =>
-      m.id === userId ? { ...m, permissions: { ...m.permissions, ...permissions } } : m
-    );
-    this.logAudit('UPDATE_PERMISSIONS', 'RBAC', userId, `Updated granular operational permissions.`);
-    this.save();
+    this.updateGranularPermissions(userId, permissions);
+  }
 
-    const member = this.teamMembers.find(m => m.id === userId);
-    if (member) {
-      this.syncDocToFirestore('teamMembers', userId, member);
+  addMealPlan(planData) {
+    const id = `mp_${Date.now()}`;
+    const newPlan = {
+      id,
+      code: planData.code?.toUpperCase() || `MP${this.mealPlans.length + 1}`,
+      name: planData.name || 'Custom Meal Plan',
+      inclusions: planData.inclusions || [],
+      pricingModel: planData.pricingModel || 'PER_PERSON',
+      adultPrice: Number(planData.adultPrice) || 0,
+      childPrice: Number(planData.childPrice) || 0,
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString()
+    };
+    this.mealPlans = [...(this.mealPlans || []), newPlan];
+    this.logAudit('CREATE_MEAL_PLAN', 'PROPERTIES', newPlan.code, `Created meal plan ${newPlan.name}`);
+    this.save();
+    this.syncDocToFirestore('mealPlans', newPlan.id, newPlan);
+    this.notify();
+    return newPlan;
+  }
+
+  updateMealPlan(planId, patch) {
+    let updatedPlan = null;
+    this.mealPlans = (this.mealPlans || []).map(p => {
+      if (p.id === planId) {
+        updatedPlan = { ...p, ...patch };
+        return updatedPlan;
+      }
+      return p;
+    });
+    this.logAudit('UPDATE_MEAL_PLAN', 'PROPERTIES', planId, `Updated meal plan.`);
+    this.save();
+    if (updatedPlan) {
+      this.syncDocToFirestore('mealPlans', planId, updatedPlan);
     }
+    this.notify();
+  }
+
+  deleteMealPlan(planId) {
+    const plan = this.mealPlans?.find(p => p.id === planId || p.code === planId);
+    this.mealPlans = (this.mealPlans || []).filter(p => p.id !== planId && p.code !== planId);
+    if (plan) {
+      this.logAudit('DELETE_MEAL_PLAN', 'PROPERTIES', plan.code, `Removed meal plan ${plan.name}`);
+      this.deleteDocFromFirestore('mealPlans', plan.id);
+      if (plan.code && plan.code !== plan.id) {
+        this.deleteDocFromFirestore('mealPlans', plan.code);
+      }
+    } else {
+      this.deleteDocFromFirestore('mealPlans', planId);
+    }
+    this.save();
+    this.notify();
+  }
+
+  addRatePlan(planData) {
+    const id = `rp_${Date.now()}`;
+    const newPlan = {
+      id,
+      name: planData.name || 'New Rate Plan',
+      code: planData.code?.toUpperCase() || `RP${(this.ratePlans || []).length + 1}`,
+      mealPlanId: planData.mealPlanId || null,
+      mealPlanName: planData.mealPlanName || (planData.mealPlanId ? this.mealPlans?.find(m => m.id === planData.mealPlanId)?.name : '-'),
+      status: planData.status || 'ACTIVE',
+      roomTypeRates: planData.roomTypeRates || {},
+      createdAt: new Date().toISOString()
+    };
+    this.ratePlans = [...(this.ratePlans || []), newPlan];
+    this.logAudit('CREATE_RATE_PLAN', 'PROPERTIES', newPlan.code, `Created rate plan ${newPlan.name}`);
+    this.save();
+    this.syncDocToFirestore('ratePlans', newPlan.id, newPlan);
+    this.notify();
+    return newPlan;
+  }
+
+  updateRatePlan(planId, patch) {
+    let updatedPlan = null;
+    this.ratePlans = (this.ratePlans || []).map(p => {
+      if (p.id === planId) {
+        updatedPlan = { ...p, ...patch };
+        return updatedPlan;
+      }
+      return p;
+    });
+    this.logAudit('UPDATE_RATE_PLAN', 'PROPERTIES', planId, `Updated rate plan.`);
+    this.save();
+    if (updatedPlan) {
+      this.syncDocToFirestore('ratePlans', planId, updatedPlan);
+    }
+    this.notify();
+  }
+
+  deleteRatePlan(planId) {
+    const plan = this.ratePlans?.find(p => p.id === planId || p.code === planId);
+    this.ratePlans = (this.ratePlans || []).filter(p => p.id !== planId && p.code !== planId);
+    if (plan) {
+      this.logAudit('DELETE_RATE_PLAN', 'PROPERTIES', plan.code, `Removed rate plan ${plan.name}`);
+      this.deleteDocFromFirestore('ratePlans', plan.id);
+      if (plan.code && plan.code !== plan.id) {
+        this.deleteDocFromFirestore('ratePlans', plan.code);
+      }
+    } else {
+      this.deleteDocFromFirestore('ratePlans', planId);
+    }
+    this.save();
+    this.notify();
+  }
+
+  addRoomType(roomTypeData) {
+    const newRoomType = {
+      id: `rt_${Date.now()}`,
+      name: roomTypeData.name || 'New Room Type',
+      code: roomTypeData.code ? roomTypeData.code.toUpperCase() : '',
+      baseAdults: parseInt(roomTypeData.baseAdults, 10) || 1,
+      maxAdults: parseInt(roomTypeData.maxAdults, 10) || 2,
+      baseChildren: parseInt(roomTypeData.baseChildren, 10) || 0,
+      maxChildren: parseInt(roomTypeData.maxChildren, 10) || 0,
+      status: roomTypeData.status || 'ACTIVE',
+      basePrice: Number(roomTypeData.basePrice) || 1000,
+      extraAdultPrice: Number(roomTypeData.extraAdultPrice) || 500,
+      extraChildPrice: Number(roomTypeData.extraChildPrice) || 250,
+      color: roomTypeData.color || '#3b82f6'
+    };
+    this.roomTypes = [...(this.roomTypes || []), newRoomType];
+
+    // Automatically update existing rate plans so this room type is included with default active rate
+    this.ratePlans = (this.ratePlans || []).map(rp => {
+      const updatedRates = {
+        ...(rp.roomTypeRates || {}),
+        [newRoomType.id]: {
+          active: true,
+          basePrice: newRoomType.basePrice || 1000,
+          extraAdult: newRoomType.extraAdultPrice || 500,
+          extraChild: newRoomType.extraChildPrice || 250
+        }
+      };
+      const updatedPlan = { ...rp, roomTypeRates: updatedRates };
+      this.syncDocToFirestore('ratePlans', updatedPlan.id, updatedPlan);
+      return updatedPlan;
+    });
+
+    this.logAudit('ADD_ROOM_TYPE', 'PROPERTIES', newRoomType.id, `Created room type ${newRoomType.name}`);
+    this.save();
+    this.syncDocToFirestore('roomTypes', newRoomType.id, newRoomType);
+    this.notify();
+    return newRoomType;
+  }
+
+  updateRoomType(roomTypeId, patch) {
+    let updated = null;
+    this.roomTypes = (this.roomTypes || []).map(rt => {
+      if (rt.id === roomTypeId) {
+        updated = { ...rt, ...patch };
+        return updated;
+      }
+      return rt;
+    });
+
+    // If rate info changed, update in rate plans as well
+    if (patch.basePrice || patch.extraAdultPrice || patch.extraChildPrice) {
+      this.ratePlans = (this.ratePlans || []).map(rp => {
+        if (rp.roomTypeRates && rp.roomTypeRates[roomTypeId]) {
+          const prev = rp.roomTypeRates[roomTypeId];
+          const updatedRates = {
+            ...rp.roomTypeRates,
+            [roomTypeId]: {
+              ...prev,
+              basePrice: patch.basePrice !== undefined ? Number(patch.basePrice) : prev.basePrice,
+              extraAdult: patch.extraAdultPrice !== undefined ? Number(patch.extraAdultPrice) : prev.extraAdult,
+              extraChild: patch.extraChildPrice !== undefined ? Number(patch.extraChildPrice) : prev.extraChild
+            }
+          };
+          const updatedPlan = { ...rp, roomTypeRates: updatedRates };
+          this.syncDocToFirestore('ratePlans', updatedPlan.id, updatedPlan);
+          return updatedPlan;
+        }
+        return rp;
+      });
+    }
+
+    this.logAudit('UPDATE_ROOM_TYPE', 'PROPERTIES', roomTypeId, `Updated room type.`);
+    this.save();
+    if (updated) {
+      this.syncDocToFirestore('roomTypes', roomTypeId, updated);
+    }
+    this.notify();
+  }
+
+  deleteRoomType(roomTypeId) {
+    const rt = this.roomTypes?.find(r => r.id === roomTypeId || r.code === roomTypeId);
+    this.roomTypes = (this.roomTypes || []).filter(r => r.id !== roomTypeId && r.code !== roomTypeId);
+    if (rt) {
+      this.logAudit('DELETE_ROOM_TYPE', 'PROPERTIES', rt.id, `Deleted room type ${rt.name}`);
+      this.deleteDocFromFirestore('roomTypes', rt.id);
+      if (rt.code && rt.code !== rt.id) {
+        this.deleteDocFromFirestore('roomTypes', rt.code);
+      }
+      // Also clean up rates in rate plans
+      this.ratePlans = (this.ratePlans || []).map(rp => {
+        if (rp.roomTypeRates && rp.roomTypeRates[rt.id]) {
+          const newRates = { ...rp.roomTypeRates };
+          delete newRates[rt.id];
+          const updatedPlan = { ...rp, roomTypeRates: newRates };
+          this.syncDocToFirestore('ratePlans', updatedPlan.id, updatedPlan);
+          return updatedPlan;
+        }
+        return rp;
+      });
+    } else {
+      this.deleteDocFromFirestore('roomTypes', roomTypeId);
+    }
+    this.save();
+    this.notify();
+  }
+
+  addRooms(newRoomsList) {
+    const created = newRoomsList.map((item, idx) => ({
+      id: `rm_${Date.now()}_${idx}`,
+      roomNumber: String(item.roomNumber).trim(),
+      roomTypeId: item.roomTypeId,
+      floor: item.roomNumber ? String(item.roomNumber).trim().charAt(0) : '1',
+      status: 'clean',
+      operational: 'available',
+      notes: ''
+    }));
+    this.rooms = [...(this.rooms || []), ...created];
+    this.logAudit('ADD_ROOMS', 'PROPERTIES', '', `Added ${created.length} new rooms.`);
+    this.save();
+    created.forEach((rm) => {
+      this.syncDocToFirestore('rooms', rm.id, rm);
+    });
+    this.notify();
+    return created;
+  }
+
+  updateRoom(roomId, patch) {
+    let updated = null;
+    let oldRoomNumber = null;
+    this.rooms = (this.rooms || []).map(rm => {
+      if (rm.id === roomId) {
+        oldRoomNumber = rm.roomNumber;
+        updated = { ...rm, ...patch };
+        return updated;
+      }
+      return rm;
+    });
+    this.logAudit('UPDATE_ROOM', 'PROPERTIES', roomId, `Updated room.`);
+    this.save();
+    if (updated) {
+      this.syncDocToFirestore('rooms', roomId, updated);
+      if (oldRoomNumber && patch.roomNumber && oldRoomNumber !== patch.roomNumber && oldRoomNumber !== roomId) {
+        this.deleteDocFromFirestore('rooms', oldRoomNumber);
+      }
+    }
+    this.notify();
+  }
+
+  deleteRoom(roomId) {
+    const rm = this.rooms?.find(r => r.id === roomId || r.roomNumber === roomId);
+    this.rooms = (this.rooms || []).filter(r => r.id !== roomId && r.roomNumber !== roomId);
+    if (rm) {
+      this.logAudit('DELETE_ROOM', 'PROPERTIES', rm.roomNumber, `Deleted room ${rm.roomNumber}`);
+      this.deleteDocFromFirestore('rooms', rm.id);
+      if (rm.roomNumber && rm.roomNumber !== rm.id) {
+        this.deleteDocFromFirestore('rooms', rm.roomNumber);
+      }
+    } else {
+      this.deleteDocFromFirestore('rooms', roomId);
+    }
+    this.save();
+    this.notify();
+  }
+
+  deleteReservation(resId) {
+    const res = this.reservations.find(r => r.id === resId || r.bookingReference === resId);
+    if (!res) return false;
+
+    const targetResId = res.id;
+    const targetFolioId = res.folioId;
+
+    this.reservations = this.reservations.filter(r => r.id !== targetResId);
+
+    // Free up any allocated room
+    if (res.roomId) {
+      this.rooms = this.rooms.map(rm => {
+        if (rm.id === res.roomId && rm.operational === 'allocated') {
+          return { ...rm, operational: 'available' };
+        }
+        return rm;
+      });
+      const updatedRoom = this.rooms.find(rm => rm.id === res.roomId);
+      if (updatedRoom) {
+        this.syncDocToFirestore('rooms', updatedRoom.id, updatedRoom);
+      }
+    }
+
+    // Delete associated folio
+    if (targetFolioId && this.folios[targetFolioId]) {
+      delete this.folios[targetFolioId];
+      this.deleteDocFromFirestore('folios', targetFolioId);
+    }
+
+    this.logAudit(
+      'DELETE_RESERVATION',
+      'RESERVATION',
+      res.bookingReference,
+      `Reservation ${res.bookingReference} deleted permanently.`
+    );
+
+    this.save();
+    this.deleteDocFromFirestore('reservations', targetResId);
+    this.notify();
+    return true;
   }
 }
 

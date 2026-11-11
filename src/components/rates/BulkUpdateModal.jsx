@@ -1,16 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, X, CheckCircle2, Calendar } from 'lucide-react';
 
 export default function BulkUpdateModal({
   isOpen,
   onClose,
-  roomTypes,
+  roomTypes = [],
   ratePlans,
   onBulkUpdate
 }) {
-  if (!isOpen) return null;
-
-  const [selectedRoomTypeIds, setSelectedRoomTypeIds] = useState(roomTypes.map(rt => rt.id));
+  const [selectedRoomTypeIds, setSelectedRoomTypeIds] = useState(() => (roomTypes || []).map(rt => rt.id));
   const [startDate, setStartDate] = useState('2026-10-24');
   const [endDate, setEndDate] = useState('2026-11-07');
   const [daysOfWeek, setDaysOfWeek] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
@@ -26,6 +24,14 @@ export default function BulkUpdateModal({
   const [stopSellValue, setStopSellValue] = useState(false);
   const [updateMinNights, setUpdateMinNights] = useState(false);
   const [minNights, setMinNights] = useState('1');
+
+  useEffect(() => {
+    if (isOpen && roomTypes && roomTypes.length > 0) {
+      setSelectedRoomTypeIds(roomTypes.map(rt => rt.id));
+    }
+  }, [isOpen, roomTypes]);
+
+  if (!isOpen) return null;
 
   const toggleDay = (day) => {
     if (daysOfWeek.includes(day)) {

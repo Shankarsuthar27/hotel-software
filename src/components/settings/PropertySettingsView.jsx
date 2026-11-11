@@ -11,11 +11,12 @@ import {
 } from 'lucide-react';
 
 export default function PropertySettingsView({
-  property,
-  roomTypes,
-  rooms,
-  mealPlans,
-  onSaveProperty
+  property = {},
+  roomTypes = [],
+  rooms = [],
+  mealPlans = [],
+  onSaveProperty,
+  showToast
 }) {
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'meals' | 'rooms'
 
@@ -71,8 +72,8 @@ export default function PropertySettingsView({
         <div style={{ padding: '0.85rem 1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: '0.5rem', background: '#f8fafc' }}>
           {[
             { id: 'profile', label: 'Property & GST Details', icon: Building },
-            { id: 'meals', label: `Meal Plans (${mealPlans.length})`, icon: Utensils },
-            { id: 'rooms', label: `Room Inventory (${rooms.length} Rooms)`, icon: Layers }
+            { id: 'meals', label: `Meal Plans (${(mealPlans || []).length})`, icon: Utensils },
+            { id: 'rooms', label: `Room Inventory (${(rooms || []).length} Rooms)`, icon: Layers }
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

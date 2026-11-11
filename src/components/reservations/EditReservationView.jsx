@@ -153,6 +153,8 @@ export default function EditReservationView({
   const isInHouse = currentRes.status === 'in_house';
   const isConfirmed = currentRes.status === 'confirmed';
   const isCheckedOut = currentRes.status === 'checked_out' || currentRes.status === 'Checked Out' || currentRes.status === 'checked-out';
+  const isCancelled = currentRes.status === 'cancelled' || currentRes.status === 'Cancelled';
+  const isLocked = isCheckedOut || isCancelled;
 
   const totalCharges = Number(currentFolio.totalDebits !== undefined ? currentFolio.totalDebits : (currentRes.totalAmount || 0)).toFixed(2);
   const totalPaid = Number(currentFolio.totalCredits !== undefined ? currentFolio.totalCredits : (currentRes.paidAmount || 0)).toFixed(2);
@@ -267,6 +269,10 @@ export default function EditReservationView({
   ];
 
   const handleSaveAll = () => {
+    if (isCancelled) {
+      alert('This reservation has been cancelled. Cancelled reservations cannot be modified.');
+      return;
+    }
     if (isCheckedOut) {
       alert('This reservation is checked out. Customer, booking, and payment details cannot be changed.');
       return;
@@ -287,6 +293,10 @@ export default function EditReservationView({
 
   // Step 3.1: Post Pending Charges
   const handlePostPendingCharges = () => {
+    if (isCancelled) {
+      alert('Cannot post charges to a cancelled reservation.');
+      return;
+    }
     if (isCheckedOut) {
       alert('Cannot post charges to a checked out reservation.');
       return;
@@ -300,6 +310,10 @@ export default function EditReservationView({
   // Step 3.2: Add Charge
   const handleAddChargeSubmit = (e) => {
     e.preventDefault();
+    if (isCancelled) {
+      alert('Cannot add charges to a cancelled reservation.');
+      return;
+    }
     if (isCheckedOut) {
       alert('Cannot add charges to a checked out reservation.');
       return;
@@ -325,6 +339,10 @@ export default function EditReservationView({
   // Step 3.3: Add Payment
   const handleAddPaymentSubmit = (e) => {
     e.preventDefault();
+    if (isCancelled) {
+      alert('Cannot add payments to a cancelled reservation.');
+      return;
+    }
     if (isCheckedOut) {
       alert('Cannot add payments to a checked out reservation.');
       return;
@@ -353,6 +371,10 @@ export default function EditReservationView({
 
   // Step 3.4: Void Payment
   const handleConfirmVoidPayment = (txId, voidReason) => {
+    if (isCancelled) {
+      alert('Cannot void payment on a cancelled reservation.');
+      return;
+    }
     if (isCheckedOut) {
       alert('Cannot void payment on a checked out reservation.');
       return;
@@ -393,8 +415,8 @@ export default function EditReservationView({
               <span className="edit-res-guest-name">
                 {guestForm.title} {guestForm.firstName} {guestForm.lastName}
               </span>
-              <span className={`edit-res-status-pill ${isInHouse ? 'in-house' : isConfirmed ? 'confirmed' : 'checked-out'}`}>
-                {isInHouse ? 'In House' : isConfirmed ? 'Confirmed' : isCheckedOut ? 'Checked Out' : reservation.status}
+              <span className={`edit-res-status-pill ${isInHouse ? 'in-house' : isConfirmed ? 'confirmed' : isCheckedOut ? 'checked-out' : isCancelled ? 'cancelled' : ''}`}>
+                {isInHouse ? 'In House' : isConfirmed ? 'Confirmed' : isCheckedOut ? 'Checked Out' : isCancelled ? 'Cancelled' : reservation.status}
               </span>
             </div>
 
@@ -471,6 +493,19 @@ export default function EditReservationView({
         </div>
       </div>
 
+      {/* Cancelled Locked Notice Banner */}
+      {isCancelled && (
+        <div className="edit-res-locked-banner" style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
+          <div className="edit-res-locked-badge" style={{ background: '#fee2e2', color: '#dc2626' }}>
+            <Ban size={14} />
+            <span>Reservation Cancelled</span>
+          </div>
+          <span>
+            This reservation is cancelled. All customer personal details, stay parameters, room allocations, folio transactions, and payment records are locked and cannot be modified.
+          </span>
+        </div>
+      )}
+
       {/* Checked Out Locked Notice Banner */}
       {isCheckedOut && (
         <div className="edit-res-locked-banner">
@@ -512,7 +547,7 @@ export default function EditReservationView({
               <div className="edit-res-sidebar-header">
                 <span className="edit-res-sidebar-title">Guest</span>
                 <div className="edit-res-sidebar-actions">
-                  {!isCheckedOut && (
+                  {!isLocked && (
                     <button className="edit-res-add-btn-mini" title="Add Guest">
                       <Plus size={14} />
                     </button>
@@ -573,7 +608,7 @@ export default function EditReservationView({
             <>
               <div className="edit-res-sidebar-header">
                 <span className="edit-res-sidebar-title">Room / Folio</span>
-                {!isCheckedOut && (
+                {!isLocked && (
                   <button className="edit-res-add-btn-mini" title="New Folio">
                     <Plus size={14} />
                   </button>
@@ -678,7 +713,7 @@ export default function EditReservationView({
                     <select
                       className="edit-res-select"
                       value={guestForm.title}
-                      disabled={isCheckedOut}
+                      disabled={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, title: e.target.value })}
                     >
                       <option value="Mr.">Mr.</option>
@@ -694,8 +729,8 @@ export default function EditReservationView({
                       type="text"
                       className="edit-res-input"
                       value={guestForm.firstName}
-                      disabled={isCheckedOut}
-                      readOnly={isCheckedOut}
+                      disabled={isLocked}
+                      readOnly={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, firstName: e.target.value })}
                     />
                   </div>
@@ -706,15 +741,15 @@ export default function EditReservationView({
                       type="text"
                       className="edit-res-input"
                       value={guestForm.lastName}
-                      disabled={isCheckedOut}
-                      readOnly={isCheckedOut}
+                      disabled={isLocked}
+                      readOnly={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, lastName: e.target.value })}
                     />
                   </div>
 
                   <div className="edit-res-field">
                     <label>Mobile</label>
-                    <div className={`edit-res-phone-input-wrap ${isCheckedOut ? 'disabled' : ''}`}>
+                    <div className={`edit-res-phone-input-wrap ${isLocked ? 'disabled' : ''}`}>
                       <div className="edit-res-country-code">
                         <span>{guestForm.countryCode}</span>
                         <ChevronDown size={12} />
@@ -723,8 +758,8 @@ export default function EditReservationView({
                         type="tel"
                         className="edit-res-phone-input"
                         value={guestForm.mobile}
-                        disabled={isCheckedOut}
-                        readOnly={isCheckedOut}
+                        disabled={isLocked}
+                        readOnly={isLocked}
                         onChange={(e) => setGuestForm({ ...guestForm, mobile: e.target.value })}
                       />
                     </div>
@@ -738,8 +773,8 @@ export default function EditReservationView({
                       type="email"
                       className="edit-res-input"
                       value={guestForm.email}
-                      disabled={isCheckedOut}
-                      readOnly={isCheckedOut}
+                      disabled={isLocked}
+                      readOnly={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })}
                     />
                   </div>
@@ -750,8 +785,8 @@ export default function EditReservationView({
                       type="date"
                       className="edit-res-input"
                       value={guestForm.birthDate}
-                      disabled={isCheckedOut}
-                      readOnly={isCheckedOut}
+                      disabled={isLocked}
+                      readOnly={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, birthDate: e.target.value })}
                     />
                   </div>
@@ -763,8 +798,8 @@ export default function EditReservationView({
                       className="edit-res-input"
                       placeholder="Nationality"
                       value={guestForm.nationality}
-                      disabled={isCheckedOut}
-                      readOnly={isCheckedOut}
+                      disabled={isLocked}
+                      readOnly={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, nationality: e.target.value })}
                     />
                   </div>
@@ -776,7 +811,7 @@ export default function EditReservationView({
                     <select
                       className="edit-res-select"
                       value={guestForm.gender}
-                      disabled={isCheckedOut}
+                      disabled={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, gender: e.target.value })}
                     >
                       <option value="Male">Male</option>
@@ -790,7 +825,7 @@ export default function EditReservationView({
                     <select
                       className="edit-res-select"
                       value={guestForm.guestType}
-                      disabled={isCheckedOut}
+                      disabled={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, guestType: e.target.value })}
                     >
                       <option value="Adult">Adult</option>
@@ -799,22 +834,22 @@ export default function EditReservationView({
                   </div>
 
                   <div
-                    className={`edit-res-switch-pill ${guestForm.isPrimary ? 'primary-active' : ''} ${isCheckedOut ? 'disabled' : ''}`}
-                    onClick={() => !isCheckedOut && setGuestForm({ ...guestForm, isPrimary: !guestForm.isPrimary })}
-                    style={isCheckedOut ? { cursor: 'not-allowed', opacity: 0.75 } : {}}
+                    className={`edit-res-switch-pill ${guestForm.isPrimary ? 'primary-active' : ''} ${isLocked ? 'disabled' : ''}`}
+                    onClick={() => !isLocked && setGuestForm({ ...guestForm, isPrimary: !guestForm.isPrimary })}
+                    style={isLocked ? { cursor: 'not-allowed', opacity: 0.75 } : {}}
                   >
                     <span>Is Primary</span>
-                    <input type="checkbox" checked={guestForm.isPrimary} readOnly disabled={isCheckedOut} />
+                    <input type="checkbox" checked={guestForm.isPrimary} readOnly disabled={isLocked} />
                     <User size={14} />
                   </div>
 
                   <div
-                    className={`edit-res-switch-pill vip-pill ${isCheckedOut ? 'disabled' : ''}`}
-                    onClick={() => !isCheckedOut && setGuestForm({ ...guestForm, isVIP: !guestForm.isVIP })}
-                    style={isCheckedOut ? { cursor: 'not-allowed', opacity: 0.75 } : {}}
+                    className={`edit-res-switch-pill vip-pill ${isLocked ? 'disabled' : ''}`}
+                    onClick={() => !isLocked && setGuestForm({ ...guestForm, isVIP: !guestForm.isVIP })}
+                    style={isLocked ? { cursor: 'not-allowed', opacity: 0.75 } : {}}
                   >
                     <span>Is VIP</span>
-                    <input type="checkbox" checked={guestForm.isVIP} readOnly disabled={isCheckedOut} />
+                    <input type="checkbox" checked={guestForm.isVIP} readOnly disabled={isLocked} />
                     <Star size={14} />
                   </div>
                 </div>
@@ -831,8 +866,8 @@ export default function EditReservationView({
                       type="text"
                       className="edit-res-input"
                       value={guestForm.address}
-                      disabled={isCheckedOut}
-                      readOnly={isCheckedOut}
+                      disabled={isLocked}
+                      readOnly={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, address: e.target.value })}
                     />
                   </div>
@@ -845,8 +880,8 @@ export default function EditReservationView({
                       type="text"
                       className="edit-res-input"
                       value={guestForm.zip}
-                      disabled={isCheckedOut}
-                      readOnly={isCheckedOut}
+                      disabled={isLocked}
+                      readOnly={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, zip: e.target.value })}
                     />
                   </div>
@@ -856,7 +891,7 @@ export default function EditReservationView({
                     <select
                       className="edit-res-select"
                       value={guestForm.country}
-                      disabled={isCheckedOut}
+                      disabled={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, country: e.target.value })}
                     >
                       <option value="Algeria">Algeria</option>
@@ -871,7 +906,7 @@ export default function EditReservationView({
                     <select
                       className="edit-res-select"
                       value={guestForm.state}
-                      disabled={isCheckedOut}
+                      disabled={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, state: e.target.value })}
                     >
                       <option value="Ain Defla">Ain Defla</option>
@@ -886,7 +921,7 @@ export default function EditReservationView({
                     <select
                       className="edit-res-select"
                       value={guestForm.city}
-                      disabled={isCheckedOut}
+                      disabled={isLocked}
                       onChange={(e) => setGuestForm({ ...guestForm, city: e.target.value })}
                     >
                       <option value="">Select City</option>
@@ -906,12 +941,12 @@ export default function EditReservationView({
                 <div className="edit-res-identity-layout">
                   {/* Left upload box */}
                   <label
-                    className={`edit-res-upload-box ${isCheckedOut ? 'disabled' : ''}`}
-                    style={isCheckedOut ? { cursor: 'not-allowed', opacity: 0.65 } : {}}
+                    className={`edit-res-upload-box ${isLocked ? 'disabled' : ''}`}
+                    style={isLocked ? { cursor: 'not-allowed', opacity: 0.65 } : {}}
                   >
                     <Upload size={20} />
-                    <span>{isCheckedOut ? 'ID Upload Locked' : '+ Upload ID'}</span>
-                    <input type="file" style={{ display: 'none' }} disabled={isCheckedOut} />
+                    <span>{isLocked ? (isCancelled ? 'ID Upload Locked (Cancelled)' : 'ID Upload Locked') : '+ Upload ID'}</span>
+                    <input type="file" style={{ display: 'none' }} disabled={isLocked} />
                   </label>
 
                   {/* Right fields */}
@@ -923,8 +958,8 @@ export default function EditReservationView({
                           type="text"
                           className="edit-res-input"
                           value={guestForm.idNumber}
-                          disabled={isCheckedOut}
-                          readOnly={isCheckedOut}
+                          disabled={isLocked}
+                          readOnly={isLocked}
                           onChange={(e) => setGuestForm({ ...guestForm, idNumber: e.target.value })}
                         />
                       </div>
@@ -934,7 +969,7 @@ export default function EditReservationView({
                         <select
                           className="edit-res-select"
                           value={guestForm.idType}
-                          disabled={isCheckedOut}
+                          disabled={isLocked}
                           onChange={(e) => setGuestForm({ ...guestForm, idType: e.target.value })}
                         >
                           <option value="Aadhaar Card">Aadhaar Card</option>
@@ -952,8 +987,8 @@ export default function EditReservationView({
                           type="text"
                           className="edit-res-input"
                           value={guestForm.issuingCountry}
-                          disabled={isCheckedOut}
-                          readOnly={isCheckedOut}
+                          disabled={isLocked}
+                          readOnly={isLocked}
                           onChange={(e) => setGuestForm({ ...guestForm, issuingCountry: e.target.value })}
                         />
                       </div>
@@ -964,8 +999,8 @@ export default function EditReservationView({
                           type="text"
                           className="edit-res-input"
                           value={guestForm.issuingCity}
-                          disabled={isCheckedOut}
-                          readOnly={isCheckedOut}
+                          disabled={isLocked}
+                          readOnly={isLocked}
                           onChange={(e) => setGuestForm({ ...guestForm, issuingCity: e.target.value })}
                         />
                       </div>
@@ -978,8 +1013,8 @@ export default function EditReservationView({
                           type="date"
                           className="edit-res-input"
                           value={guestForm.expiryDate}
-                          disabled={isCheckedOut}
-                          readOnly={isCheckedOut}
+                          disabled={isLocked}
+                          readOnly={isLocked}
                           onChange={(e) => setGuestForm({ ...guestForm, expiryDate: e.target.value })}
                         />
                       </div>
@@ -999,14 +1034,14 @@ export default function EditReservationView({
 
               {/* Bottom Save Action */}
               <div className="edit-res-bottom-save-bar">
-                {isCheckedOut ? (
+                {isLocked ? (
                   <button
                     className="edit-res-save-btn disabled"
                     disabled
                     style={{ background: '#94a3b8', cursor: 'not-allowed', boxShadow: 'none' }}
-                    title="Reservation is checked out and locked"
+                    title={isCancelled ? "Reservation is cancelled and locked" : "Reservation is checked out and locked"}
                   >
-                    Locked (Checked Out)
+                    {isCancelled ? 'Locked (Cancelled)' : 'Locked (Checked Out)'}
                   </button>
                 ) : (
                   <button className="edit-res-save-btn" onClick={handleSaveAll}>
@@ -1031,7 +1066,7 @@ export default function EditReservationView({
                     <select
                       className="edit-res-select"
                       value={bookingForm.billTo}
-                      disabled={isCheckedOut}
+                      disabled={isLocked}
                       onChange={(e) => setBookingForm({ ...bookingForm, billTo: e.target.value })}
                     >
                       <option value="Guest">Guest</option>
@@ -1044,7 +1079,7 @@ export default function EditReservationView({
                     <select
                       className="edit-res-select"
                       value={bookingForm.company}
-                      disabled={isCheckedOut}
+                      disabled={isLocked}
                       onChange={(e) => setBookingForm({ ...bookingForm, company: e.target.value })}
                     >
                       <option value="">Select</option>
@@ -1062,8 +1097,8 @@ export default function EditReservationView({
                       className="edit-res-input"
                       placeholder="Enter Guest GSTIN"
                       value={bookingForm.guestGstin}
-                      disabled={isCheckedOut}
-                      readOnly={isCheckedOut}
+                      disabled={isLocked}
+                      readOnly={isLocked}
                       onChange={(e) => setBookingForm({ ...bookingForm, guestGstin: e.target.value })}
                     />
                   </div>
@@ -1081,7 +1116,7 @@ export default function EditReservationView({
                     <select
                       className="edit-res-select"
                       value={bookingForm.marketSegment}
-                      disabled={isCheckedOut}
+                      disabled={isLocked}
                       onChange={(e) => setBookingForm({ ...bookingForm, marketSegment: e.target.value })}
                     >
                       <option value="corporate">corporate</option>
@@ -1096,7 +1131,7 @@ export default function EditReservationView({
                     <select
                       className="edit-res-select"
                       value={bookingForm.bookingSource}
-                      disabled={isCheckedOut}
+                      disabled={isLocked}
                       onChange={(e) => setBookingForm({ ...bookingForm, bookingSource: e.target.value })}
                     >
                       <option value="walk-in">walk-in</option>
@@ -1119,8 +1154,8 @@ export default function EditReservationView({
                     placeholder="Enter special requests (e.g. extra bed, late check-in)..."
                     value={bookingForm.specialRequests}
                     maxLength={100}
-                    disabled={isCheckedOut}
-                    readOnly={isCheckedOut}
+                    disabled={isLocked}
+                    readOnly={isLocked}
                     onChange={(e) => setBookingForm({ ...bookingForm, specialRequests: e.target.value })}
                   />
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
@@ -1132,24 +1167,24 @@ export default function EditReservationView({
 
               {/* Bottom Actions */}
               <div className="edit-res-bottom-save-bar">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: isCheckedOut ? '#94a3b8' : '#334155', cursor: isCheckedOut ? 'not-allowed' : 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: isLocked ? '#94a3b8' : '#334155', cursor: isLocked ? 'not-allowed' : 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={bookingForm.applyToAllRooms}
-                    disabled={isCheckedOut}
+                    disabled={isLocked}
                     onChange={(e) => setBookingForm({ ...bookingForm, applyToAllRooms: e.target.checked })}
                   />
                   <span>Apply to all rooms</span>
                 </label>
 
-                {isCheckedOut ? (
+                {isLocked ? (
                   <button
                     className="edit-res-save-btn disabled"
                     disabled
                     style={{ background: '#94a3b8', cursor: 'not-allowed', boxShadow: 'none' }}
-                    title="Reservation is checked out and locked"
+                    title={isCancelled ? "Reservation is cancelled and locked" : "Reservation is checked out and locked"}
                   >
-                    Locked (Checked Out)
+                    {isCancelled ? 'Locked (Cancelled)' : 'Locked (Checked Out)'}
                   </button>
                 ) : (
                   <button className="edit-res-save-btn" onClick={handleSaveAll}>
@@ -1180,10 +1215,10 @@ export default function EditReservationView({
                 </div>
 
                 <div className="edit-res-folio-actions">
-                  {isCheckedOut ? (
+                  {isLocked ? (
                     <div className="edit-res-folio-locked-badge">
                       <ShieldCheck size={16} />
-                      <span>Folio Closed & Finalized (Read-Only)</span>
+                      <span>{isCancelled ? 'Folio Cancelled & Locked (Read-Only)' : 'Folio Closed & Finalized (Read-Only)'}</span>
                     </div>
                   ) : (
                     <>
@@ -1300,8 +1335,8 @@ export default function EditReservationView({
                           </td>
                           <td>
                             {/* Step 3.4: Void Payment button */}
-                            {isCheckedOut ? (
-                              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>Finalized</span>
+                            {isLocked ? (
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>{isCancelled ? 'Locked' : 'Finalized'}</span>
                             ) : tx.direction === 'Credit' && !tx.isVoided ? (
                               <button
                                 className="btn-void-tx"
@@ -1329,7 +1364,7 @@ export default function EditReservationView({
           {/* TAB 4: ROOM CHARGES */}
           {activeTab === 'charges' && (
             <div className="edit-res-section-card">
-              {!isCheckedOut && (
+              {!isLocked && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '1.25rem' }}>
                   <button
                     className="btn-folio-outline"

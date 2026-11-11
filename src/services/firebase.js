@@ -2,27 +2,41 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported as isAnalyticsSupported } from "firebase/analytics";
 import {
+  initializeFirestore,
   getFirestore,
-  enableIndexedDbPersistence
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
+const env = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : (typeof process !== 'undefined' && process.env ? process.env : {});
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ""
+  apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyAdHlCHjFIZuS9LyiO0HTUL4DFhg7XO3yE",
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "hotel-263a3.firebaseapp.com",
+  projectId: env.VITE_FIREBASE_PROJECT_ID || "hotel-263a3",
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "hotel-263a3.firebasestorage.app",
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "172374373154",
+  appId: env.VITE_FIREBASE_APP_ID || "1:172374373154:web:6747af4581d2d678abeb7b",
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || "G-LTCZMXG0XN"
 };
 
 // Initialize Firebase App
 export const app = initializeApp(firebaseConfig);
 
-// Initialize Cloud Firestore
-export const db = getFirestore(app);
+// Initialize Cloud Firestore with multi-tab offline persistence
+let firestoreInstance = null;
+try {
+  firestoreInstance = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+} catch (e) {
+  firestoreInstance = getFirestore(app);
+}
+export const db = firestoreInstance;
 
 // Initialize Firebase Auth lazily on demand to avoid automatic CONFIGURATION_NOT_FOUND errors
 // when Authentication has not yet been activated in the Firebase Console.
@@ -60,23 +74,6 @@ if (typeof window !== 'undefined') {
   }).catch(() => {
     // Analytics optional fallback
   });
-}
-
-// Enable Offline Persistence for Front-Desk Continuity & Network Resilience
-if (typeof window !== 'undefined') {
-  try {
-    enableIndexedDbPersistence(db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        // Multiple tabs open, persistence can only be enabled in one tab at a time.
-        console.info('Firestore multi-tab persistence active.');
-      } else if (err.code === 'unimplemented') {
-        // The current browser does not support all of the features required to enable persistence
-        console.warn('Firestore persistence not supported in this client environment.');
-      }
-    });
-  } catch (e) {
-    // Hot-reload guard
-  }
 }
 
 export default app;

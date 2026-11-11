@@ -14,8 +14,17 @@ export const ROUTES = {
   NIGHT_AUDIT: '/nightaudit',
   REPORTS: '/reports',
   GUESTS: '/guests',
+  MY_TEAM: '/my-team',
+  ACCEPT_INVITE: '/accept-invite',
   PERMISSIONS: '/permissions',
   PROPERTIES: '/properties',
+  PROPERTIES_ALL: '/properties/all',
+  PROPERTIES_MEAL_PLANS: '/properties/meal-plans',
+  PROPERTIES_ROOMS: '/properties/rooms',
+  PROPERTIES_RATE_PLANS: '/properties/rate-plans',
+  PROPERTIES_BUSINESS_ACCOUNT: '/properties/business-account',
+  PROPERTIES_MARKET_SEGMENT: '/properties/market-segment',
+  PROPERTIES_TAX_SERVICES: '/properties/tax-services',
   SETTINGS: '/settings'
 };
 
@@ -142,8 +151,32 @@ export function parseRoute(pathname = window.location.pathname, search = window.
     };
   }
 
-  // 10. Team Permissions: /permissions or /team or /users
-  if (cleanPath === '/permissions' || cleanPath === '/team' || cleanPath === '/users') {
+  // 10. Accept Invitation: /accept-invite
+  if (cleanPath === '/accept-invite') {
+    return {
+      type: 'ACCEPT_INVITE',
+      tab: 'accept-invite',
+      pathname: cleanPath,
+      search,
+      queryParams,
+      params: {}
+    };
+  }
+
+  // 11. My Team: /my-team or /team
+  if (cleanPath === '/my-team' || cleanPath === '/team') {
+    return {
+      type: 'MY_TEAM',
+      tab: 'myteam',
+      pathname: cleanPath,
+      search,
+      queryParams,
+      params: {}
+    };
+  }
+
+  // 12. Team Permissions: /permissions or /users
+  if (cleanPath === '/permissions' || cleanPath === '/users') {
     return {
       type: 'PERMISSIONS',
       tab: 'permissions',
@@ -154,11 +187,33 @@ export function parseRoute(pathname = window.location.pathname, search = window.
     };
   }
 
-  // 11. Property Settings: /properties or /settings
-  if (cleanPath === '/properties' || cleanPath === '/settings') {
+  // 13. Property Settings: /settings
+  if (cleanPath === '/settings') {
+    return {
+      type: 'SETTINGS',
+      tab: 'settings',
+      pathname: cleanPath,
+      search,
+      queryParams,
+      params: {}
+    };
+  }
+
+  // 14. Properties and sub-routes: /properties/*
+  if (cleanPath === '/properties' || cleanPath.startsWith('/properties/')) {
+    let subtab = 'all';
+    if (cleanPath === '/properties/meal-plans') subtab = 'meal-plans';
+    else if (cleanPath === '/properties/rooms') subtab = 'rooms';
+    else if (cleanPath === '/properties/rate-plans') subtab = 'rate-plans';
+    else if (cleanPath === '/properties/business-account') subtab = 'business-account';
+    else if (cleanPath === '/properties/market-segment') subtab = 'market-segment';
+    else if (cleanPath === '/properties/tax-services') subtab = 'tax-services';
+    else if (cleanPath === '/properties/all') subtab = 'all';
+
     return {
       type: 'PROPERTIES',
       tab: 'properties',
+      subtab,
       pathname: cleanPath,
       search,
       queryParams,

@@ -11,7 +11,8 @@ import {
   Calendar,
   ArrowLeftRight,
   SlidersHorizontal,
-  MessageSquare
+  MessageSquare,
+  Ban
 } from 'lucide-react';
 
 export default function BookingDetailsDrawer({
@@ -187,20 +188,46 @@ export default function BookingDetailsDrawer({
                 </div>
               </div>
 
-              {/* Edit / View Reservation Action */}
-              <button
-                type="button"
-                className="booking-details-edit-btn"
-                onClick={() => {
-                  onClose();
-                  if (onEditReservation) {
-                    onEditReservation(reservation);
-                  }
-                }}
-              >
-                <Edit3 size={15} />
-                <span>Edit Reservation</span>
-              </button>
+              {/* Edit / View Reservation Action - Disabled for Cancelled Reservations */}
+              {!isCancelled ? (
+                <button
+                  type="button"
+                  className="booking-details-edit-btn"
+                  onClick={() => {
+                    onClose();
+                    if (onEditReservation) {
+                      onEditReservation(reservation);
+                    }
+                  }}
+                >
+                  <Edit3 size={15} />
+                  <span>Edit Reservation</span>
+                </button>
+              ) : (
+                <div
+                  className="booking-details-cancelled-tag"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    width: '100%',
+                    padding: '10px 14px',
+                    background: '#fef2f2',
+                    color: '#dc2626',
+                    border: '1px solid #fee2e2',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'not-allowed',
+                    boxSizing: 'border-box'
+                  }}
+                  title="Cancelled reservations cannot be edited"
+                >
+                  <Ban size={15} />
+                  <span>Cancelled (Editing Disabled)</span>
+                </div>
+              )}
             </div>
 
             {/* Bottom Hotel Outline Illustration matching screenshot */}

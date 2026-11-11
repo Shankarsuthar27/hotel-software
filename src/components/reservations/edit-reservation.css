@@ -181,6 +181,12 @@
   border: 1px solid #e2e8f0;
 }
 
+.edit-res-status-pill.cancelled {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
 .edit-res-meta-subline {
   display: flex;
   align-items: center;

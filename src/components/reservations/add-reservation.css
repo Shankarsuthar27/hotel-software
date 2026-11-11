@@ -116,12 +116,12 @@
 .btn-add-room-outline {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 6px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 0.45rem 0.85rem;
-  font-size: 0.8125rem;
+  padding: 7px 14px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #0f172a;
   cursor: pointer;
@@ -406,7 +406,247 @@
   transform: translateX(16px);
 }
 
-/* Room Configuration Table / Rows */
+/* Room Configuration Table / Rows (Matching User Screenshots) */
+.room-config-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: visible;
+}
+
+.room-config-table thead tr {
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.room-config-table th {
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.room-config-table th .required-star {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.room-config-table td {
+  padding: 12px 8px;
+  vertical-align: middle;
+}
+
+.room-config-select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 120px;
+  height: 42px;
+  padding: 0 12px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.room-config-select-btn:hover {
+  border-color: #cbd5e1;
+}
+
+.room-config-select-btn:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.room-config-popover {
+  position: absolute;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 4px 0;
+  z-index: 70;
+  min-width: 140px;
+  animation: fadeIn 0.12s ease-out;
+}
+
+.room-config-popover-item {
+  padding: 8px 14px;
+  font-size: 13.5px;
+  color: #1e293b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: background-color 0.12s ease;
+}
+
+.room-config-popover-item:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.room-config-mini-select {
+  width: 56px;
+  height: 42px;
+  padding: 0 18px 0 10px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #0f172a;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.room-config-mini-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.room-config-mini-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 56px;
+  height: 42px;
+  padding: 0 10px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.room-config-mini-btn:hover {
+  border-color: #cbd5e1;
+}
+
+.room-config-mini-btn:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.room-config-sublabel {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+  text-align: center;
+  display: block;
+  user-select: none;
+  font-weight: 500;
+}
+
+.room-config-mini-popover {
+  min-width: 60px !important;
+  width: 60px;
+  padding: 4px 0 !important;
+  z-index: 80 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.room-config-mini-popover-item {
+  padding: 8px 12px !important;
+  font-size: 13.5px;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.room-config-mini-popover-item:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.room-config-rooms-input {
+  width: 64px;
+  height: 42px;
+  text-align: center;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+  margin: 0 auto;
+  display: block;
+}
+
+.room-config-rooms-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.room-config-rate-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.room-config-rate-input::placeholder {
+  color: #94a3b8;
+}
+
+.room-config-rate-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.room-config-trash-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+}
+
+.room-config-trash-btn:hover {
+  background-color: #fef2f2;
+}
+
+/* Legacy fallback */
 .add-res-room-table {
   width: 100%;
   border-collapse: separate;
@@ -900,5 +1140,192 @@
   background: #eff6ff;
   color: #2563eb;
   font-weight: 700;
+}
+
+/* ========================================================
+   GUEST INFORMATION CARD (MATCHING USER SCREENSHOT)
+   ======================================================== */
+.guest-info-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
+}
+
+.guest-info-title {
+  font-family: var(--font-heading, 'Plus Jakarta Sans', sans-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.35rem 0;
+}
+
+.guest-info-subtitle {
+  font-size: 0.84rem;
+  color: #64748b;
+  margin: 0 0 1.25rem 0;
+  line-height: 1.4;
+}
+
+.guest-info-room-badge {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #2563eb;
+  margin-bottom: 0.95rem;
+}
+
+.guest-info-row-1 {
+  display: grid;
+  grid-template-columns: 110px 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+}
+
+@media (max-width: 640px) {
+  .guest-info-row-1 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.guest-info-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .guest-info-row-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.guest-field-label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.45rem;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.guest-required {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.guest-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 0.85rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.guest-input::placeholder {
+  color: #94a3b8;
+}
+
+.guest-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.guest-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.guest-select {
+  width: 100%;
+  height: 42px;
+  padding: 0 28px 0 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #0f172a;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  appearance: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.guest-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.guest-select-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+}
+
+.guest-phone-group {
+  display: flex;
+  align-items: stretch;
+  height: 42px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  overflow: hidden;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.guest-phone-group:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.guest-phone-prefix {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+  padding: 0 8px 0 10px;
+  flex-shrink: 0;
+}
+
+.guest-phone-prefix select {
+  appearance: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #0f172a;
+  padding-right: 16px;
+  cursor: pointer;
+}
+
+.guest-phone-input {
+  flex: 1;
+  height: 100%;
+  border: none;
+  outline: none;
+  padding: 0 0.85rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.guest-phone-input::placeholder {
+  color: #94a3b8;
 }
 
