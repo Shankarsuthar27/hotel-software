@@ -150,11 +150,13 @@ export default function EditReservationView({
   };
 
   // Status & Calculations
-  const isInHouse = currentRes.status === 'in_house';
-  const isConfirmed = currentRes.status === 'confirmed';
-  const isCheckedOut = currentRes.status === 'checked_out' || currentRes.status === 'Checked Out' || currentRes.status === 'checked-out';
-  const isCancelled = currentRes.status === 'cancelled' || currentRes.status === 'Cancelled';
-  const isLocked = isCheckedOut || isCancelled;
+  const statusNorm = (currentRes.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+  const isInHouse = statusNorm === 'in_house';
+  const isConfirmed = statusNorm === 'confirmed';
+  const isCheckedOut = statusNorm === 'checked_out';
+  const isCancelled = statusNorm === 'cancelled';
+  const isNoShow = statusNorm === 'no_show';
+  const isLocked = isCheckedOut || isCancelled || isNoShow;
 
   const totalCharges = Number(currentFolio.totalDebits !== undefined ? currentFolio.totalDebits : (currentRes.totalAmount || 0)).toFixed(2);
   const totalPaid = Number(currentFolio.totalCredits !== undefined ? currentFolio.totalCredits : (currentRes.paidAmount || 0)).toFixed(2);
@@ -273,6 +275,10 @@ export default function EditReservationView({
       alert('This reservation has been cancelled. Cancelled reservations cannot be modified.');
       return;
     }
+    if (isNoShow) {
+      alert('This reservation has been marked as No-Show. No-Show reservations cannot be modified.');
+      return;
+    }
     if (isCheckedOut) {
       alert('This reservation is checked out. Customer, booking, and payment details cannot be changed.');
       return;
@@ -293,8 +299,8 @@ export default function EditReservationView({
 
   // Step 3.1: Post Pending Charges
   const handlePostPendingCharges = () => {
-    if (isCancelled) {
-      alert('Cannot post charges to a cancelled reservation.');
+    if (isCancelled || isNoShow) {
+      alert(`Cannot post charges to a ${isNoShow ? 'no-show' : 'cancelled'} reservation.`);
       return;
     }
     if (isCheckedOut) {
@@ -310,8 +316,8 @@ export default function EditReservationView({
   // Step 3.2: Add Charge
   const handleAddChargeSubmit = (e) => {
     e.preventDefault();
-    if (isCancelled) {
-      alert('Cannot add charges to a cancelled reservation.');
+    if (isCancelled || isNoShow) {
+      alert(`Cannot add charges to a ${isNoShow ? 'no-show' : 'cancelled'} reservation.`);
       return;
     }
     if (isCheckedOut) {
@@ -339,8 +345,8 @@ export default function EditReservationView({
   // Step 3.3: Add Payment
   const handleAddPaymentSubmit = (e) => {
     e.preventDefault();
-    if (isCancelled) {
-      alert('Cannot add payments to a cancelled reservation.');
+    if (isCancelled || isNoShow) {
+      alert(`Cannot add payments to a ${isNoShow ? 'no-show' : 'cancelled'} reservation.`);
       return;
     }
     if (isCheckedOut) {
@@ -371,8 +377,8 @@ export default function EditReservationView({
 
   // Step 3.4: Void Payment
   const handleConfirmVoidPayment = (txId, voidReason) => {
-    if (isCancelled) {
-      alert('Cannot void payment on a cancelled reservation.');
+    if (isCancelled || isNoShow) {
+      alert(`Cannot void payment on a ${isNoShow ? 'no-show' : 'cancelled'} reservation.`);
       return;
     }
     if (isCheckedOut) {
@@ -415,8 +421,8 @@ export default function EditReservationView({
               <span className="edit-res-guest-name">
                 {guestForm.title} {guestForm.firstName} {guestForm.lastName}
               </span>
-              <span className={`edit-res-status-pill ${isInHouse ? 'in-house' : isConfirmed ? 'confirmed' : isCheckedOut ? 'checked-out' : isCancelled ? 'cancelled' : ''}`}>
-                {isInHouse ? 'In House' : isConfirmed ? 'Confirmed' : isCheckedOut ? 'Checked Out' : isCancelled ? 'Cancelled' : reservation.status}
+              <span className={`edit-res-status-pill ${isInHouse ? 'in-house' : isConfirmed ? 'confirmed' : isCheckedOut ? 'checked-out' : isCancelled ? 'cancelled' : isNoShow ? 'no-show' : ''}`}>
+                {isInHouse ? 'In House' : isConfirmed ? 'Confirmed' : isCheckedOut ? 'Checked Out' : isCancelled ? 'Cancelled' : isNoShow ? 'No Show' : reservation.status}
               </span>
             </div>
 
@@ -502,6 +508,19 @@ export default function EditReservationView({
           </div>
           <span>
             This reservation is cancelled. All customer personal details, stay parameters, room allocations, folio transactions, and payment records are locked and cannot be modified.
+          </span>
+        </div>
+      )}
+
+      {/* No-Show Locked Notice Banner */}
+      {isNoShow && (
+        <div className="edit-res-locked-banner" style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
+          <div className="edit-res-locked-badge" style={{ background: '#fee2e2', color: '#dc2626' }}>
+            <Ban size={14} />
+            <span>Reservation No-Show</span>
+          </div>
+          <span>
+            This reservation is marked as No-Show. All customer personal details, stay parameters, room allocations, folio transactions, and payment records are locked and cannot be modified.
           </span>
         </div>
       )}
@@ -945,7 +964,7 @@ export default function EditReservationView({
                     style={isLocked ? { cursor: 'not-allowed', opacity: 0.65 } : {}}
                   >
                     <Upload size={20} />
-                    <span>{isLocked ? (isCancelled ? 'ID Upload Locked (Cancelled)' : 'ID Upload Locked') : '+ Upload ID'}</span>
+                    <span>{isLocked ? (isCancelled ? 'ID Upload Locked (Cancelled)' : isNoShow ? 'ID Upload Locked (No-Show)' : 'ID Upload Locked') : '+ Upload ID'}</span>
                     <input type="file" style={{ display: 'none' }} disabled={isLocked} />
                   </label>
 
@@ -1039,9 +1058,9 @@ export default function EditReservationView({
                     className="edit-res-save-btn disabled"
                     disabled
                     style={{ background: '#94a3b8', cursor: 'not-allowed', boxShadow: 'none' }}
-                    title={isCancelled ? "Reservation is cancelled and locked" : "Reservation is checked out and locked"}
+                    title={isCancelled ? "Reservation is cancelled and locked" : isNoShow ? "Reservation is no-show and locked" : "Reservation is checked out and locked"}
                   >
-                    {isCancelled ? 'Locked (Cancelled)' : 'Locked (Checked Out)'}
+                    {isCancelled ? 'Locked (Cancelled)' : isNoShow ? 'Locked (No-Show)' : 'Locked (Checked Out)'}
                   </button>
                 ) : (
                   <button className="edit-res-save-btn" onClick={handleSaveAll}>
@@ -1182,9 +1201,9 @@ export default function EditReservationView({
                     className="edit-res-save-btn disabled"
                     disabled
                     style={{ background: '#94a3b8', cursor: 'not-allowed', boxShadow: 'none' }}
-                    title={isCancelled ? "Reservation is cancelled and locked" : "Reservation is checked out and locked"}
+                    title={isCancelled ? "Reservation is cancelled and locked" : isNoShow ? "Reservation is no-show and locked" : "Reservation is checked out and locked"}
                   >
-                    {isCancelled ? 'Locked (Cancelled)' : 'Locked (Checked Out)'}
+                    {isCancelled ? 'Locked (Cancelled)' : isNoShow ? 'Locked (No-Show)' : 'Locked (Checked Out)'}
                   </button>
                 ) : (
                   <button className="edit-res-save-btn" onClick={handleSaveAll}>
@@ -1218,7 +1237,7 @@ export default function EditReservationView({
                   {isLocked ? (
                     <div className="edit-res-folio-locked-badge">
                       <ShieldCheck size={16} />
-                      <span>{isCancelled ? 'Folio Cancelled & Locked (Read-Only)' : 'Folio Closed & Finalized (Read-Only)'}</span>
+                      <span>{isCancelled ? 'Folio Cancelled & Locked (Read-Only)' : isNoShow ? 'Folio No-Show & Locked (Read-Only)' : 'Folio Closed & Finalized (Read-Only)'}</span>
                     </div>
                   ) : (
                     <>
@@ -1336,7 +1355,7 @@ export default function EditReservationView({
                           <td>
                             {/* Step 3.4: Void Payment button */}
                             {isLocked ? (
-                              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>{isCancelled ? 'Locked' : 'Finalized'}</span>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>{isCancelled || isNoShow ? 'Locked' : 'Finalized'}</span>
                             ) : tx.direction === 'Credit' && !tx.isVoided ? (
                               <button
                                 className="btn-void-tx"

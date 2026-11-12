@@ -1113,7 +1113,8 @@ export default function TapeChartView({
             reservations.find((r) => r.id === selectedBookingDetails.id) || selectedBookingDetails
           }
           onEditReservation={(res) => {
-            if (res?.status === 'cancelled' || res?.status === 'Cancelled') {
+            const statusNorm = (res?.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+            if (statusNorm === 'cancelled' || statusNorm === 'no_show') {
               return;
             }
             setSelectedBookingDetails(null);

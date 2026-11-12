@@ -187,6 +187,12 @@
   border: 1px solid #fecaca;
 }
 
+.edit-res-status-pill.no-show {
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+}
+
 .edit-res-meta-subline {
   display: flex;
   align-items: center;

@@ -46,20 +46,32 @@ export default function AddRatePlanModal({
         // Prepopulate room rates from existing plan or fallback defaults
         const initialRates = {};
         roomTypes.forEach((rt) => {
-          const existing = ratePlanToEdit.roomTypeRates?.[rt.id];
+          const existing =
+            ratePlanToEdit.roomTypeRates?.[rt.id] ||
+            (rt.id === 'rt_standard' ? ratePlanToEdit.roomTypeRates?.rt_normal : null) ||
+            (rt.id === 'rt_normal' ? ratePlanToEdit.roomTypeRates?.rt_standard : null) ||
+            (rt.id === 'rt_deluxe' ? ratePlanToEdit.roomTypeRates?.rt_delux : null) ||
+            Object.entries(ratePlanToEdit.roomTypeRates || {}).find(([k]) => {
+              const matched = roomTypes.find((t) => t.id === k);
+              return (
+                (matched && matched.name.toLowerCase() === rt.name.toLowerCase()) ||
+                k.toLowerCase() === rt.name.toLowerCase()
+              );
+            })?.[1];
+
           if (existing) {
             initialRates[rt.id] = {
-              active: existing.active !== undefined ? existing.active : true,
-              basePrice: existing.basePrice ?? 0,
-              extraAdult: existing.extraAdult ?? 0,
-              extraChild: existing.extraChild ?? 0
+              active: existing.active !== undefined ? existing.active : false,
+              basePrice: existing.basePrice ?? rt.basePrice ?? 0,
+              extraAdult: existing.extraAdult ?? rt.extraAdultPrice ?? 0,
+              extraChild: existing.extraChild ?? rt.extraChildPrice ?? 0
             };
           } else {
             initialRates[rt.id] = {
               active: false,
-              basePrice: 0,
-              extraAdult: 0,
-              extraChild: 0
+              basePrice: rt.basePrice ?? 0,
+              extraAdult: rt.extraAdultPrice ?? 0,
+              extraChild: rt.extraChildPrice ?? 0
             };
           }
         });
@@ -75,9 +87,9 @@ export default function AddRatePlanModal({
         roomTypes.forEach((rt) => {
           initialRates[rt.id] = {
             active: false,
-            basePrice: 0,
-            extraAdult: 0,
-            extraChild: 0
+            basePrice: rt.basePrice ?? 0,
+            extraAdult: rt.extraAdultPrice ?? 0,
+            extraChild: rt.extraChildPrice ?? 0
           };
         });
         setRoomTypeRates(initialRates);
@@ -90,13 +102,21 @@ export default function AddRatePlanModal({
   if (!isOpen) return null;
 
   const handleToggleRoomActive = (roomTypeId) => {
-    setRoomTypeRates((prev) => ({
-      ...prev,
-      [roomTypeId]: {
-        ...prev[roomTypeId],
-        active: !prev[roomTypeId]?.active
-      }
-    }));
+    setRoomTypeRates((prev) => {
+      const current = prev[roomTypeId] || { active: false, basePrice: 0, extraAdult: 0, extraChild: 0 };
+      const nextActive = !current.active;
+      const rt = roomTypes.find((t) => t.id === roomTypeId);
+      return {
+        ...prev,
+        [roomTypeId]: {
+          ...current,
+          active: nextActive,
+          basePrice: current.basePrice > 0 ? current.basePrice : (nextActive && rt?.basePrice ? rt.basePrice : current.basePrice),
+          extraAdult: current.extraAdult > 0 ? current.extraAdult : (nextActive && rt?.extraAdultPrice ? rt.extraAdultPrice : current.extraAdult),
+          extraChild: current.extraChild > 0 ? current.extraChild : (nextActive && rt?.extraChildPrice ? rt.extraChildPrice : current.extraChild)
+        }
+      };
+    });
   };
 
   const handleRateFieldChange = (roomTypeId, field, value) => {
@@ -123,18 +143,27 @@ export default function AddRatePlanModal({
       return;
     }
 
+    // Ensure mirrored keys for aliases (e.g. rt_standard <-> rt_normal)
+    const finalRoomTypeRates = { ...roomTypeRates };
+    if (finalRoomTypeRates.rt_standard && !finalRoomTypeRates.rt_normal) {
+      finalRoomTypeRates.rt_normal = { ...finalRoomTypeRates.rt_standard };
+    } else if (finalRoomTypeRates.rt_normal && !finalRoomTypeRates.rt_standard) {
+      finalRoomTypeRates.rt_standard = { ...finalRoomTypeRates.rt_normal };
+    }
+
     const payload = {
       name: name.trim(),
       code: code.trim().toUpperCase(),
       mealPlanId: selectedMealPlanId || null,
       mealPlanName: selectedMealPlan ? selectedMealPlan.name : '-',
       status: 'ACTIVE',
-      roomTypeRates
+      roomTypeRates: finalRoomTypeRates
     };
 
     if (ratePlanToEdit) {
+      const targetPlanId = ratePlanToEdit.id || ratePlanToEdit.code;
       if (onUpdateRatePlan) {
-        onUpdateRatePlan(ratePlanToEdit.id, payload);
+        onUpdateRatePlan(targetPlanId, payload);
       }
       if (showToast) {
         showToast('Success: Rate plan updated successfully');

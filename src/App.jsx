@@ -133,12 +133,16 @@ export default function App() {
     }
   }, [isCreatingReservation, editingReservation, activeTab]);
 
-  // Disallow editing cancelled reservations - redirect to /reservations with toast
+  // Disallow editing cancelled or no-show reservations - redirect to /reservations with toast
   useEffect(() => {
     if (editingReservation) {
       const target = state.reservations.find((r) => r.id === editingReservation.id) || editingReservation;
-      if (target?.status === 'cancelled' || target?.status === 'Cancelled') {
+      const statusNorm = (target?.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+      if (statusNorm === 'cancelled') {
         showToast('⚠️ Cancelled reservations cannot be edited.');
+        navigate('/reservations');
+      } else if (statusNorm === 'no_show') {
+        showToast('⚠️ No-Show reservations cannot be edited.');
         navigate('/reservations');
       }
     }
@@ -265,7 +269,7 @@ export default function App() {
       )}
 
       {/* Full-Screen Edit Reservation View - Edge-to-Edge with NO Sidebar */}
-      {editingReservation && !['cancelled', 'Cancelled'].includes((state.reservations.find((r) => r.id === editingReservation.id) || editingReservation).status) ? (
+      {editingReservation && !['cancelled', 'no_show'].includes((((state.reservations.find((r) => r.id === editingReservation.id) || editingReservation).status || '').toLowerCase().replace('-', '_').replace(' ', '_'))) ? (
         <div className="edit-res-fullscreen-overlay">
           <EditReservationView
             reservation={state.reservations.find((r) => r.id === editingReservation.id) || editingReservation}
@@ -437,8 +441,13 @@ export default function App() {
                 setIsFolioOpen(true);
               }}
               onEditReservation={(res) => {
-                if (res?.status === 'cancelled' || res?.status === 'Cancelled') {
+                const statusNorm = (res?.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+                if (statusNorm === 'cancelled') {
                   showToast('⚠️ Cancelled reservations cannot be edited.');
+                  return;
+                }
+                if (statusNorm === 'no_show') {
+                  showToast('⚠️ No-Show reservations cannot be edited.');
                   return;
                 }
                 const targetId = res?.id || (res?.bookingReference ? res.bookingReference.replace('#', '').toLowerCase() : 'res_1');
@@ -496,8 +505,13 @@ export default function App() {
               onDeleteReservation={handleDeleteReservation}
               onNoShowReservation={handleNoShowReservation}
               onEditReservation={(res) => {
-                if (res?.status === 'cancelled' || res?.status === 'Cancelled') {
+                const statusNorm = (res?.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+                if (statusNorm === 'cancelled') {
                   showToast('⚠️ Cancelled reservations cannot be edited.');
+                  return;
+                }
+                if (statusNorm === 'no_show') {
+                  showToast('⚠️ No-Show reservations cannot be edited.');
                   return;
                 }
                 navigate(`/reservations/${res.id}/edit`);

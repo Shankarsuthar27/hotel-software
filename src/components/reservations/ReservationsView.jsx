@@ -225,8 +225,13 @@ export default function ReservationsView({
 
   const handleEditReservation = (r) => {
     if (!r) return;
-    if (r.status === 'cancelled' || r.status === 'Cancelled') {
+    const statusNorm = (r.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    if (statusNorm === 'cancelled') {
       alert('Cancelled reservations cannot be edited.');
+      return;
+    }
+    if (statusNorm === 'no_show') {
+      alert('No-Show reservations cannot be edited.');
       return;
     }
     if (onEditReservation) {
@@ -239,7 +244,8 @@ export default function ReservationsView({
   // If editing a reservation, render full Edit Reservation view matching OTAL spec
   if (editingReservation) {
     const currentRes = reservations.find((r) => r.id === editingReservation.id) || editingReservation;
-    if (currentRes?.status === 'cancelled' || currentRes?.status === 'Cancelled') {
+    const currentStatusNorm = (currentRes?.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    if (currentStatusNorm === 'cancelled' || currentStatusNorm === 'no_show') {
       setEditingReservation(null);
       return null;
     }

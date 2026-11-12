@@ -83,11 +83,12 @@ export default function BookingDetailsDrawer({
   const bookingDateFormatted = formatDate(reservation.checkInDate || '2026-10-26');
 
   // Status computation
-  const isCheckedOut = reservation.status === 'checked_out' || reservation.status === 'Checked Out';
-  const isInHouse = reservation.status === 'in_house' || reservation.status === 'In-House';
-  const isConfirmed = reservation.status === 'confirmed' || reservation.status === 'Confirmed';
-  const isCancelled = reservation.status === 'cancelled' || reservation.status === 'Cancelled';
-  const isNoShow = reservation.status === 'no_show' || reservation.status === 'No Show';
+  const statusNorm = (reservation.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+  const isCheckedOut = statusNorm === 'checked_out';
+  const isInHouse = statusNorm === 'in_house';
+  const isConfirmed = statusNorm === 'confirmed';
+  const isCancelled = statusNorm === 'cancelled';
+  const isNoShow = statusNorm === 'no_show';
 
   let statusLabel = 'Checked Out';
   let statusBadgeClass = 'badge-checked-out';
@@ -188,8 +189,8 @@ export default function BookingDetailsDrawer({
                 </div>
               </div>
 
-              {/* Edit / View Reservation Action - Disabled for Cancelled Reservations */}
-              {!isCancelled ? (
+              {/* Edit / View Reservation Action - Disabled for Cancelled & No-Show Reservations */}
+              {!isCancelled && !isNoShow ? (
                 <button
                   type="button"
                   className="booking-details-edit-btn"
@@ -222,10 +223,10 @@ export default function BookingDetailsDrawer({
                     cursor: 'not-allowed',
                     boxSizing: 'border-box'
                   }}
-                  title="Cancelled reservations cannot be edited"
+                  title={isNoShow ? "No-Show reservations cannot be edited" : "Cancelled reservations cannot be edited"}
                 >
                   <Ban size={15} />
-                  <span>Cancelled (Editing Disabled)</span>
+                  <span>{isNoShow ? 'No-Show (Editing Disabled)' : 'Cancelled (Editing Disabled)'}</span>
                 </div>
               )}
             </div>

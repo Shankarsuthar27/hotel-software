@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Tag,
   Plus,
@@ -94,9 +94,34 @@ export default function RatePlansView({
     setActiveMenuId(null);
   };
 
+  // Deduplicate rate plans by code/id so duplicates never appear in table
+  const uniqueRatePlans = useMemo(() => {
+    const map = new Map();
+    (ratePlans || []).forEach((rp) => {
+      const codeKey = (rp.code || '').trim().toUpperCase();
+      const idKey = (rp.id || '').trim();
+      const dedupeKey = codeKey || idKey;
+      if (dedupeKey) {
+        if (!map.has(dedupeKey)) {
+          map.set(dedupeKey, { ...rp, id: rp.id || dedupeKey });
+        } else {
+          const prev = map.get(dedupeKey);
+          const prevHasRates = prev.roomTypeRates && Object.values(prev.roomTypeRates).some(r => r && (r.active || r.basePrice > 0));
+          const curHasRates = rp.roomTypeRates && Object.values(rp.roomTypeRates).some(r => r && (r.active || r.basePrice > 0));
+          if (curHasRates && !prevHasRates) {
+            map.set(dedupeKey, { ...prev, ...rp, id: prev.id || rp.id || dedupeKey });
+          } else {
+            map.set(dedupeKey, { ...rp, ...prev, id: prev.id || rp.id || dedupeKey });
+          }
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [ratePlans]);
+
   const handleDelete = (plan) => {
     if (onDeleteRatePlan) {
-      onDeleteRatePlan(plan.id);
+      onDeleteRatePlan(plan.id || plan.code);
     }
     setActiveMenuId(null);
     if (showToast) {
@@ -113,7 +138,7 @@ export default function RatePlansView({
         flexDirection: 'column'
       }}
     >
-      {ratePlans.length === 0 ? (
+      {uniqueRatePlans.length === 0 ? (
         /* Empty State */
         <div className="properties-empty-state" style={{ padding: '60px 24px', textAlign: 'center' }}>
           <div className="properties-empty-icon-box">
@@ -168,7 +193,7 @@ export default function RatePlansView({
                 </tr>
               </thead>
               <tbody>
-                {ratePlans.map((rp, idx) => {
+                {uniqueRatePlans.map((rp, idx) => {
                   const mealPlanDisplay =
                     rp.mealPlanName && rp.mealPlanName !== '-'
                       ? rp.mealPlanName
@@ -176,8 +201,10 @@ export default function RatePlansView({
                       ? mealPlans.find((m) => m.id === rp.mealPlanId)?.name || '-'
                       : '-';
 
+                  const planKey = rp.id || rp.code;
+
                   return (
-                    <tr key={rp.id || rp.code} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <tr key={planKey} style={{ borderBottom: '1px solid #F1F5F9' }}>
                       {/* 1. Rate Plan Name */}
                       <td style={{ padding: '15px 16px 15px 24px' }}>
                         <strong style={{ color: '#0F172A', fontWeight: 700, fontSize: '14px' }}>
@@ -212,13 +239,13 @@ export default function RatePlansView({
                         <button
                           type="button"
                           className="properties-action-btn"
-                          onClick={(e) => handleToggleMenu(e, rp.id, idx)}
+                          onClick={(e) => handleToggleMenu(e, planKey, idx)}
                           title="Actions"
                         >
                           <MoreVertical size={16} />
                         </button>
 
-                        {activeMenuId === rp.id && (
+                        {activeMenuId === planKey && (
                           <div
                             className="properties-action-menu fixed-popover"
                             ref={menuRef}
@@ -272,9 +299,9 @@ export default function RatePlansView({
             <div className="properties-pagination-text" style={{ fontSize: '13px', color: '#64748B' }}>
               Showing{' '}
               <strong style={{ color: '#0F172A', fontWeight: 600 }}>
-                {ratePlans.length > 0 ? `1–${ratePlans.length}` : '0–0'}
+                {uniqueRatePlans.length > 0 ? `1–${uniqueRatePlans.length}` : '0–0'}
               </strong>{' '}
-              of <strong style={{ color: '#0F172A', fontWeight: 600 }}>{ratePlans.length}</strong> results
+              of <strong style={{ color: '#0F172A', fontWeight: 600 }}>{uniqueRatePlans.length}</strong> results
             </div>
 
             <div className="properties-pagination-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -324,7 +324,20 @@ class PMSStore {
         if (!parsed.ratePlans || parsed.ratePlans.length === 0 || !parsed.ratePlans.some(rp => rp.code === 'STR')) {
           this.ratePlans = JSON.parse(JSON.stringify(initialRatePlans));
         } else {
-          this.ratePlans = parsed.ratePlans;
+          // Deduplicate ratePlans by code/id so stored duplicates are cleanly merged
+          const dedupeMap = new Map();
+          parsed.ratePlans.forEach((rp) => {
+            const key = (rp.code || rp.id || '').trim().toUpperCase();
+            if (key) {
+              if (!dedupeMap.has(key)) {
+                dedupeMap.set(key, { ...rp, id: rp.id || key });
+              } else {
+                const prev = dedupeMap.get(key);
+                dedupeMap.set(key, { ...prev, ...rp, id: prev.id || rp.id || key });
+              }
+            }
+          });
+          this.ratePlans = Array.from(dedupeMap.values());
         }
         if (this.property) {
           this.property.businessDate = '2026-11-03';
@@ -641,15 +654,33 @@ class PMSStore {
       const unsubRp = onSnapshot(
         rpCol,
         (snapshot) => {
-          const cloudRp = snapshot.docs.map((d) => d.data());
+          const cloudRp = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
           const map = new Map();
           cloudRp.forEach((rp) => {
-            const key = rp.id || rp.code;
-            if (key && !map.has(key)) map.set(key, rp);
+            const codeKey = (rp.code || '').trim().toUpperCase();
+            const idKey = (rp.id || '').trim();
+            const dedupeKey = codeKey || idKey;
+            if (dedupeKey) {
+              if (!map.has(dedupeKey)) {
+                map.set(dedupeKey, { ...rp, id: rp.id || dedupeKey });
+              } else {
+                const prev = map.get(dedupeKey);
+                // Preserve active roomTypeRates and valid prices during merge
+                const prevHasRates = prev.roomTypeRates && Object.values(prev.roomTypeRates).some(r => r && (r.active || r.basePrice > 0));
+                const curHasRates = rp.roomTypeRates && Object.values(rp.roomTypeRates).some(r => r && (r.active || r.basePrice > 0));
+                if (curHasRates && !prevHasRates) {
+                  map.set(dedupeKey, { ...prev, ...rp, id: prev.id || rp.id || dedupeKey });
+                } else {
+                  map.set(dedupeKey, { ...rp, ...prev, id: prev.id || rp.id || dedupeKey });
+                }
+              }
+            }
           });
-          this.ratePlans = Array.from(map.values());
-          this.save();
-          this.notify();
+          if (map.size > 0) {
+            this.ratePlans = Array.from(map.values());
+            this.save();
+            this.notify();
+          }
         },
         () => {}
       );
@@ -1010,11 +1041,16 @@ class PMSStore {
     const idx = this.reservations.findIndex((r) => r.id === resId);
     if (idx !== -1) {
       const target = this.reservations[idx];
-      if (target.status === 'cancelled' || target.status === 'Cancelled') {
+      const statusNorm = (target.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+      if (statusNorm === 'cancelled') {
         console.warn(`[PMSStore] Cannot modify cancelled reservation ${resId}. Details are locked.`);
         return null;
       }
-      if (target.status === 'checked_out' || target.status === 'Checked Out' || target.status === 'checked-out') {
+      if (statusNorm === 'no_show') {
+        console.warn(`[PMSStore] Cannot modify no-show reservation ${resId}. Details are locked.`);
+        return null;
+      }
+      if (statusNorm === 'checked_out') {
         console.warn(`[PMSStore] Cannot modify checked-out reservation ${resId}. Details are locked.`);
         return null;
       }
@@ -1036,8 +1072,9 @@ class PMSStore {
     const res = this.reservations.find(r => r.id === resId);
     const room = this.rooms.find(r => r.id === targetRoomId);
     if (!res || !room) return false;
-    if (res.status === 'checked_out' || res.status === 'Checked Out' || res.status === 'checked-out') {
-      console.warn(`[PMSStore] Cannot reassign room on checked-out reservation ${resId}.`);
+    const statusNorm = (res.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    if (statusNorm === 'checked_out' || statusNorm === 'cancelled' || statusNorm === 'no_show') {
+      console.warn(`[PMSStore] Cannot reassign room on ${res.status} reservation ${resId}.`);
       return false;
     }
 
@@ -1066,6 +1103,11 @@ class PMSStore {
   checkInReservation(resId, assignedRoomId = null) {
     const res = this.reservations.find(r => r.id === resId);
     if (!res) return false;
+    const statusNorm = (res.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    if (statusNorm === 'cancelled' || statusNorm === 'no_show' || statusNorm === 'checked_out') {
+      console.warn(`[PMSStore] Cannot check-in ${res.status} reservation ${resId}.`);
+      return false;
+    }
 
     let targetRoomId = assignedRoomId || res.roomId;
     let room = this.rooms.find(r => r.id === targetRoomId);
@@ -1374,8 +1416,9 @@ class PMSStore {
   addFolioTransaction(reservationId, transaction) {
     const res = this.reservations.find(r => r.id === reservationId);
     if (!res || !res.folioId) return null;
-    if (res.status === 'checked_out' || res.status === 'Checked Out' || res.status === 'checked-out') {
-      console.warn(`[PMSStore] Cannot add transaction to checked-out reservation ${reservationId}.`);
+    const statusNorm = (res.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    if (statusNorm === 'checked_out' || statusNorm === 'cancelled' || statusNorm === 'no_show') {
+      console.warn(`[PMSStore] Cannot add transaction to ${res.status} reservation ${reservationId}.`);
       return null;
     }
 
@@ -1472,8 +1515,9 @@ class PMSStore {
   addFolioCharge(reservationId, { category, receiptNumber, amount, description }) {
     const res = this.reservations.find(r => r.id === reservationId);
     if (!res || !res.folioId) return null;
-    if (res.status === 'checked_out' || res.status === 'Checked Out' || res.status === 'checked-out') {
-      console.warn(`[PMSStore] Cannot add charge to checked-out reservation ${reservationId}.`);
+    const statusNorm = (res.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    if (statusNorm === 'checked_out' || statusNorm === 'cancelled' || statusNorm === 'no_show') {
+      console.warn(`[PMSStore] Cannot add charge to ${res.status} reservation ${reservationId}.`);
       return null;
     }
 
@@ -1523,8 +1567,9 @@ class PMSStore {
   addFolioPayment(reservationId, { folioId, type, paymentMethod, amount, description, reference }) {
     const res = this.reservations.find(r => r.id === reservationId);
     if (!res || !res.folioId) return null;
-    if (res.status === 'checked_out' || res.status === 'Checked Out' || res.status === 'checked-out') {
-      console.warn(`[PMSStore] Cannot add payment to checked-out reservation ${reservationId}.`);
+    const statusNorm = (res.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    if (statusNorm === 'checked_out' || statusNorm === 'cancelled' || statusNorm === 'no_show') {
+      console.warn(`[PMSStore] Cannot add payment to ${res.status} reservation ${reservationId}.`);
       return null;
     }
 
@@ -1575,8 +1620,9 @@ class PMSStore {
   voidPayment(reservationId, transactionId, voidReason) {
     const res = this.reservations.find(r => r.id === reservationId);
     if (!res || !res.folioId || !this.folios[res.folioId]) return false;
-    if (res.status === 'checked_out' || res.status === 'Checked Out' || res.status === 'checked-out') {
-      console.warn(`[PMSStore] Cannot void payment on checked-out reservation ${reservationId}.`);
+    const statusNorm = (res.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    if (statusNorm === 'checked_out' || statusNorm === 'cancelled' || statusNorm === 'no_show') {
+      console.warn(`[PMSStore] Cannot void payment on ${res.status} reservation ${reservationId}.`);
       return false;
     }
 
@@ -2178,40 +2224,121 @@ class PMSStore {
   }
 
   addRatePlan(planData) {
-    const id = `rp_${Date.now()}`;
+    const id = planData.id || `rp_${Date.now()}`;
+    const code = (planData.code || `RP${(this.ratePlans || []).length + 1}`).trim().toUpperCase();
     const newPlan = {
       id,
-      name: planData.name || 'New Rate Plan',
-      code: planData.code?.toUpperCase() || `RP${(this.ratePlans || []).length + 1}`,
+      name: (planData.name || 'New Rate Plan').trim(),
+      code,
       mealPlanId: planData.mealPlanId || null,
       mealPlanName: planData.mealPlanName || (planData.mealPlanId ? this.mealPlans?.find(m => m.id === planData.mealPlanId)?.name : '-'),
       status: planData.status || 'ACTIVE',
       roomTypeRates: planData.roomTypeRates || {},
       createdAt: new Date().toISOString()
     };
-    this.ratePlans = [...(this.ratePlans || []), newPlan];
+
+    let found = false;
+    this.ratePlans = (this.ratePlans || []).map(p => {
+      const pCode = (p.code || '').trim().toUpperCase();
+      const pId = (p.id || '').trim();
+      if (pCode === code || pId === id) {
+        found = true;
+        return { ...p, ...newPlan, id: p.id || id };
+      }
+      return p;
+    });
+    if (!found) {
+      this.ratePlans = [...(this.ratePlans || []), newPlan];
+    }
     this.logAudit('CREATE_RATE_PLAN', 'PROPERTIES', newPlan.code, `Created rate plan ${newPlan.name}`);
     this.save();
     this.syncDocToFirestore('ratePlans', newPlan.id, newPlan);
+    if (newPlan.code && newPlan.code !== newPlan.id) {
+      this.syncDocToFirestore('ratePlans', newPlan.code, newPlan);
+    }
     this.notify();
     return newPlan;
   }
 
   updateRatePlan(planId, patch) {
     let updatedPlan = null;
+    const targetId = String(planId || '').trim();
+    const targetCode = String(patch?.code || '').trim().toUpperCase();
+    const targetName = String(patch?.name || '').trim().toLowerCase();
+
     this.ratePlans = (this.ratePlans || []).map(p => {
-      if (p.id === planId) {
-        updatedPlan = { ...p, ...patch };
+      const pId = String(p.id || '').trim();
+      const pCode = String(p.code || '').trim().toUpperCase();
+      const pName = String(p.name || '').trim().toLowerCase();
+
+      const isMatch = (
+        (targetId && (pId === targetId || pCode === targetId)) ||
+        (targetCode && pCode === targetCode) ||
+        (targetName && pName === targetName)
+      );
+
+      if (isMatch && !updatedPlan) {
+        updatedPlan = {
+          ...p,
+          ...patch,
+          id: p.id || (targetId.startsWith('rp_') ? targetId : `rp_${Date.now()}`),
+          code: (patch.code || p.code || targetCode).toUpperCase(),
+          name: (patch.name || p.name || 'Rate Plan').trim(),
+          mealPlanId: patch.mealPlanId !== undefined ? patch.mealPlanId : p.mealPlanId,
+          mealPlanName: patch.mealPlanName !== undefined ? patch.mealPlanName : p.mealPlanName,
+          status: patch.status || p.status || 'ACTIVE',
+          roomTypeRates: patch.roomTypeRates !== undefined ? patch.roomTypeRates : (p.roomTypeRates || {})
+        };
         return updatedPlan;
       }
       return p;
     });
-    this.logAudit('UPDATE_RATE_PLAN', 'PROPERTIES', planId, `Updated rate plan.`);
+
+    if (!updatedPlan) {
+      const newId = (targetId && targetId.startsWith('rp_')) ? targetId : `rp_${Date.now()}`;
+      updatedPlan = {
+        id: newId,
+        name: (patch.name || 'New Rate Plan').trim(),
+        code: (patch.code || targetCode || 'RP').toUpperCase(),
+        mealPlanId: patch.mealPlanId || null,
+        mealPlanName: patch.mealPlanName || '-',
+        status: patch.status || 'ACTIVE',
+        roomTypeRates: patch.roomTypeRates || {},
+        ...patch
+      };
+      this.ratePlans = [...(this.ratePlans || []), updatedPlan];
+    }
+
+    // Deduplicate ratePlans by code/id so duplicates are completely eliminated
+    const dedupeMap = new Map();
+    (this.ratePlans || []).forEach(rp => {
+      const c = (rp.code || rp.id || '').trim().toUpperCase();
+      if (!dedupeMap.has(c)) {
+        dedupeMap.set(c, rp);
+      } else {
+        const existing = dedupeMap.get(c);
+        dedupeMap.set(c, { ...existing, ...rp });
+      }
+    });
+    this.ratePlans = Array.from(dedupeMap.values());
+
+    this.logAudit('UPDATE_RATE_PLAN', 'PROPERTIES', updatedPlan.code || planId, `Updated rate plan ${updatedPlan.name}.`);
     this.save();
+
+    // Sync to Firestore under both the plan.id and the plan.code to ensure complete cloud persistence
     if (updatedPlan) {
-      this.syncDocToFirestore('ratePlans', planId, updatedPlan);
+      if (updatedPlan.id) {
+        this.syncDocToFirestore('ratePlans', updatedPlan.id, updatedPlan);
+      }
+      if (updatedPlan.code && updatedPlan.code !== updatedPlan.id) {
+        this.syncDocToFirestore('ratePlans', updatedPlan.code, updatedPlan);
+      }
+      if (planId && planId !== updatedPlan.id && planId !== updatedPlan.code) {
+        this.syncDocToFirestore('ratePlans', planId, updatedPlan);
+      }
     }
     this.notify();
+    return updatedPlan;
   }
 
   deleteRatePlan(planId) {
@@ -2260,6 +2387,9 @@ class PMSStore {
       };
       const updatedPlan = { ...rp, roomTypeRates: updatedRates };
       this.syncDocToFirestore('ratePlans', updatedPlan.id, updatedPlan);
+      if (updatedPlan.code && updatedPlan.code !== updatedPlan.id) {
+        this.syncDocToFirestore('ratePlans', updatedPlan.code, updatedPlan);
+      }
       return updatedPlan;
     });
 
@@ -2296,6 +2426,9 @@ class PMSStore {
           };
           const updatedPlan = { ...rp, roomTypeRates: updatedRates };
           this.syncDocToFirestore('ratePlans', updatedPlan.id, updatedPlan);
+          if (updatedPlan.code && updatedPlan.code !== updatedPlan.id) {
+            this.syncDocToFirestore('ratePlans', updatedPlan.code, updatedPlan);
+          }
           return updatedPlan;
         }
         return rp;

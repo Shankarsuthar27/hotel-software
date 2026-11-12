@@ -105,7 +105,7 @@ export default function ReservationCard({
       className={`res-card-wrapper ${isMenuOpen ? 'menu-active' : ''}`}
       onClick={() => {
         if (onCardClick) onCardClick(reservation);
-        else if (isCancelled) return;
+        else if (isCancelled || isNoShow) return;
         else if (onEdit) onEdit(reservation);
         else if (onSelect) onSelect(reservation);
       }}
