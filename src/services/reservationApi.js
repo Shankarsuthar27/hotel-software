@@ -7,7 +7,7 @@ import { pmsStore } from './pmsStore';
  * Creates a reservation and persists to Firebase Cloud Firestore and local store.
  */
 export async function createReservationViaApi(bookingData) {
-  return pmsStore.createReservation(bookingData);
+  return await pmsStore.createReservation(bookingData);
 }
 
 /**

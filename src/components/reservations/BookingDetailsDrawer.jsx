@@ -127,9 +127,9 @@ export default function BookingDetailsDrawer({
         ? reservation.notes
         : '...');
 
-  const guestCountry = guest.country || guest.nationality || guest.address || 'India';
-  const guestEmail = guest.email || reservation.guestEmail || 'ss2137789@gmail.com';
-  const guestPhone = guest.phone || reservation.guestPhone || '9664471637';
+  const guestCountry = guest.country || guest.nationality || guest.address || '—';
+  const guestEmail = guest.email || reservation.guestEmail || '—';
+  const guestPhone = guest.phone || reservation.guestPhone || '—';
 
   const drawerElement = (
     <div className="booking-details-backdrop no-scrollbar" onClick={onClose}>

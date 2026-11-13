@@ -97,29 +97,8 @@ export default function ReservationsView({
   const [groupListReservation, setGroupListReservation] = useState(null);
   const [cancellingRes, setCancellingRes] = useState(null);
 
-  // Filters (persisted so selections like 'all' (All Statuses) or anything else don't revert to default)
-  const [statusFilter, setStatusFilter] = useState(() => {
-    if (initialStatusFilter) return initialStatusFilter;
-    try {
-      const saved = localStorage.getItem('pms_reservations_status_filter');
-      if (saved) return saved;
-    } catch (e) {}
-    return 'all_active';
-  });
-
-  useEffect(() => {
-    if (initialStatusFilter) {
-      setStatusFilter(initialStatusFilter);
-    }
-  }, [initialStatusFilter]);
-
-  useEffect(() => {
-    try {
-      if (statusFilter) {
-        localStorage.setItem('pms_reservations_status_filter', statusFilter);
-      }
-    } catch (e) {}
-  }, [statusFilter]);
+  // Filters
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter || 'all_active');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -218,18 +197,13 @@ export default function ReservationsView({
 
       return true;
     }).sort((a, b) => {
-      const idOrder = ['res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
-      const idxA = idOrder.indexOf(a.id);
-      const idxB = idOrder.indexOf(b.id);
-      // Both are known fixed IDs → keep fixed order
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      // New reservation vs fixed ID → new comes first
-      if (idxA === -1 && idxB !== -1) return -1;
-      if (idxA !== -1 && idxB === -1) return 1;
-      // Both are new/dynamic → sort by createdAt descending (newest first)
-      const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return tB - tA;
+      const canonicalOrder = ['res_11', 'res_10', 'res_12', 'res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
+      const isCanonA = canonicalOrder.includes(a.id);
+      const isCanonB = canonicalOrder.includes(b.id);
+      if (!isCanonA && isCanonB) return -1;
+      if (isCanonA && !isCanonB) return 1;
+      if (isCanonA && isCanonB) return canonicalOrder.indexOf(a.id) - canonicalOrder.indexOf(b.id);
+      return (b.createdAt || b.checkInDate || '').localeCompare(a.createdAt || a.checkInDate || '');
     });
   }, [
     reservations,

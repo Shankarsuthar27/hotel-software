@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   FileSpreadsheet,
   Users,
@@ -80,21 +80,7 @@ export default function ReportsView({
   const [folioStartDate, setFolioStartDate] = useState(defaultFolioStartDate);
   const [folioEndDate, setFolioEndDate] = useState(defaultFolioEndDate);
   const [folioMode, setFolioMode] = useState(defaultFolioMode);
-  const [folioInclude, setFolioInclude] = useState(() => {
-    try {
-      return localStorage.getItem('pms_reports_folio_include') || defaultFolioInclude;
-    } catch {
-      return defaultFolioInclude;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      if (folioInclude) {
-        localStorage.setItem('pms_reports_folio_include', folioInclude);
-      }
-    } catch (e) {}
-  }, [folioInclude]);
+  const [folioInclude, setFolioInclude] = useState(defaultFolioInclude);
 
   // Card 4: Night Audit Report Form State
   const defaultAuditDate = '05/11/2026';

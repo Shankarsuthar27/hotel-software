@@ -610,14 +610,11 @@ html.has-res-modal-open {
   box-sizing: border-box;
   margin: 0 auto;
   display: block;
-  cursor: default;
-  user-select: none;
-  caret-color: transparent;
 }
 
 .room-config-rooms-input:focus {
-  border-color: #e2e8f0;
-  box-shadow: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .room-config-rate-input {

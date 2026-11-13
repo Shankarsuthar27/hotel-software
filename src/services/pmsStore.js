@@ -45,10 +45,12 @@ class PMSStore {
   }
 
   load() {
+    this.deletedReservationIds = new Set();
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        this.deletedReservationIds = new Set(parsed.deletedReservationIds || []);
         this.property = parsed.property || initialProperty;
         if (!parsed.roomTypes || parsed.roomTypes.length === 0) {
           this.roomTypes = initialRoomTypes;
@@ -86,9 +88,7 @@ class PMSStore {
           if (r102) {
             r102.roomTypeId = 'rt_deluxe';
             r102.roomNumber = '102';
-            r102.status = 'clean';
-            r102.operational = 'available';
-            r102.notes = 'Ready for check-in';
+            r102.status = 'dirty';
           }
           const r201 = this.rooms.find(r => r.id === 'rm_201');
           if (r201) {
@@ -103,11 +103,7 @@ class PMSStore {
             r202.status = 'clean';
           }
         } else {
-          // Filter out rooms with invalid/placeholder room numbers
-          this.rooms = parsed.rooms.filter(r => {
-            const rNum = (r.roomNumber || '').trim();
-            return rNum && rNum.toLowerCase() !== 'unassigned' && rNum !== '0';
-          });
+          this.rooms = parsed.rooms;
         }
         let rtUltra = this.roomTypes.find(rt => rt.id === 'rt_ultra_premium' || rt.name === 'Ultra Premium');
         if (!rtUltra) {
@@ -229,131 +225,114 @@ class PMSStore {
         }
         this.mealPlans = loadedPlans;
         this.reservations = (parsed.reservations || initialReservations).filter(r => {
+          if (!r || !r.id) return false;
           if (r.id === 'res_unassigned_1') return false;
+          if (this.deletedReservationIds && this.deletedReservationIds.has(r.id)) return false;
           const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
           if (name.includes('rahul kumar') && (r.status === 'cancelled' || !r.status)) return false;
           return true;
         });
-        ['res_11', 'res_10', 'res_12', 'res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'].forEach(id => {
+
+        const canonicalOrder = ['res_11', 'res_10', 'res_12', 'res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
+        canonicalOrder.forEach(id => {
+          if (this.deletedReservationIds && this.deletedReservationIds.has(id)) return;
           const initRes = initialReservations.find(r => r.id === id);
           if (initRes) {
             const existingIdx = this.reservations.findIndex(r => r.id === id);
             if (existingIdx === -1) {
-              this.reservations.unshift(initRes);
+              this.reservations.push(initRes);
             } else {
+              const cur = this.reservations[existingIdx];
               this.reservations[existingIdx] = {
-                ...this.reservations[existingIdx],
                 ...initRes,
-                roomId: initRes.roomId,
-                roomNumber: initRes.roomNumber,
-                roomTypeId: initRes.roomTypeId,
-                roomTypeName: initRes.roomTypeName,
+                ...cur,
+                roomId: cur.roomId || initRes.roomId,
+                roomNumber: cur.roomNumber || initRes.roomNumber,
+                roomTypeId: cur.roomTypeId || initRes.roomTypeId,
+                roomTypeName: cur.roomTypeName || initRes.roomTypeName,
                 primaryGuest: {
-                  ...(this.reservations[existingIdx].primaryGuest || {}),
-                  ...(initRes.primaryGuest || {})
+                  ...(initRes.primaryGuest || {}),
+                  ...(cur.primaryGuest || {})
                 },
-                checkInDate: initRes.checkInDate,
-                checkOutDate: initRes.checkOutDate,
-                nights: initRes.nights,
-                status: initRes.status,
-                totalAmount: initRes.totalAmount,
-                paidAmount: initRes.paidAmount,
-                balanceDue: initRes.balanceDue
+                checkInDate: cur.checkInDate || initRes.checkInDate,
+                checkOutDate: cur.checkOutDate || initRes.checkOutDate,
+                nights: cur.nights !== undefined ? cur.nights : initRes.nights,
+                status: cur.status || initRes.status,
+                totalAmount: cur.totalAmount !== undefined ? cur.totalAmount : initRes.totalAmount,
+                paidAmount: cur.paidAmount !== undefined ? cur.paidAmount : initRes.paidAmount,
+                balanceDue: cur.balanceDue !== undefined ? cur.balanceDue : initRes.balanceDue
               };
             }
           }
         });
 
-        // Ensure res_6 has correct guest name (Mr Krishna Suthar) and checkout date (2026-11-03)
-        const res6 = this.reservations.find(r => r.id === 'res_6');
-        if (res6) {
-          res6.primaryGuest = {
-            ...(res6.primaryGuest || {}),
-            name: 'Mr Krishna Suthar',
+        // Ensure newly created user reservations are always placed at the top
+        this.reservations.sort((a, b) => {
+          const isCanonA = canonicalOrder.includes(a.id);
+          const isCanonB = canonicalOrder.includes(b.id);
+          if (!isCanonA && isCanonB) return -1;
+          if (isCanonA && !isCanonB) return 1;
+          if (isCanonA && isCanonB) return canonicalOrder.indexOf(a.id) - canonicalOrder.indexOf(b.id);
+          return (b.createdAt || b.checkInDate || '').localeCompare(a.createdAt || a.checkInDate || '');
+        });
+
+        // Ensure Room 101 has active in_house reservation for Mr Kkk Suthar (Checkout: Tue 27, Oct 2026)
+        const res101 = this.reservations.find(r => r.id === 'res_5');
+        if (res101) {
+          res101.roomId = 'rm_101';
+          res101.roomNumber = '101';
+          res101.roomTypeId = 'rt_standard';
+          res101.roomTypeName = 'Standard Room';
+          res101.status = 'in_house';
+          res101.checkOutDate = '2026-10-27';
+          res101.primaryGuest = {
+            ...(res101.primaryGuest || {}),
+            name: 'Mr Kkk Suthar',
             title: 'Mr.',
-            firstName: 'Krishna',
+            firstName: 'Kkk',
             lastName: 'Suthar'
           };
-          res6.guestName = 'Mr Krishna Suthar';
-          res6.checkInDate = '2026-11-02';
-          res6.checkOutDate = '2026-11-03';
-          res6.nights = 1;
         }
 
-        // Ensure res_5 has correct guest name (Mr Krishna Suthar) and checked_out status
-        const res5 = this.reservations.find(r => r.id === 'res_5');
-        if (res5) {
-          res5.primaryGuest = {
-            ...(res5.primaryGuest || {}),
-            name: 'Mr Krishna Suthar',
-            title: 'Mr.',
-            firstName: 'Krishna',
-            lastName: 'Suthar'
-          };
-          res5.guestName = 'Mr Krishna Suthar';
-          res5.status = 'checked_out';
-          res5.checkInDate = '2026-10-26';
-          res5.checkOutDate = '2026-10-27';
-          res5.actualCheckOutDate = '2026-10-26';
-          res5.paidAmount = 2625.00;
-          res5.balanceDue = 0.00;
+        // Ensure Room 102 has active in_house reservation for Mr Shankar Suthar (#RES_12, Checkout: Fri 13, Nov 2026)
+        let res102 = this.reservations.find(r => r.id === 'res_12');
+        if (!res102) {
+          const initRes12 = initialReservations.find(r => r.id === 'res_12');
+          if (initRes12) {
+            this.reservations.unshift(initRes12);
+            res102 = initRes12;
+          }
         }
-
-        // Ensure res_11 has proper name (Mr Shankar Suthar)
-        const res11 = this.reservations.find(r => r.id === 'res_11');
-        if (res11) {
-          res11.primaryGuest = {
-            ...(res11.primaryGuest || {}),
+        if (res102) {
+          res102.roomId = 'rm_102';
+          res102.roomNumber = '102';
+          res102.roomTypeId = 'rt_deluxe';
+          res102.roomTypeName = 'Delux Room';
+          res102.status = 'in_house';
+          res102.checkInDate = '2026-11-12';
+          res102.checkOutDate = '2026-11-13';
+          res102.bookingReference = '#RES_12';
+          res102.primaryGuest = {
+            ...(res102.primaryGuest || {}),
             name: 'Mr Shankar Suthar',
             title: 'Mr.',
             firstName: 'Shankar',
-            lastName: 'Suthar'
+            lastName: 'Suthar',
+            phone: '+91 98932938982',
+            email: 'ss2137789@gmail.com'
           };
-          res11.guestName = 'Mr Shankar Suthar';
         }
 
-        // Ensure res_3 has current unassigned confirmed booking dates
-        const res3 = this.reservations.find(r => r.id === 'res_3');
-        if (res3) {
-          res3.primaryGuest = {
-            ...(res3.primaryGuest || {}),
-            name: 'Mr Shankar Suthar',
-            title: 'Mr.',
-            firstName: 'Shankar',
-            lastName: 'Suthar'
-          };
-          res3.guestName = 'Mr Shankar Suthar';
-          res3.checkInDate = '2026-11-13';
-          res3.checkOutDate = '2026-11-14';
-          res3.bookingDateFormatted = '13 Nov 2026, 10:00 AM';
-          res3.createdAt = '2026-11-13 10:00 AM';
-          res3.status = 'confirmed';
-          res3.nights = 1;
-        }
-
-        // Ensure res_12 and all other reservations are not occupying Room 102
+        // Ensure old historical reservations res_4 / res_1 do not hold room 102
         this.reservations.forEach(r => {
-          if (r.roomId === 'rm_102' || r.roomNumber === '102' || r.roomId === '102') {
+          if ((r.id === 'res_4' || r.id === 'res_1' || r.id === 'res_7') && r.roomId === 'rm_102') {
             r.roomId = '';
             r.roomNumber = '';
-            if (r.status === 'in_house' || r.status === 'checked_in') {
+            if (r.status === 'in_house') {
               r.status = 'checked_out';
             }
           }
         });
-
-        // Ensure Room 102 has clean, valid vacant state
-        const r102Init = this.rooms.find(r => r.id === 'rm_102' || r.roomNumber === '102');
-        if (r102Init) {
-          r102Init.id = 'rm_102';
-          r102Init.roomNumber = '102';
-          r102Init.roomTypeId = 'rt_deluxe';
-          if (r102Init.status === 'occupied' || !['clean', 'dirty', 'maintenance'].includes(r102Init.status)) {
-            r102Init.status = 'clean';
-            r102Init.operational = 'available';
-            r102Init.notes = 'Ready for check-in';
-          }
-        }
 
         // Ensure 1 Unassigned reservation exists for Delux Room
         const unassignedDlx = this.reservations.filter(
@@ -373,7 +352,7 @@ class PMSStore {
           }
         }
         this.folios = parsed.folios || initialFolios;
-        ['fol_3', 'fol_4', 'fol_5', 'fol_6', 'fol_11'].forEach(fId => {
+        ['fol_3', 'fol_4', 'fol_5'].forEach(fId => {
           if (!this.folios[fId] && initialFolios[fId]) {
             this.folios[fId] = initialFolios[fId];
           }
@@ -452,6 +431,7 @@ class PMSStore {
         }
         this.restrictions = parsed.restrictions || {};
         this.maintenanceBlocks = parsed.maintenanceBlocks || [];
+        this.deletedReservationIds = new Set(parsed.deletedReservationIds || []);
         this.save();
         return;
       } catch (e) {
@@ -462,6 +442,7 @@ class PMSStore {
   }
 
   resetToDefaults() {
+    this.deletedReservationIds = new Set();
     this.property = { ...initialProperty };
     this.roomTypes = JSON.parse(JSON.stringify(initialRoomTypes));
     this.rooms = JSON.parse(JSON.stringify(initialRooms));
@@ -518,12 +499,23 @@ class PMSStore {
       maintenanceBlocks: this.maintenanceBlocks,
       propertiesList: this.propertiesList || ['HOTEL ASTHA', 'HOTEL ASTHA RESORT'],
       currentUser: this.currentUser || { id: 'usr_owner', name: 'Astha India', role: 'Owner', email: 'owner@hotelastha.com', initials: 'AI', status: 'ACTIVE' },
-      invitationTokens: this.invitationTokens || []
+      invitationTokens: this.invitationTokens || [],
+      deletedReservationIds: Array.from(this.deletedReservationIds || [])
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (e) {
-      console.error('LocalStorage write failed:', e);
+      console.warn('LocalStorage write warning:', e);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const k = localStorage.key(i);
+            if (k && k !== STORAGE_KEY) localStorage.removeItem(k);
+          }
+          payload.auditTrail = (payload.auditTrail || []).slice(0, 20);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (_) {}
+      }
     }
     this.notify();
   }
@@ -604,15 +596,21 @@ class PMSStore {
   // --- FIREBASE CLOUD FIRESTORE REAL-TIME SYNCHRONIZATION ---
 
   cleanDataForFirestore(obj) {
-    if (obj === undefined) return null;
-    if (obj === null) return null;
+    if (obj === undefined || obj === null) return null;
+    if (typeof obj === 'number') {
+      return Number.isNaN(obj) || !Number.isFinite(obj) ? 0 : obj;
+    }
+    if (typeof obj === 'function' || typeof obj === 'symbol') return null;
     if (typeof obj !== 'object') return obj;
+    if (obj instanceof Date) return obj.toISOString();
     if (Array.isArray(obj)) {
-      return obj.map(item => this.cleanDataForFirestore(item));
+      return obj
+        .filter(item => typeof item !== 'function' && typeof item !== 'symbol')
+        .map(item => this.cleanDataForFirestore(item));
     }
     const cleaned = {};
     for (const [key, val] of Object.entries(obj)) {
-      if (val !== undefined) {
+      if (val !== undefined && typeof val !== 'function' && typeof val !== 'symbol') {
         cleaned[key] = this.cleanDataForFirestore(val);
       }
     }
@@ -634,68 +632,104 @@ class PMSStore {
         resCol,
         (snapshot) => {
           const cloudRes = snapshot.docs.map((d) => d.data());
-          // Purge obsolete/cancelled residue
           const validCloudRes = cloudRes.filter((r) => {
-            const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
-            if (name.includes('rahul kumar') && (r.status === 'cancelled' || !r.status)) return false;
+            if (r.id === 'res_unassigned_1') return false;
             return true;
           });
 
-          // Merge cloud reservations with existing local reservations so newly created reservations are never dropped
-          const cloudIdSet = new Set(validCloudRes.map(r => r.id));
-          const localOnly = (this.reservations || []).filter(r => r.id && !cloudIdSet.has(r.id));
-          const allRes = [...validCloudRes, ...localOnly];
+          // Two-way merge: Preserve all local reservations created in PMS while merging cloud updates
+          const resMap = new Map();
+          const isDeleted = (id) => this.deletedReservationIds && this.deletedReservationIds.has(id);
 
-          const idOrder = ['res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
-          allRes.sort((a, b) => {
-            const idxA = idOrder.indexOf(a.id);
-            const idxB = idOrder.indexOf(b.id);
-            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-            if (idxA === -1 && idxB !== -1) return -1;
-            if (idxA !== -1 && idxB === -1) return 1;
-            const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return tB - tA;
+          // 1. Initial canonical seed reservations
+          (initialReservations || []).forEach((r) => {
+            if (r && r.id && !isDeleted(r.id)) resMap.set(r.id, r);
           });
 
-          // Apply same corrections as load() to cloud data
-          this.reservations = allRes.map(r => {
-            if (r.roomId === 'rm_102' || r.roomNumber === '102' || r.roomId === '102') {
-              const updated = { ...r, roomId: '', roomNumber: '' };
-              if (updated.status === 'in_house' || updated.status === 'checked_in') {
-                updated.status = 'checked_out';
+          // 2. Local reservations in memory (from localStorage or newly created by user)
+          (this.reservations || []).forEach((r) => {
+            if (r && r.id && !isDeleted(r.id)) resMap.set(r.id, r);
+          });
+
+          // 3. Incoming cloud updates with non-destructive state protection
+          validCloudRes.forEach((r) => {
+            if (r && r.id && !isDeleted(r.id)) {
+              const existing = resMap.get(r.id);
+              if (existing) {
+                const normLocal = String(existing.status || '').toLowerCase().replace(/[\s-]/g, '_');
+                const normCloud = String(r.status || '').toLowerCase().replace(/[\s-]/g, '_');
+
+                // If local reservation was checked in (in_house) and incoming cloud snapshot still has confirmed,
+                // do not clobber local in_house state! Push in_house back to cloud.
+                if (normLocal === 'in_house' && normCloud === 'confirmed') {
+                  const mergedItem = {
+                    ...r,
+                    ...existing,
+                    status: 'in_house',
+                    roomId: existing.roomId || r.roomId,
+                    roomNumber: existing.roomNumber || r.roomNumber,
+                    checkedInAt: existing.checkedInAt || r.checkedInAt || new Date().toISOString(),
+                    updatedAt: existing.updatedAt || new Date().toISOString()
+                  };
+                  resMap.set(r.id, mergedItem);
+                  this.syncDocToFirestore('reservations', r.id, mergedItem);
+                  return;
+                }
+
+                // If local reservation was checked out and cloud snapshot is confirmed or in_house, preserve checked_out
+                if (normLocal === 'checked_out' && (normCloud === 'confirmed' || normCloud === 'in_house')) {
+                  const mergedItem = {
+                    ...r,
+                    ...existing,
+                    status: 'checked_out',
+                    checkedOutAt: existing.checkedOutAt || r.checkedOutAt || new Date().toISOString()
+                  };
+                  resMap.set(r.id, mergedItem);
+                  this.syncDocToFirestore('reservations', r.id, mergedItem);
+                  return;
+                }
+
+                // If local reservation has a newer timestamp than cloud, preserve local changes
+                const localTime = new Date(existing.updatedAt || existing.checkedInAt || 0).getTime();
+                const cloudTime = new Date(r.updatedAt || r.lastSyncedAt || 0).getTime();
+                if (localTime > cloudTime) {
+                  resMap.set(r.id, { ...r, ...existing });
+                } else {
+                  resMap.set(r.id, { ...existing, ...r });
+                }
+              } else {
+                resMap.set(r.id, r);
               }
-              return updated;
             }
-            return r;
           });
-          // Apply guest name fixes on cloud data
-          const fireRes6 = this.reservations.find(r => r.id === 'res_6');
-          if (fireRes6) {
-            fireRes6.primaryGuest = { ...(fireRes6.primaryGuest || {}), name: 'Mr Krishna Suthar', title: 'Mr.', firstName: 'Krishna', lastName: 'Suthar' };
-            fireRes6.guestName = 'Mr Krishna Suthar';
-            fireRes6.checkInDate = '2026-11-02'; fireRes6.checkOutDate = '2026-11-03'; fireRes6.nights = 1;
-          }
-          const fireRes5 = this.reservations.find(r => r.id === 'res_5');
-          if (fireRes5) {
-            fireRes5.primaryGuest = { ...(fireRes5.primaryGuest || {}), name: 'Mr Krishna Suthar', title: 'Mr.', firstName: 'Krishna', lastName: 'Suthar' };
-            fireRes5.guestName = 'Mr Krishna Suthar';
-            fireRes5.status = 'checked_out';
-          }
-          const fireRes11 = this.reservations.find(r => r.id === 'res_11');
-          if (fireRes11) {
-            fireRes11.primaryGuest = { ...(fireRes11.primaryGuest || {}), name: 'Mr Shankar Suthar', title: 'Mr.', firstName: 'Shankar', lastName: 'Suthar' };
-            fireRes11.guestName = 'Mr Shankar Suthar';
-          }
-          const fireRes3 = this.reservations.find(r => r.id === 'res_3');
-          if (fireRes3) {
-            fireRes3.primaryGuest = { ...(fireRes3.primaryGuest || {}), name: 'Mr Shankar Suthar', title: 'Mr.', firstName: 'Shankar', lastName: 'Suthar' };
-            fireRes3.guestName = 'Mr Shankar Suthar';
-            fireRes3.status = 'confirmed';
-          }
+
+          // Sort: User-created / custom reservations at top, canonical seed reservations in defined order
+          const merged = Array.from(resMap.values());
+          const canonicalOrder = ['res_11', 'res_10', 'res_12', 'res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
+          merged.sort((a, b) => {
+            const isCanonA = canonicalOrder.includes(a.id);
+            const isCanonB = canonicalOrder.includes(b.id);
+            if (!isCanonA && isCanonB) return -1;
+            if (isCanonA && !isCanonB) return 1;
+            if (isCanonA && isCanonB) return canonicalOrder.indexOf(a.id) - canonicalOrder.indexOf(b.id);
+            return (b.createdAt || b.checkInDate || '').localeCompare(a.createdAt || a.checkInDate || '');
+          });
+
+          this.reservations = merged;
           this.cloudStatus = 'LIVE';
           this.save();
           this.notify();
+
+          // Background sync any local reservations to Firestore that are missing in the cloud snapshot
+          const cloudIds = new Set(validCloudRes.map(r => r.id));
+          merged.forEach((r) => {
+            if (!cloudIds.has(r.id)) {
+              this.syncDocToFirestore('reservations', r.id, r);
+              if (r.folioId && this.folios && this.folios[r.folioId]) {
+                this.syncDocToFirestore('folios', r.folioId, this.folios[r.folioId]);
+              }
+            }
+          });
         },
         (err) => {
           console.warn('[Firebase Firestore] Reservations listener note:', err.message);
@@ -712,22 +746,18 @@ class PMSStore {
         (snapshot) => {
           const cloudRooms = snapshot.docs.map((d) => d.data());
           const map = new Map();
-          cloudRooms.forEach((r) => {
-            // Skip rooms with invalid/placeholder room numbers
-            const rNum = (r.roomNumber || '').trim();
-            if (!rNum || rNum.toLowerCase() === 'unassigned' || rNum === '0') return;
+          (this.rooms || []).forEach((r) => {
             const key = r.id || r.roomNumber;
-            if (key && !map.has(key)) map.set(key, r);
+            if (key) map.set(key, r);
           });
-          this.rooms = Array.from(map.values()).map(r => {
-            if (r.id === 'rm_102' || r.roomNumber === '102') {
-              const statusNorm = (r.status || '').toLowerCase();
-              if (statusNorm === 'occupied' || !['clean', 'dirty', 'maintenance'].includes(statusNorm)) {
-                return { ...r, id: 'rm_102', roomNumber: '102', roomTypeId: 'rt_deluxe', status: 'clean', operational: 'available', notes: 'Ready for check-in' };
-              }
+          cloudRooms.forEach((r) => {
+            const key = r.id || r.roomNumber;
+            if (key) {
+              const existing = map.get(key);
+              map.set(key, existing ? { ...existing, ...r } : r);
             }
-            return r;
           });
+          this.rooms = Array.from(map.values());
           this.cloudStatus = 'LIVE';
           this.save();
           this.notify();
@@ -747,7 +777,7 @@ class PMSStore {
           snapshot.docs.forEach((d) => {
             newFolios[d.id] = d.data();
           });
-          this.folios = newFolios;
+          this.folios = { ...this.folios, ...newFolios };
           this.cloudStatus = 'LIVE';
           this.save();
           this.notify();
@@ -934,17 +964,23 @@ class PMSStore {
         return;
       }
 
-      // 1. Nested under property subcollection
+      // 1. Nested under property subcollection (Primary PMS Cloud Store)
       const nestedRef = doc(db, 'properties', this.propertyId, collectionName, String(docId));
       await setDoc(nestedRef, payload, { merge: true });
 
-      // 2. Root collection for universal querying & direct console visibility
-      const rootRef = doc(db, collectionName, String(docId));
-      await setDoc(rootRef, payload, { merge: true });
+      // 2. Root collection for universal querying & direct console visibility (Optional mirror)
+      try {
+        const rootRef = doc(db, collectionName, String(docId));
+        await setDoc(rootRef, payload, { merge: true });
+      } catch (rootErr) {
+        console.warn(`[Firebase Sync Note] Root mirror write note for ${collectionName}/${docId}:`, rootErr.message);
+      }
 
-      console.info(`🔥 [Firebase Cloud] Synced ${collectionName}/${docId}`);
+      console.info(`🔥 [Firebase Cloud] Successfully stored ${collectionName}/${docId} in Cloud Firestore.`);
+      return true;
     } catch (err) {
       console.warn(`[Firebase Sync Note] Could not write to ${collectionName}/${docId}:`, err.message);
+      return false;
     }
   }
 
@@ -1015,27 +1051,28 @@ class PMSStore {
 
   // --- RESERVATIONS & BOOKING ENGINE ---
 
-  createReservation(bookingData) {
-    let maxNum = 11;
-    (this.reservations || []).forEach((r) => {
-      const match = String(r.bookingReference || r.id || '').match(/(\d+)/);
-      if (match) {
-        const n = parseInt(match[1], 10);
-        if (!isNaN(n) && n > maxNum && n < 10000) {
-          maxNum = n;
+  async createReservation(bookingData) {
+    let maxNum = 370;
+    (this.reservations || []).forEach(r => {
+      const numMatch = String(r.id || '').match(/\d+/) || String(r.bookingReference || '').match(/\d+/);
+      if (numMatch) {
+        const val = parseInt(numMatch[0], 10);
+        if (val > maxNum && val < 999999) {
+          maxNum = val;
         }
       }
     });
-    const count = maxNum + 1;
-    const ref = `#RES_${count}`;
-    const id = `res_${count}`;
-    const folioId = `fol_${count}`;
+    const nextNum = Math.max(maxNum + 1, 378);
+    const ref = `#RES_${nextNum}`;
+    const id = `res_${nextNum}`;
+    const folioId = `fol_${nextNum}`;
+    if (this.deletedReservationIds) {
+      this.deletedReservationIds.delete(id);
+    }
     const isUnassigned = !bookingData.roomId || bookingData.roomId === 'unassigned' || bookingData.roomId === '';
-    const room = !isUnassigned ? this.rooms.find(r => r.id === bookingData.roomId || r.roomNumber === bookingData.roomId) : null;
-    const roomNumber = isUnassigned ? '' : (bookingData.roomNumber || room?.roomNumber || bookingData.roomId || '');
-    const finalRoomId = isUnassigned ? '' : (room?.id || bookingData.roomId);
-    const matchedRt = this.roomTypes?.find(rt => rt.id === bookingData.roomTypeId);
-    const roomTypeName = matchedRt?.name || bookingData.roomTypeName || 'Delux Room';
+    const room = !isUnassigned ? this.rooms.find(r => r.id === bookingData.roomId) : null;
+    const roomNumber = isUnassigned ? '' : (bookingData.roomNumber || room?.roomNumber || '');
+    const finalRoomId = isUnassigned ? '' : bookingData.roomId;
 
     const taxCalc = calculateRoomTax(bookingData.baseRatePerNight, bookingData.nights, {
       isComplimentary: bookingData.isComplimentary,
@@ -1048,48 +1085,52 @@ class PMSStore {
     const paidAmount = Number(bookingData.advanceAmount) || 0;
     const balanceDue = Math.max(0, totalAmount - paidAmount);
 
+    const checkInIso = bookingData.checkInDate && !isNaN(new Date(bookingData.checkInDate).getTime())
+      ? bookingData.checkInDate
+      : (this.property?.businessDate || new Date().toISOString().split('T')[0]);
+    const checkOutIso = bookingData.checkOutDate && !isNaN(new Date(bookingData.checkOutDate).getTime())
+      ? bookingData.checkOutDate
+      : new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
     const newRes = {
+      ...bookingData,
       id,
       bookingReference: ref,
       primaryGuest: {
-        name: bookingData.guestName,
-        title: bookingData.primaryGuest?.title || bookingData.title || 'Mr.',
-        firstName: bookingData.primaryGuest?.firstName || bookingData.firstName || '',
-        lastName: bookingData.primaryGuest?.lastName || bookingData.lastName || '',
+        ...(bookingData.primaryGuest || {}),
+        name: bookingData.guestName || bookingData.primaryGuest?.name || '',
         phone: bookingData.guestPhone || bookingData.primaryGuest?.phone || '',
-        countryCode: bookingData.primaryGuest?.countryCode || bookingData.countryCode || '+91',
         email: bookingData.guestEmail || bookingData.primaryGuest?.email || '',
         gstin: bookingData.guestGstin || bookingData.primaryGuest?.gstin || '',
-        nationality: bookingData.nationality || bookingData.primaryGuest?.nationality || 'Indian',
-        idType: bookingData.idType || bookingData.primaryGuest?.idType || 'Aadhaar Card',
+        nationality: bookingData.nationality || bookingData.primaryGuest?.nationality || '',
+        idType: bookingData.idType || bookingData.primaryGuest?.idType || '',
         idNumber: bookingData.idNumber || bookingData.primaryGuest?.idNumber || '',
         idDocumentUrl: bookingData.idDocumentUrl || bookingData.primaryGuest?.idDocumentUrl || '',
-        address: bookingData.primaryGuest?.address || bookingData.address || '',
-        city: bookingData.primaryGuest?.city || bookingData.city || '',
-        state: bookingData.primaryGuest?.state || bookingData.state || '',
-        zip: bookingData.primaryGuest?.zip || bookingData.zip || '',
-        isPrimary: true
+        address: bookingData.primaryGuest?.address || '',
+        city: bookingData.primaryGuest?.city || '',
+        state: bookingData.primaryGuest?.state || '',
+        zip: bookingData.primaryGuest?.zip || '',
+        country: bookingData.primaryGuest?.country || ''
       },
       roomId: finalRoomId,
       roomNumber,
       roomTypeId: bookingData.roomTypeId,
-      roomTypeName,
       ratePlanCode: bookingData.ratePlanCode || 'BAR_CP',
-      checkInDate: bookingData.checkInDate,
-      checkOutDate: bookingData.checkOutDate,
+      checkInDate: checkInIso,
+      checkOutDate: checkOutIso,
       checkInTime: bookingData.checkInTime || '11:59',
       checkOutTime: bookingData.checkOutTime || '11:00',
       roomsCount: bookingData.roomsCount || (bookingData.configuredRooms ? bookingData.configuredRooms.length : 1),
       nights: Number(bookingData.nights) || 1,
       adults: Number(bookingData.adults) || 1,
       children: Number(bookingData.children) || 0,
-      baseRatePerNight: Number(bookingData.baseRatePerNight),
+      baseRatePerNight: Number(bookingData.baseRatePerNight) || 0,
       totalRoomCharges,
       taxAmount,
       totalAmount,
       paidAmount,
       balanceDue,
-      status: bookingData.status || 'confirmed',
+      status: (bookingData.status || 'confirmed').toLowerCase(),
       bookingSource: bookingData.bookingSource || 'WALK_IN',
       marketSegment: bookingData.marketSegment || 'WALK_IN',
       isVIP: !!bookingData.isVIP,
@@ -1105,7 +1146,7 @@ class PMSStore {
     const transactions = [];
 
     // Debit for room tariff per night
-    const startDate = new Date(bookingData.checkInDate);
+    const startDate = new Date(checkInIso);
     for (let i = 0; i < newRes.nights; i++) {
       const d = new Date(startDate);
       d.setDate(d.getDate() + i);
@@ -1126,7 +1167,7 @@ class PMSStore {
     if (paidAmount > 0) {
       transactions.push({
         id: `tx_adv_${Date.now()}`,
-        date: this.property.businessDate,
+        date: this.property?.businessDate || checkInIso,
         type: 'PAYMENT',
         desc: `Advance Payment (${bookingData.paymentMethod || 'UPI'}) Ref: ${bookingData.paymentReference || 'Direct'}`,
         amount: -paidAmount,
@@ -1136,7 +1177,7 @@ class PMSStore {
     }
 
     const newFolio = {
-      folioNumber: `FOL_${count}`,
+      folioNumber: `FOL_${nextNum}`,
       reservationId: id,
       roomNumber,
       status: balanceDue <= 0 ? 'SETTLED' : 'OPEN',
@@ -1168,16 +1209,17 @@ class PMSStore {
     );
 
     this.save();
+    this.notify();
 
     // 1. Store Reservation in Cloud Firestore
-    this.syncDocToFirestore('reservations', id, newRes);
+    await this.syncDocToFirestore('reservations', id, newRes);
 
     // 2. Store Folio in Cloud Firestore
-    this.syncDocToFirestore('folios', folioId, newFolio);
+    await this.syncDocToFirestore('folios', folioId, newFolio);
 
     // 3. Store Updated Room in Cloud Firestore
     if (updatedRoom) {
-      this.syncDocToFirestore('rooms', updatedRoom.id, updatedRoom);
+      await this.syncDocToFirestore('rooms', updatedRoom.id, updatedRoom);
     }
 
     // 4. Store Guest Profile in Cloud Firestore (CRM)
@@ -1191,8 +1233,8 @@ class PMSStore {
       lastName: newRes.primaryGuest.lastName || '',
       phone: newRes.primaryGuest.phone,
       email: newRes.primaryGuest.email || '',
-      nationality: newRes.primaryGuest.nationality || 'Indian',
-      idType: newRes.primaryGuest.idType || 'Aadhaar Card',
+      nationality: newRes.primaryGuest.nationality || '',
+      idType: newRes.primaryGuest.idType || '',
       idNumber: newRes.primaryGuest.idNumber || '',
       idDocumentUrl: newRes.primaryGuest.idDocumentUrl || '',
       address: newRes.primaryGuest.address || '',
@@ -1208,13 +1250,7 @@ class PMSStore {
       status: newRes.status,
       updatedAt: new Date().toISOString()
     };
-    this.syncDocToFirestore('guests', guestId, guestDoc);
-
-    // 5. Store Latest Audit Trail Entry
-    const latestAudit = this.auditTrail[0];
-    if (latestAudit) {
-      this.syncDocToFirestore('auditTrail', latestAudit.id, latestAudit);
-    }
+    await this.syncDocToFirestore('guests', guestId, guestDoc);
 
     console.info(`🔥 [Firebase Cloud] Successfully stored Reservation ${ref}, Room ${roomNumber}, Folio ${folioId}, and Guest Profile in Cloud Firestore.`);
 
@@ -1222,10 +1258,23 @@ class PMSStore {
   }
 
   updateReservation(resId, updatedFields) {
-    const idx = this.reservations.findIndex((r) => r.id === resId);
+    if (!resId) return null;
+    const cleanId = typeof resId === 'object' ? (resId?.id || resId?.bookingReference) : resId;
+    const cleanStr = String(cleanId || '').trim();
+    const cleanNum = cleanStr.replace(/[^0-9]/g, '');
+
+    const idx = this.reservations.findIndex((r) => {
+      if (!r) return false;
+      if (r.id === cleanStr || r.bookingReference === cleanStr) return true;
+      if (String(r.id).toLowerCase() === cleanStr.toLowerCase()) return true;
+      if (String(r.bookingReference).toLowerCase() === cleanStr.toLowerCase()) return true;
+      if (cleanNum && (r.id === `res_${cleanNum}` || r.bookingReference === `#RES_${cleanNum}`)) return true;
+      return false;
+    });
+
     if (idx !== -1) {
       const target = this.reservations[idx];
-      const statusNorm = (target.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+      const statusNorm = (target.status || '').toLowerCase().replace(/[\s-]/g, '_');
       if (statusNorm === 'cancelled') {
         console.warn(`[PMSStore] Cannot modify cancelled reservation ${resId}. Details are locked.`);
         return null;
@@ -1240,12 +1289,13 @@ class PMSStore {
       }
       this.reservations[idx] = {
         ...this.reservations[idx],
-        ...updatedFields
+        ...updatedFields,
+        updatedAt: new Date().toISOString()
       };
       const updated = this.reservations[idx];
-      this.logAudit('UPDATE_RESERVATION', 'RESERVATION', resId, `Updated reservation details for ${updated.primaryGuest?.name || resId}`, 'Astha India');
+      this.logAudit('UPDATE_RESERVATION', 'RESERVATION', updated.bookingReference || updated.id, `Updated reservation details for ${updated.primaryGuest?.name || updated.guestName || updated.id}`, 'Astha India');
       this.save();
-      this.syncDocToFirestore('reservations', resId, updated);
+      this.syncDocToFirestore('reservations', updated.id, updated);
       this.notify();
       return updated;
     }
@@ -1253,90 +1303,184 @@ class PMSStore {
   }
 
   assignRoom(resId, targetRoomId) {
-    const res = this.reservations.find(r => r.id === resId);
-    const room = this.rooms.find(r => r.id === targetRoomId);
+    if (!resId) return false;
+    const cleanId = typeof resId === 'object' ? (resId?.id || resId?.bookingReference) : resId;
+    const cleanStr = String(cleanId || '').trim();
+    const cleanNum = cleanStr.replace(/[^0-9]/g, '');
+
+    const res = this.reservations.find(r => {
+      if (!r) return false;
+      if (r.id === cleanStr || r.bookingReference === cleanStr) return true;
+      if (String(r.id).toLowerCase() === cleanStr.toLowerCase()) return true;
+      if (String(r.bookingReference).toLowerCase() === cleanStr.toLowerCase()) return true;
+      if (cleanNum && (r.id === `res_${cleanNum}` || r.bookingReference === `#RES_${cleanNum}`)) return true;
+      return false;
+    });
+
+    const room = this.rooms.find(r => r.id === targetRoomId || r.roomNumber === targetRoomId);
     if (!res || !room) return false;
-    const statusNorm = (res.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    const statusNorm = (res.status || '').toLowerCase().replace(/[\s-]/g, '_');
     if (statusNorm === 'checked_out' || statusNorm === 'cancelled' || statusNorm === 'no_show') {
       console.warn(`[PMSStore] Cannot reassign room on ${res.status} reservation ${resId}.`);
       return false;
     }
 
+    const nowIso = new Date().toISOString();
+    const targetId = res.id;
+    const targetRef = res.bookingReference || `#${targetId}`;
+    const guestName = res.primaryGuest?.name || res.guestName || 'Guest';
+
     this.reservations = this.reservations.map(r =>
-      r.id === resId ? { ...r, roomId: room.id, roomNumber: room.roomNumber } : r
+      (r.id === targetId || r.bookingReference === targetRef) ? { ...r, roomId: room.id, roomNumber: room.roomNumber, updatedAt: nowIso } : r
     );
 
     if (res.folioId && this.folios[res.folioId]) {
       this.folios[res.folioId].roomNumber = room.roomNumber;
+      this.folios[res.folioId].updatedAt = nowIso;
       this.syncDocToFirestore('folios', res.folioId, this.folios[res.folioId]);
     }
 
     this.logAudit(
       'ROOM_ASSIGNED',
       'RESERVATION',
-      res.bookingReference,
-      `Assigned Room ${room.roomNumber} (${room.status.toUpperCase()}) to ${res.primaryGuest?.name || res.id}.`
+      targetRef,
+      `Assigned Room ${room.roomNumber} (${room.status.toUpperCase()}) to ${guestName}.`
     );
 
     this.save();
-    this.syncDocToFirestore('reservations', resId, this.getReservation(resId));
+    const updatedRes = this.getReservation(targetId) || this.getReservation(targetRef);
+    if (updatedRes) {
+      this.syncDocToFirestore('reservations', targetId, updatedRes);
+    }
     this.notify();
     return true;
   }
 
   checkInReservation(resId, assignedRoomId = null) {
-    const res = this.reservations.find(r => r.id === resId);
-    if (!res) return false;
-    const statusNorm = (res.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    if (!resId) return false;
+    const cleanId = typeof resId === 'object' ? (resId?.id || resId?.bookingReference) : resId;
+    const cleanStr = String(cleanId || '').trim();
+    const cleanNum = cleanStr.replace(/[^0-9]/g, '');
+
+    const res = this.reservations.find(r => {
+      if (!r) return false;
+      if (r.id === cleanStr || r.bookingReference === cleanStr) return true;
+      if (String(r.id).toLowerCase() === cleanStr.toLowerCase()) return true;
+      if (String(r.bookingReference).toLowerCase() === cleanStr.toLowerCase()) return true;
+      if (cleanStr.startsWith('#') && r.bookingReference === cleanStr) return true;
+      if (!cleanStr.startsWith('#') && r.bookingReference === `#${cleanStr}`) return true;
+      if (cleanNum && (r.id === `res_${cleanNum}` || r.bookingReference === `#RES_${cleanNum}`)) return true;
+      return false;
+    });
+
+    if (!res) {
+      console.warn(`[PMSStore] Cannot find reservation ${cleanStr} for check-in.`);
+      return false;
+    }
+
+    const statusNorm = (res.status || '').toLowerCase().replace(/[\s-]/g, '_');
     if (statusNorm === 'cancelled' || statusNorm === 'no_show' || statusNorm === 'checked_out') {
-      console.warn(`[PMSStore] Cannot check-in ${res.status} reservation ${resId}.`);
+      console.warn(`[PMSStore] Cannot check-in ${res.status} reservation ${res.bookingReference || cleanStr}.`);
       return false;
     }
 
     let targetRoomId = assignedRoomId || res.roomId;
-    let room = this.rooms.find(r => r.id === targetRoomId);
+    let room = this.rooms.find(r => r.id === targetRoomId || r.roomNumber === targetRoomId);
+    if (!room && res.roomNumber) {
+      room = this.rooms.find(r => r.roomNumber === res.roomNumber);
+    }
     if (!room) {
-      room = this.rooms.find(r => r.roomTypeId === res.roomTypeId && r.status === 'clean') || this.rooms[0];
-      targetRoomId = room?.id;
+      room = this.rooms.find(r => r.roomTypeId === res.roomTypeId && (r.status === 'clean' || r.operational === 'available')) ||
+             this.rooms.find(r => r.status === 'clean') ||
+             this.rooms[0];
     }
 
-    const roomNumber = room ? room.roomNumber : res.roomNumber;
+    targetRoomId = room?.id || targetRoomId || '';
+    const roomNumber = room ? room.roomNumber : (res.roomNumber || '');
+    const nowIso = new Date().toISOString();
+    const targetId = res.id;
+    const targetRef = res.bookingReference || `#${targetId}`;
+    const guestName = res.primaryGuest?.name || res.guestName || 'Guest';
 
-    this.reservations = this.reservations.map(r =>
-      r.id === resId ? {
+    // 1. Immediately update reservation status to in_house in memory
+    this.reservations = this.reservations.map(r => {
+      const isMatch = r.id === targetId ||
+        r.bookingReference === targetRef ||
+        r.id === cleanStr ||
+        r.bookingReference === cleanStr ||
+        (cleanNum && (r.id === `res_${cleanNum}` || r.bookingReference === `#RES_${cleanNum}`));
+      if (!isMatch) return r;
+      return {
         ...r,
         roomId: targetRoomId,
         roomNumber: roomNumber,
         status: 'in_house',
-        checkedInAt: new Date().toISOString()
-      } : r
-    );
+        checkedInAt: r.checkedInAt || nowIso,
+        updatedAt: nowIso
+      };
+    });
 
+    // 2. Update folio room assignment
     if (res.folioId && this.folios[res.folioId]) {
       this.folios[res.folioId].roomNumber = roomNumber;
+      this.folios[res.folioId].updatedAt = nowIso;
       this.syncDocToFirestore('folios', res.folioId, this.folios[res.folioId]);
     }
 
-    // Update room operational state
+    // 3. Update room operational status to occupied
     if (targetRoomId) {
       this.rooms = this.rooms.map(rm =>
-        rm.id === targetRoomId ? { ...rm, status: rm.status === 'dirty' ? 'clean' : rm.status } : rm
+        (rm.id === targetRoomId || rm.roomNumber === roomNumber) ? {
+          ...rm,
+          operational: 'occupied',
+          currentReservationId: targetId,
+          currentGuestName: guestName,
+          status: rm.status === 'dirty' ? 'clean' : rm.status,
+          updatedAt: nowIso
+        } : rm
       );
-      const updatedRoom = this.rooms.find(rm => rm.id === targetRoomId);
+      const updatedRoom = this.rooms.find(rm => rm.id === targetRoomId || rm.roomNumber === roomNumber);
       if (updatedRoom) {
-        this.syncDocToFirestore('rooms', targetRoomId, updatedRoom);
+        this.syncDocToFirestore('rooms', updatedRoom.id, updatedRoom);
       }
     }
 
-    this.logAudit('CHECK_IN', 'RESERVATION', res.bookingReference, `Guest ${res.primaryGuest.name} checked in to Room ${roomNumber}.`);
+    this.logAudit(
+      'CHECK_IN',
+      'RESERVATION',
+      targetRef,
+      `Guest ${guestName} checked in to Room ${roomNumber || 'Assigned'}.`
+    );
+
     this.save();
-    this.syncDocToFirestore('reservations', resId, this.getReservation(resId));
+
+    const updatedRes = this.getReservation(targetId) || this.getReservation(targetRef);
+    if (updatedRes) {
+      this.syncDocToFirestore('reservations', targetId, updatedRes);
+      if (targetRef && targetRef.replace('#', '') !== targetId) {
+        this.syncDocToFirestore('reservations', targetRef.replace('#', ''), updatedRes);
+      }
+    }
+
     this.notify();
     return true;
   }
 
   checkOutReservation(resId) {
-    const res = this.reservations.find(r => r.id === resId);
+    if (!resId) return { success: false, message: 'Reservation ID required' };
+    const cleanId = typeof resId === 'object' ? (resId?.id || resId?.bookingReference) : resId;
+    const cleanStr = String(cleanId || '').trim();
+    const cleanNum = cleanStr.replace(/[^0-9]/g, '');
+
+    const res = this.reservations.find(r => {
+      if (!r) return false;
+      if (r.id === cleanStr || r.bookingReference === cleanStr) return true;
+      if (String(r.id).toLowerCase() === cleanStr.toLowerCase()) return true;
+      if (String(r.bookingReference).toLowerCase() === cleanStr.toLowerCase()) return true;
+      if (cleanNum && (r.id === `res_${cleanNum}` || r.bookingReference === `#RES_${cleanNum}`)) return true;
+      return false;
+    });
+
     if (!res) return { success: false, message: 'Reservation not found' };
 
     // STRICT VALIDATION: PMS enforces folio settlement prior to departure!
@@ -1347,30 +1491,64 @@ class PMSStore {
       };
     }
 
-    this.reservations = this.reservations.map(r =>
-      r.id === resId ? { ...r, status: 'checked_out', checkedOutAt: new Date().toISOString() } : r
-    );
+    const nowIso = new Date().toISOString();
+    const targetId = res.id;
+    const targetRef = res.bookingReference || `#${targetId}`;
+    const guestName = res.primaryGuest?.name || res.guestName || 'Guest';
+
+    this.reservations = this.reservations.map(r => {
+      const isMatch = r.id === targetId ||
+        r.bookingReference === targetRef ||
+        r.id === cleanStr ||
+        r.bookingReference === cleanStr ||
+        (cleanNum && (r.id === `res_${cleanNum}` || r.bookingReference === `#RES_${cleanNum}`));
+      if (!isMatch) return r;
+      return {
+        ...r,
+        status: 'checked_out',
+        checkedOutAt: nowIso,
+        actualCheckOutDate: this.property?.businessDate || nowIso.split('T')[0],
+        updatedAt: nowIso
+      };
+    });
 
     // Automatic Housekeeping Trigger: Checked-out room automatically becomes DIRTY!
     if (res.roomId) {
       this.rooms = this.rooms.map(rm =>
-        rm.id === res.roomId ? { ...rm, status: 'dirty', notes: 'Turnaround required post check-out' } : rm
+        (rm.id === res.roomId || rm.roomNumber === res.roomNumber) ? {
+          ...rm,
+          status: 'dirty',
+          operational: 'available',
+          currentReservationId: null,
+          currentGuestName: null,
+          notes: 'Turnaround required post check-out',
+          updatedAt: nowIso
+        } : rm
       );
-      const dirtyRoom = this.rooms.find(rm => rm.id === res.roomId);
+      const dirtyRoom = this.rooms.find(rm => rm.id === res.roomId || rm.roomNumber === res.roomNumber);
       if (dirtyRoom) {
-        this.syncDocToFirestore('rooms', res.roomId, dirtyRoom);
+        this.syncDocToFirestore('rooms', dirtyRoom.id, dirtyRoom);
       }
     }
 
     // Mark folio as closed if zero balance
     if (res.folioId && this.folios[res.folioId]) {
       this.folios[res.folioId].status = 'CLOSED';
+      this.folios[res.folioId].updatedAt = nowIso;
       this.syncDocToFirestore('folios', res.folioId, this.folios[res.folioId]);
     }
 
-    this.logAudit('CHECK_OUT', 'RESERVATION', res.bookingReference, `Guest ${res.primaryGuest.name} checked out. Room ${res.roomNumber} auto-flagged DIRTY.`);
+    this.logAudit('CHECK_OUT', 'RESERVATION', targetRef, `Guest ${guestName} checked out. Room ${res.roomNumber} auto-flagged DIRTY.`);
     this.save();
-    this.syncDocToFirestore('reservations', resId, this.getReservation(resId));
+
+    const updatedRes = this.getReservation(targetId) || this.getReservation(targetRef);
+    if (updatedRes) {
+      this.syncDocToFirestore('reservations', targetId, updatedRes);
+      if (targetRef && targetRef.replace('#', '') !== targetId) {
+        this.syncDocToFirestore('reservations', targetRef.replace('#', ''), updatedRes);
+      }
+    }
+
     this.notify();
     return { success: true, message: 'Check-out successful' };
   }
@@ -1507,54 +1685,18 @@ class PMSStore {
 
   // --- HOUSEKEEPING & MAINTENANCE ---
 
-  updateRoomStatus(roomId, newStatus, extraNotes = null) {
-    const normStatus = (newStatus || 'clean').toLowerCase();
-    let updatedRoom = null;
-
-    this.rooms = this.rooms.map(rm => {
-      const isMatch = rm.id === roomId ||
-                      rm.roomNumber === String(roomId) ||
-                      rm.id === `rm_${roomId}` ||
-                      (roomId && String(rm.id).toLowerCase() === String(roomId).toLowerCase());
-
-      if (isMatch) {
-        let notes = extraNotes;
-        if (!notes) {
-          if (normStatus === 'dirty') {
-            notes = (rm.notes && rm.notes !== 'Ready for check-in') ? rm.notes : 'Needs cleaning';
-          } else if (normStatus === 'clean') {
-            notes = 'Ready for check-in';
-          } else if (normStatus === 'maintenance') {
-            notes = (rm.notes && rm.notes !== 'Ready for check-in') ? rm.notes : 'Out of order';
-          } else {
-            notes = rm.notes || '';
-          }
-        }
-
-        updatedRoom = {
-          ...rm,
-          status: normStatus,
-          operational: normStatus === 'maintenance' ? 'maintenance' : 'available',
-          notes,
-          updatedAt: new Date().toISOString()
-        };
-        return updatedRoom;
-      }
-      return rm;
-    });
-
-    const room = updatedRoom || this.rooms.find(r => r.id === roomId || r.roomNumber === String(roomId) || r.id === `rm_${roomId}`);
-    this.logAudit('HOUSEKEEPING_UPDATE', 'ROOM', room ? room.roomNumber : roomId, `Status set to ${normStatus.toUpperCase()}`);
+  updateRoomStatus(roomId, newStatus) {
+    this.rooms = this.rooms.map(rm =>
+      rm.id === roomId ? { ...rm, status: newStatus } : rm
+    );
+    const room = this.rooms.find(r => r.id === roomId);
+    this.logAudit('HOUSEKEEPING_UPDATE', 'ROOM', room ? room.roomNumber : roomId, `Status set to ${newStatus.toUpperCase()}`);
     this.save();
 
     if (room) {
-      this.syncDocToFirestore('rooms', room.id, room);
-      if (room.roomNumber && room.roomNumber !== room.id) {
-        this.syncDocToFirestore('rooms', room.roomNumber, room);
-      }
+      this.syncDocToFirestore('rooms', roomId, room);
     }
     this.notify();
-    return updatedRoom;
   }
 
   addMaintenanceBlock(blockData) {
@@ -2796,6 +2938,9 @@ class PMSStore {
 
     const targetResId = res.id;
     const targetFolioId = res.folioId;
+
+    if (!this.deletedReservationIds) this.deletedReservationIds = new Set();
+    this.deletedReservationIds.add(targetResId);
 
     this.reservations = this.reservations.filter(r => r.id !== targetResId);
 

@@ -33,6 +33,31 @@ export default function TapeChartView({
   const [maintenanceDrawerData, setMaintenanceDrawerData] = useState(null);
   const [selectedBookingDetails, setSelectedBookingDetails] = useState(null);
 
+  // Track collapsed room categories (Set of roomTypeId strings)
+  const [collapsedCategories, setCollapsedCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('hotel_astha_tape_collapsed');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggleCategoryCollapse = (categoryKey) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryKey)) {
+        next.delete(categoryKey);
+      } else {
+        next.add(categoryKey);
+      }
+      try {
+        localStorage.setItem('hotel_astha_tape_collapsed', JSON.stringify(Array.from(next)));
+      } catch (_) {}
+      return next;
+    });
+  };
+
   const popoverRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const roomTypeDropdownRef = useRef(null);
@@ -119,6 +144,24 @@ export default function TapeChartView({
         )
       }));
   }, [roomTypes, filteredRooms]);
+
+  const allCategoryKeys = useMemo(() => groupedRooms.map((g) => g.type.id), [groupedRooms]);
+  const allCollapsed = allCategoryKeys.length > 0 && allCategoryKeys.every((k) => collapsedCategories.has(k));
+
+  const toggleAllCategories = () => {
+    setCollapsedCategories((prev) => {
+      let next;
+      if (allCollapsed) {
+        next = new Set();
+      } else {
+        next = new Set(allCategoryKeys);
+      }
+      try {
+        localStorage.setItem('hotel_astha_tape_collapsed', JSON.stringify(Array.from(next)));
+      } catch (_) {}
+      return next;
+    });
+  };
 
   // Close slot popover on outside click, Escape, or scroll
   useEffect(() => {
@@ -443,14 +486,47 @@ export default function TapeChartView({
               <th
                 className="sticky-room-col"
                 style={{
-                  padding: '0.75rem 1rem',
+                  padding: '0.75rem 0.85rem',
                   textAlign: 'left',
                   background: '#ffffff',
                   verticalAlign: 'middle'
                 }}
               >
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
-                  Room Info
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
+                    Room Info
+                  </span>
+                  {allCategoryKeys.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleAllCategories();
+                      }}
+                      style={{
+                        background: '#f1f5f9',
+                        border: '1px solid #e2e8f0',
+                        color: '#64748b',
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        transition: 'all 0.15s ease'
+                      }}
+                      title={allCollapsed ? 'Expand all room categories' : 'Collapse all room categories'}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = '#2563eb';
+                        e.currentTarget.style.borderColor = '#93c5fd';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '#64748b';
+                        e.currentTarget.style.borderColor = '#e2e8f0';
+                      }}
+                    >
+                      {allCollapsed ? 'Expand All' : 'Collapse All'}
+                    </button>
+                  )}
                 </div>
               </th>
 
@@ -507,16 +583,26 @@ export default function TapeChartView({
           <tbody>
             {groupedRooms.map((group) => {
               const rt = group.type;
+              const categoryKey = rt.id;
+              const isCollapsed = collapsedCategories.has(categoryKey);
+
               return (
                 <React.Fragment key={rt.id}>
                   {/* Category Header Row: e.g. DELUX ROOM */}
-                  <tr style={{ background: '#ffffff' }}>
+                  <tr
+                    className="tape-chart-category-row"
+                    style={{ background: '#ffffff', cursor: 'pointer' }}
+                    onClick={() => toggleCategoryCollapse(categoryKey)}
+                    title={isCollapsed ? `Click to expand ${rt.name}` : `Click to collapse ${rt.name}`}
+                  >
                     <td
                       className="sticky-room-col"
                       style={{
                         padding: '0.5rem 0.85rem',
                         background: '#ffffff',
-                        borderBottom: '1px solid #f1f5f9'
+                        borderBottom: '1px solid #f1f5f9',
+                        cursor: 'pointer',
+                        userSelect: 'none'
                       }}
                     >
                       <div
@@ -529,8 +615,22 @@ export default function TapeChartView({
                           color: '#1e293b'
                         }}
                       >
-                        <ChevronDown size={14} strokeWidth={2.4} color="#64748b" />
-                        <span>{rt.name.toUpperCase()}</span>
+                        <div
+                          className="tape-chart-category-chevron"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '16px',
+                            height: '16px',
+                            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                            color: '#64748b'
+                          }}
+                        >
+                          <ChevronDown size={14} strokeWidth={2.4} />
+                        </div>
+                        <span style={{ letterSpacing: '0.02em' }}>{rt.name.toUpperCase()}</span>
                       </div>
                     </td>
 
@@ -590,7 +690,7 @@ export default function TapeChartView({
                   </tr>
 
                   {/* Physical Room Rows: e.g. 101, 102 */}
-                  {group.rooms.map((room) => {
+                  {!isCollapsed && group.rooms.map((room) => {
                     return (
                       <tr key={room.id}>
                         {/* Sticky Room Label with Broom and Wrench icons */}

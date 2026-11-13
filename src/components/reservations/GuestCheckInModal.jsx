@@ -72,6 +72,7 @@ export default function GuestCheckInModal({
     'Delux Room';
 
   // Handle clicking "Assign"
+  // Handle clicking "Assign"
   const handleAssignClick = () => {
     if (!selectedRoomId) {
       alert('Please select a room to assign.');
@@ -81,7 +82,7 @@ export default function GuestCheckInModal({
     if (rm) {
       setIsAssigning(true);
       if (onAssignRoom) {
-        onAssignRoom(reservation.id, selectedRoomId);
+        onAssignRoom(reservation.id || reservation.bookingReference, selectedRoomId);
       }
       setAssignedRoomNumber(rm.roomNumber);
       setAssignSuccessMsg(`Success: Room ${rm.roomNumber} assigned successfully`);
@@ -91,13 +92,13 @@ export default function GuestCheckInModal({
 
   // Handle clicking primary "Check-in" button
   const handleCheckInSubmit = () => {
-    if (!assignedRoomNumber && !selectedRoomId) {
-      alert('Please assign a room before proceeding with check-in.');
-      return;
+    let roomIdToUse = selectedRoomId || reservation.roomId;
+    if (!roomIdToUse && candidateRooms.length > 0) {
+      roomIdToUse = candidateRooms[0].id;
     }
 
     if (onConfirmCheckIn) {
-      onConfirmCheckIn(reservation.id, selectedRoomId);
+      onConfirmCheckIn(reservation.id || reservation.bookingReference, roomIdToUse);
     }
     onClose();
   };
@@ -437,7 +438,7 @@ export default function GuestCheckInModal({
           <button
             type="button"
             onClick={handleCheckInSubmit}
-            disabled={!assignedRoomNumber && !selectedRoomId}
+            disabled={!assignedRoomNumber && !selectedRoomId && candidateRooms.length === 0}
             style={{
               background: '#2563eb',
               color: '#ffffff',
@@ -446,8 +447,8 @@ export default function GuestCheckInModal({
               padding: '0.6rem 1.6rem',
               fontSize: '0.92rem',
               fontWeight: 700,
-              cursor: !assignedRoomNumber && !selectedRoomId ? 'not-allowed' : 'pointer',
-              opacity: !assignedRoomNumber && !selectedRoomId ? 0.6 : 1,
+              cursor: !assignedRoomNumber && !selectedRoomId && candidateRooms.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: !assignedRoomNumber && !selectedRoomId && candidateRooms.length === 0 ? 0.6 : 1,
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',

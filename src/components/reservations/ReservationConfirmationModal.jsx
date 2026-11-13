@@ -112,15 +112,7 @@ export default function ReservationConfirmationModal({
     };
   }, [isOpen]);
 
-  const handleClose = () => {
-    if (onClose) {
-      onClose();
-    } else if (onViewBookingDetails) {
-      onViewBookingDetails(reservation);
-    }
-  };
-
-  const handleViewDetails = () => {
+  const handleAction = () => {
     if (onViewBookingDetails) {
       onViewBookingDetails(reservation);
     } else if (onClose) {
@@ -145,7 +137,7 @@ export default function ReservationConfirmationModal({
         padding: '16px',
         boxSizing: 'border-box'
       }}
-      onClick={handleClose}
+      onClick={handleAction}
     >
       <div
         style={{
@@ -164,7 +156,7 @@ export default function ReservationConfirmationModal({
         {/* Close Button top-right */}
         <button
           type="button"
-          onClick={handleClose}
+          onClick={handleAction}
           aria-label="Close"
           style={{
             position: 'absolute',
@@ -490,7 +482,7 @@ export default function ReservationConfirmationModal({
         {/* View Booking Details Action Button */}
         <button
           type="button"
-          onClick={handleViewDetails}
+          onClick={handleAction}
           style={{
             width: '100%',
             backgroundColor: '#2563EB',

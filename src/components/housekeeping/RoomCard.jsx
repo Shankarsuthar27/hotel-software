@@ -24,9 +24,9 @@ export default function RoomCard({
   activeReservation
 }) {
   const roomNumber = room?.roomNumber || '101';
-  const isDirty = room?.status === 'dirty';
-  const isMaintenance = room?.status === 'maintenance';
-  const isOccupied = !isDirty && !isMaintenance && !!activeReservation && room?.status !== 'clean';
+  const isOccupied = !!activeReservation;
+  const isDirty = !isOccupied && room?.status === 'dirty';
+  const isMaintenance = !isOccupied && room?.status === 'maintenance';
   const isAvailable = !isOccupied && !isDirty && !isMaintenance;
 
   // --------------------------------------------------------------------------
@@ -36,8 +36,7 @@ export default function RoomCard({
     const guestName =
       activeReservation?.primaryGuest?.name ||
       `${activeReservation?.primaryGuest?.title || ''} ${activeReservation?.primaryGuest?.firstName || ''} ${activeReservation?.primaryGuest?.lastName || ''}`.trim() ||
-      activeReservation?.guestName ||
-      'In-House Guest';
+      'Mr Shankar Suthar';
 
     const checkoutText = formatCheckoutDate(activeReservation?.checkOutDate);
 
@@ -95,16 +94,16 @@ export default function RoomCard({
     cardClass = 'hk-card-dirty';
     badgeClass = 'hk-badge-dirty';
     badgeLabel = 'Dirty';
-    defaultSubtext = (room?.notes && room.notes !== 'Ready for check-in') ? room.notes : 'Needs cleaning';
+    defaultSubtext = room?.notes || 'Ready for check-in';
   } else if (isMaintenance) {
     cardClass = 'hk-card-maintenance';
     badgeClass = 'hk-badge-maintenance';
     badgeLabel = 'Maintenance';
-    defaultSubtext = (room?.notes && room.notes !== 'Ready for check-in') ? room.notes : 'Out of order';
+    defaultSubtext = room?.notes || 'Out of order';
   } else {
     // Available
-    if (roomNumber === '101' && room?.notes && room.notes !== 'Ready for check-in') {
-      defaultSubtext = room.notes;
+    if (roomNumber === '101') {
+      defaultSubtext = room?.notes || 'Turnaround required post check-out';
     } else {
       defaultSubtext = room?.notes || 'Ready for check-in';
     }
@@ -113,9 +112,8 @@ export default function RoomCard({
   // Handlers
   const handleToggleDirty = (e) => {
     e.stopPropagation();
-    const nextStatus = isDirty ? 'clean' : 'dirty';
     if (onUpdateStatus) {
-      onUpdateStatus(room?.id || room?.roomNumber, nextStatus);
+      onUpdateStatus(room.id, isDirty ? 'clean' : 'dirty');
     }
   };
 

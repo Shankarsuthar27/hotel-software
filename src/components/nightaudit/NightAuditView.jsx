@@ -52,7 +52,7 @@ const defaultAuditsList = [
       {
         room: '101 - Delux Room',
         folio: 'FOL_5',
-        guest: 'Mr Krishna Suthar',
+        guest: 'Mr Kkk Suthar',
         nrmlTariff: 2500,
         ofrdTariff: 2500,
         totalTax: 125,
@@ -332,7 +332,19 @@ export default function NightAuditView({
   const hiddenDateInputRef = React.useRef(null);
 
   const [roomStatusList, setRoomStatusList] = useState(
-    () => savedSession?.roomStatusList || []
+    () =>
+      savedSession?.roomStatusList || [
+        {
+          id: 'rm_102',
+          roomNumber: '102',
+          resNo: '#RES_6',
+          guest: 'Mr Krishna Suthar',
+          arrival: '26 Oct 2026',
+          departure: '27 Oct 2026',
+          balance: '3,675.00',
+          status: 'Due Out'
+        }
+      ]
   );
 
   // Close row action dropdown when clicking outside
@@ -649,7 +661,7 @@ export default function NightAuditView({
         {
           room: '101 - Delux Room',
           folio: 'FOL_5',
-          guest: 'Mr Krishna Suthar',
+          guest: 'Mr Kkk Suthar',
           nrmlTariff: 2500,
           ofrdTariff: 2500,
           totalTax: 125,
@@ -748,7 +760,18 @@ export default function NightAuditView({
     const nextDueBadge = 'Action Required';
     const nextUnsettledText = '0';
     const nextUnsettledBadge = 'Clear';
-    const initial27Rooms = [];
+    const initial27Rooms = [
+      {
+        id: 'rm_102',
+        roomNumber: '102',
+        resNo: '#RES_6',
+        guest: 'Mr Krishna Suthar',
+        arrival: '26 Oct 2026',
+        departure: '27 Oct 2026',
+        balance: '3,675.00',
+        status: 'Due Out'
+      }
+    ];
 
     setAuditsList(updatedAuditsList);
     setDisplayDateStr(nextDateStr);

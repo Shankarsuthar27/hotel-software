@@ -74,49 +74,43 @@ export default function EditReservationView({
   // Sub-sidebar accordion state
   const [isRoomAccordionOpen, setIsRoomAccordionOpen] = useState(true);
 
-  // Helper: parse firstName/lastName from combined name string (e.g. "Mr. John Doe" or "John Doe")
-  const parseNameParts = (pg) => {
-    if (pg?.firstName) return { firstName: pg.firstName, lastName: pg.lastName || '' };
-    const fullName = pg?.name || '';
-    if (!fullName) return { firstName: '', lastName: '' };
-    const titlePrefixes = ['mr.', 'mrs.', 'ms.', 'dr.', 'prof.', 'mr', 'mrs', 'ms', 'dr'];
-    const parts = fullName.trim().split(/\s+/);
-    const firstPart = parts[0]?.toLowerCase().replace(/\.?$/, '');
-    let nameParts = parts;
-    if (titlePrefixes.includes(firstPart) || titlePrefixes.includes(parts[0]?.toLowerCase())) {
-      nameParts = parts.slice(1);
-    }
-    return {
-      firstName: nameParts[0] || '',
-      lastName: nameParts.slice(1).join(' ') || ''
-    };
-  };
-
-  // Editable Form State: Guest Details
-  const buildGuestForm = (res) => {
+  // Helper to extract clean guest form data without auto-filling fake or sample details
+  const extractGuestForm = (res) => {
     const pg = res?.primaryGuest || {};
-    const { firstName, lastName } = parseNameParts(pg);
+    let fName = pg.firstName || '';
+    let lName = pg.lastName || '';
+    if (!fName && pg.name) {
+      const parts = pg.name.trim().split(' ');
+      if (['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Mr', 'Mrs', 'Ms', 'Dr'].includes(parts[0])) {
+        fName = parts[1] || '';
+        lName = parts.slice(2).join(' ') || '';
+      } else {
+        fName = parts[0] || '';
+        lName = parts.slice(1).join(' ') || '';
+      }
+    }
+
     return {
       title: pg.title || 'Mr.',
-      firstName: pg.firstName || firstName || '',
-      lastName: pg.lastName || lastName || '',
+      firstName: fName,
+      lastName: lName,
       mobile: pg.phone || pg.mobile || '',
       countryCode: pg.countryCode || '+91',
       email: pg.email || '',
       birthDate: pg.birthDate || '',
       nationality: pg.nationality || '',
-      gender: pg.gender || 'Male',
+      gender: pg.gender || '',
       guestType: pg.guestType || 'Adult',
       isPrimary: pg.isPrimary !== undefined ? pg.isPrimary : true,
-      isVIP: res?.isVIP || false,
+      isVIP: !!(res?.isVIP || pg.isVIP),
       address: pg.address || '',
       zip: pg.zip || '',
-      country: pg.country || 'India',
+      country: pg.country || '',
       state: pg.state || '',
       city: pg.city || '',
       idNumber: pg.idNumber || '',
-      idType: pg.idType || 'Aadhaar Card',
-      issuingCountry: pg.issuingCountry || 'India',
+      idType: pg.idType || '',
+      issuingCountry: pg.issuingCountry || '',
       issuingCity: pg.issuingCity || '',
       expiryDate: pg.expiryDate || '',
       idDocumentUrl: pg.idDocumentUrl || pg.idPhoto || '',
@@ -124,13 +118,16 @@ export default function EditReservationView({
       idStoragePath: pg.idStoragePath || ''
     };
   };
-  const [guestForm, setGuestForm] = useState(() => buildGuestForm(reservation));
 
-  // Re-sync guest form when switching to a different reservation or when reservation updates
+  // Editable Form State: Guest Details (loads only real data, without automatic fake filler values)
+  const [guestForm, setGuestForm] = useState(() => extractGuestForm(reservation));
+
+  // Sync form state whenever active reservation changes
   useEffect(() => {
-    setGuestForm(buildGuestForm(reservation));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reservation?.id, reservation?.primaryGuest?.name, reservation?.primaryGuest?.phone, reservation?.roomId]);
+    if (reservation?.id) {
+      setGuestForm(extractGuestForm(reservation));
+    }
+  }, [reservation?.id, reservation?.bookingReference]);
 
   // Dynamic State & City options based on selected Country and State
   const stateOptions = useMemo(() => {
@@ -3018,7 +3015,7 @@ export default function EditReservationView({
           pmsStore.checkInReservation(resId, assignedRoomId);
           setShowCheckInModal(false);
           setFolioVersion(v => v + 1);
-          if (onCheckIn) onCheckIn(resId);
+          if (onCheckIn) onCheckIn(resId, assignedRoomId);
         }}
       />
 

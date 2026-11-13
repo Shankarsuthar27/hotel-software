@@ -403,12 +403,15 @@ h1, h2, h3, h4, h5, h6,
 /* Tape Chart Matrix */
 .tape-chart-container {
   background-color: #ffffff;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-sm);
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  width: 100%;
+  flex: 1;
+  min-height: 100%;
 }
 
 .tape-chart-toolbar {
@@ -463,6 +466,35 @@ h1, h2, h3, h4, h5, h6,
 
 .sticky-header-row th.sticky-room-col {
   z-index: 30;
+}
+
+/* Tape Chart Collapsible Category Rows */
+.tape-chart-category-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.tape-chart-category-row:hover td {
+  background-color: #f8fafc !important;
+}
+
+.tape-chart-category-row:hover .sticky-room-col {
+  background-color: #f8fafc !important;
+}
+
+.tape-chart-category-row:hover .tape-chart-category-chevron {
+  color: #1e293b !important;
+}
+
+.tape-chart-category-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s ease;
+  color: #64748b;
 }
 
 /* Date Slot Cell */

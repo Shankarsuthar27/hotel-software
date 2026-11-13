@@ -150,20 +150,26 @@ export default function App() {
 
   // --- Handlers ---
 
-  const handleCheckIn = (resId) => {
-    pmsStore.checkInReservation(resId);
-    const res = state.reservations.find((r) => r.id === resId);
-    showToast(`✅ Guest ${res ? res.primaryGuest?.name : ''} checked in to Room ${res ? res.roomNumber : ''}`);
-    if (selectedReservation && selectedReservation.id === resId) {
+  const handleCheckIn = (resId, roomId) => {
+    pmsStore.checkInReservation(resId, roomId);
+    const cleanId = typeof resId === 'object' ? (resId?.id || resId?.bookingReference) : resId;
+    const res = state.reservations.find((r) => r.id === cleanId || r.bookingReference === cleanId);
+    showToast(`✅ Guest ${res ? (res.primaryGuest?.name || res.guestName) : ''} checked in to Room ${res ? res.roomNumber : ''}`);
+    if (selectedReservation && (selectedReservation.id === cleanId || selectedReservation.bookingReference === cleanId)) {
       setSelectedReservation({ ...selectedReservation, status: 'in_house' });
     }
   };
 
   const handleCheckOut = (resId) => {
-    pmsStore.checkOutReservation(resId);
-    const res = state.reservations.find((r) => r.id === resId);
-    showToast(`👋 Guest ${res ? res.primaryGuest?.name : ''} checked out. Room ${res ? res.roomNumber : ''} auto-flagged DIRTY.`);
-    if (selectedReservation && selectedReservation.id === resId) {
+    const resResult = pmsStore.checkOutReservation(resId);
+    const cleanId = typeof resId === 'object' ? (resId?.id || resId?.bookingReference) : resId;
+    const res = state.reservations.find((r) => r.id === cleanId || r.bookingReference === cleanId);
+    if (resResult && resResult.success === false) {
+      showToast(`❌ ${resResult.message}`);
+      return;
+    }
+    showToast(`👋 Guest ${res ? (res.primaryGuest?.name || res.guestName) : ''} checked out. Room ${res ? res.roomNumber : ''} auto-flagged DIRTY.`);
+    if (selectedReservation && (selectedReservation.id === cleanId || selectedReservation.bookingReference === cleanId)) {
       setSelectedReservation({ ...selectedReservation, status: 'checked_out' });
     }
   };
@@ -332,7 +338,6 @@ export default function App() {
             rooms={state.rooms}
             roomTypes={state.roomTypes}
             ratePlans={state.ratePlans}
-            reservations={state.reservations}
             initialData={effectivePrefillData}
             onBack={() => {
               setSlotPrefillData(null);
@@ -411,7 +416,7 @@ export default function App() {
             )}
 
         {/* Dynamic Viewport with Page Transitions */}
-        <main className={`content-viewport ${activeTab === 'reservations' || activeTab === 'dashboard' || activeTab === 'rates' || activeTab === 'guests' || activeTab === 'myteam' || activeTab === 'permissions' || activeTab === 'properties' ? 'no-pad-viewport' : ''}`}>
+        <main className={`content-viewport ${activeTab === 'reservations' || activeTab === 'dashboard' || activeTab === 'rates' || activeTab === 'guests' || activeTab === 'myteam' || activeTab === 'permissions' || activeTab === 'properties' || activeTab === 'calendar' ? 'no-pad-viewport' : ''}`}>
           <div key={activeTab} className="pms-page-view">
             {activeTab === 'dashboard' && (
             <DashboardView
@@ -469,7 +474,7 @@ export default function App() {
               rooms={state.rooms}
               roomTypes={state.roomTypes}
               initialTab={router.queryParams?.tab || 'all'}
-              initialStatusFilter={router.queryParams?.status}
+              initialStatusFilter={router.queryParams?.status || 'all_active'}
               onAssignRoom={(resId, roomId) => {
                 pmsStore.assignRoom(resId, roomId);
                 showToast('Success: Room assigned successfully');

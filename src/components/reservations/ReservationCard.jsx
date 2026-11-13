@@ -23,9 +23,9 @@ export default function ReservationCard({
   onInvoice,
   onGroupList
 }) {
-  const statusNormalized = (reservation.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+  const statusNormalized = (reservation.status || '').toLowerCase().replace(/[\s-]/g, '_');
   const isCheckedOut = statusNormalized === 'checked_out';
-  const isInHouse = statusNormalized === 'in_house';
+  const isInHouse = statusNormalized === 'in_house' || statusNormalized === 'checked_in';
   const isConfirmed = statusNormalized === 'confirmed';
   const isCancelled = statusNormalized === 'cancelled';
   const isNoShow = statusNormalized === 'no_show';

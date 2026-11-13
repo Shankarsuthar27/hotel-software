@@ -23,37 +23,9 @@ export default function HousekeepingView({
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isUnassignedOpen, setIsUnassignedOpen] = useState(false);
 
-  // Filter selections (persisted so selections like All Statuses don't revert to default)
-  const [selectedRoomType, setSelectedRoomType] = useState(() => {
-    try {
-      return localStorage.getItem('pms_roomview_room_type') || 'ALL';
-    } catch {
-      return 'ALL';
-    }
-  });
-  const [selectedStatus, setSelectedStatus] = useState(() => {
-    try {
-      return localStorage.getItem('pms_roomview_status') || 'ALL';
-    } catch {
-      return 'ALL';
-    }
-  });
-
-  useEffect(() => {
-    try {
-      if (selectedStatus) {
-        localStorage.setItem('pms_roomview_status', selectedStatus);
-      }
-    } catch (e) {}
-  }, [selectedStatus]);
-
-  useEffect(() => {
-    try {
-      if (selectedRoomType) {
-        localStorage.setItem('pms_roomview_room_type', selectedRoomType);
-      }
-    } catch (e) {}
-  }, [selectedRoomType]);
+  // Filter selections
+  const [selectedRoomType, setSelectedRoomType] = useState('ALL');
+  const [selectedStatus, setSelectedStatus] = useState('ALL');
 
   // Selected rooms for batch actions
   const [selectedRooms, setSelectedRooms] = useState(new Set());
@@ -137,12 +109,12 @@ export default function HousekeepingView({
         (res) => (res.roomId === r.id || res.roomNumber === r.roomNumber) && res.status === 'in_house'
       );
 
-      if (r.status === 'dirty') {
-        dirty++;
+      if (isOcc) {
+        occ++;
       } else if (r.status === 'maintenance') {
         maint++;
-      } else if (isOcc && r.status !== 'clean') {
-        occ++;
+      } else if (r.status === 'dirty') {
+        dirty++;
       } else {
         avail++;
       }
@@ -172,11 +144,9 @@ export default function HousekeepingView({
       }
       // Status filter
       if (selectedStatus === 'ALL') return true;
-      if (selectedStatus === 'dirty') return r.status === 'dirty';
-      if (selectedStatus === 'maintenance') return r.status === 'maintenance';
-      if (selectedStatus === 'clean') return r.status === 'clean' || (!r.status && !reservations.some((res) => (res.roomId === r.id || res.roomNumber === r.roomNumber) && res.status === 'in_house'));
+      if (selectedStatus === 'clean') return r.status === 'clean' || !r.status;
       if (selectedStatus === 'occupied') {
-        return r.status !== 'dirty' && r.status !== 'maintenance' && reservations.some((res) => (res.roomId === r.id || res.roomNumber === r.roomNumber) && res.status === 'in_house');
+        return reservations.some((res) => res.roomId === r.id && res.status === 'in_house');
       }
       return r.status === selectedStatus;
     });
@@ -235,14 +205,10 @@ export default function HousekeepingView({
 
   // Batch status update
   const handleBatchStatus = (newStatus) => {
-    selectedRooms.forEach((roomId) => {
-      pmsStore.updateRoomStatus(roomId, newStatus);
-      if (onUpdateStatus) {
+    if (onUpdateStatus) {
+      selectedRooms.forEach((roomId) => {
         onUpdateStatus(roomId, newStatus);
-      }
-    });
-    if (selectedStatus !== 'ALL' && selectedStatus !== newStatus) {
-      setSelectedStatus('ALL');
+      });
     }
     setSelectedRooms(new Set());
   };
@@ -549,36 +515,61 @@ export default function HousekeepingView({
               {/* Room Cards Grid */}
               <div className="hk-cards-grid">
                 {group.rooms.map((room) => {
-                  const activeRes = (room.status === 'dirty' || room.status === 'clean' || room.status === 'maintenance')
-                    ? null
-                    : (reservations.find(
-                        (r) => (r.roomId === room.id || r.roomNumber === room.roomNumber || r.roomNum === room.roomNumber) &&
-                               (r.status === 'in_house' || r.status === 'checked_in')
-                      ) || (room.roomNumber === '101' && room.status === 'occupied' ? (reservations.find(r => r.id === 'res_5') || {
-                        id: 'res_sample_unassigned',
-                        bookingReference: '#RES_101',
-                        primaryGuest: {
-                          name: 'Priya Sharma',
-                          title: 'Ms.',
-                          firstName: 'Priya',
-                          lastName: 'Sharma',
-                          phone: '9876543210',
-                          email: 'priya.sharma@gmail.com',
-                          country: 'India'
-                        },
-                        guestName: 'Priya Sharma',
-                        guestPhone: '9876543210',
-                        guestEmail: 'priya.sharma@gmail.com',
-                        checkInDate: '2026-10-31',
-                        checkOutDate: '2026-11-02',
-                        checkInTime: '12:30',
-                        checkOutTime: '11:00',
-                        bookingSource: 'walk-in',
-                        ratePlanName: 'test plan',
-                        ratePlanCode: 'test_plan',
-                        specialRequests: '...',
-                        status: 'in_house'
-                      }) : null));
+                  const activeRes = reservations.find(
+                    (r) => (r.roomId === room.id || r.roomNumber === room.roomNumber || r.roomNum === room.roomNumber) &&
+                           (r.status === 'in_house' || r.status === 'checked_in')
+                  ) || reservations.find(
+                    (r) => (r.roomId === room.id || r.roomNumber === room.roomNumber || r.roomNum === room.roomNumber) &&
+                           (r.status === 'confirmed' || room.status === 'occupied')
+                  ) || (room.roomNumber === '102' ? (reservations.find(r => r.id === 'res_12') || {
+                    id: 'res_12',
+                    bookingReference: '#RES_12',
+                    primaryGuest: {
+                      name: 'Mr Shankar Suthar',
+                      title: 'Mr.',
+                      firstName: 'Shankar',
+                      lastName: 'Suthar',
+                      phone: '+91 98932938982',
+                      email: 'ss2137789@gmail.com',
+                      country: 'India'
+                    },
+                    guestName: 'Mr Shankar Suthar',
+                    guestPhone: '+91 98932938982',
+                    guestEmail: 'ss2137789@gmail.com',
+                    checkInDate: '2026-11-12',
+                    checkOutDate: '2026-11-13',
+                    checkInTime: '12:30',
+                    checkOutTime: '11:00',
+                    bookingSource: 'walk-in',
+                    ratePlanName: 'test plan',
+                    ratePlanCode: 'BAR_EP',
+                    specialRequests: '',
+                    status: 'in_house'
+                  }) : null) || (room.roomNumber === '101' && room.status === 'occupied' ? (reservations.find(r => r.id === 'res_5') || {
+                    id: 'res_sample_unassigned',
+                    bookingReference: '#RES_101',
+                    primaryGuest: {
+                      name: 'Priya Sharma',
+                      title: 'Ms.',
+                      firstName: 'Priya',
+                      lastName: 'Sharma',
+                      phone: '9876543210',
+                      email: 'priya.sharma@gmail.com',
+                      country: 'India'
+                    },
+                    guestName: 'Priya Sharma',
+                    guestPhone: '9876543210',
+                    guestEmail: 'priya.sharma@gmail.com',
+                    checkInDate: '2026-10-31',
+                    checkOutDate: '2026-11-02',
+                    checkInTime: '12:30',
+                    checkOutTime: '11:00',
+                    bookingSource: 'walk-in',
+                    ratePlanName: 'test plan',
+                    ratePlanCode: 'test_plan',
+                    specialRequests: '...',
+                    status: 'in_house'
+                  }) : null);
 
                   return (
                     <RoomCard
@@ -586,13 +577,7 @@ export default function HousekeepingView({
                       room={room}
                       isSelected={selectedRooms.has(room.id)}
                       onToggleSelect={handleToggleSelect}
-                      onUpdateStatus={(rId, status) => {
-                        pmsStore.updateRoomStatus(rId, status);
-                        if (onUpdateStatus) onUpdateStatus(rId, status);
-                        if (selectedStatus !== 'ALL' && selectedStatus !== status) {
-                          setSelectedStatus('ALL');
-                        }
-                      }}
+                      onUpdateStatus={onUpdateStatus}
                       onOpenMaintenance={(r) => handleOpenMaintenance(r)}
                       onOpenReservation={(r) => {
                         if (onNewReservation) {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import './add-reservation.css';
 import {
   Home,
@@ -24,7 +24,6 @@ import {
 import { calculateRoomTax } from '../../services/taxEngine';
 import ReservationConfirmationModal from './ReservationConfirmationModal';
 import { navigate } from '../../services/router';
-import { pmsStore } from '../../services/pmsStore';
 
 // Venus / Female Icon matching OTAL
 const VenusIcon = ({ size = 15, color = '#c026d3' }) => (
@@ -471,7 +470,6 @@ export default function AddReservationView({
   rooms = [],
   roomTypes = [],
   ratePlans = [],
-  reservations = [],
   initialData = null,
   onBack,
   onNavigate,
@@ -491,16 +489,6 @@ export default function AddReservationView({
   const [bookingSource, setBookingSource] = useState('walk-in');
   const [sendConfirmationMail, setSendConfirmationMail] = useState(true);
   const [createdReservation, setCreatedReservation] = useState(null);
-
-  // Current live reservations from props or store
-  const currentReservations = useMemo(() => {
-    if (reservations && reservations.length > 0) return reservations;
-    try {
-      return pmsStore.getReservations() || [];
-    } catch {
-      return [];
-    }
-  }, [reservations]);
 
   // Sync dates when explicit initialData is passed (e.g. clicking a specific cell on calendar)
   useEffect(() => {
@@ -577,100 +565,6 @@ export default function AddReservationView({
     }
   };
 
-  // Check if a specific room is available (never show if dirty, occupied, or in maintenance)
-  const isRoomAvailable = useCallback(
-    (room, currentRowId = null, currentConfigured = null) => {
-      if (!room) return false;
-
-      // 1. Never show if room status is dirty
-      const statusNorm = (room.status || '').toLowerCase().trim();
-      const cleanNorm = (room.cleanliness || '').toLowerCase().trim();
-      if (statusNorm === 'dirty' || cleanNorm === 'dirty') {
-        return false;
-      }
-
-      // 2. Never show if room is in maintenance / out of order
-      if (statusNorm === 'maintenance' || room.operational === 'out_of_order') {
-        return false;
-      }
-
-      // 3. Never show if explicitly marked occupied
-      if (statusNorm === 'occupied') {
-        return false;
-      }
-
-      // 4. Never show if occupied by an in-house guest right now
-      const isInHouse = currentReservations.some((res) => {
-        const matchesRoom =
-          res.roomId === room.id ||
-          res.roomNumber === room.roomNumber ||
-          res.roomNum === room.roomNumber;
-        if (!matchesRoom) return false;
-        const s = (res.status || '').toLowerCase().replace(/[-_\s]+/g, '_');
-        return s === 'in_house' || s === 'checked_in';
-      });
-
-      if (isInHouse) {
-        return false;
-      }
-
-      // 5. Never show if reserved during the selected check-in / check-out dates
-      if (checkInDate && checkOutDate) {
-        const hasDateConflict = currentReservations.some((res) => {
-          const matchesRoom =
-            res.roomId === room.id ||
-            res.roomNumber === room.roomNumber ||
-            res.roomNum === room.roomNumber;
-          if (!matchesRoom) return false;
-
-          const s = (res.status || '').toLowerCase().replace(/[-_\s]+/g, '_');
-          if (s === 'cancelled' || s === 'no_show' || s === 'checked_out') {
-            return false;
-          }
-
-          const resIn = res.checkInDate;
-          const resOut = res.checkOutDate;
-          if (!resIn || !resOut) return false;
-
-          // Date overlap check: existing reservation departs after requested check-in AND arrives before requested check-out
-          return resOut > checkInDate && resIn < checkOutDate;
-        });
-
-        if (hasDateConflict) {
-          return false;
-        }
-      }
-
-      // 6. Never show if already picked in another row of this multi-room booking
-      if (currentRowId !== null) {
-        const rowsToCheck = currentConfigured || [];
-        const pickedInAnotherRow = rowsToCheck.some(
-          (cr) => cr.id !== currentRowId && cr.roomId === room.id
-        );
-        if (pickedInAnotherRow) {
-          return false;
-        }
-      }
-
-      return true;
-    },
-    [currentReservations, checkInDate, checkOutDate]
-  );
-
-  // Helper to get available rooms matching a room type
-  const getAvailableRoomsForType = useCallback(
-    (roomTypeId, rowId = null, currentConfigured = null) => {
-      return rooms.filter(
-        (r) =>
-          (r.roomTypeId === roomTypeId ||
-            (roomTypeId === 'rt_standard' && r.roomTypeId === 'rt_normal') ||
-            (roomTypeId === 'rt_normal' && r.roomTypeId === 'rt_standard')) &&
-          isRoomAvailable(r, rowId, currentConfigured)
-      );
-    },
-    [rooms, isRoomAvailable]
-  );
-
   // Room Configuration: Multi-room support
   const defaultRoomTypeId =
     initialData?.room?.roomTypeId ||
@@ -678,53 +572,19 @@ export default function AddReservationView({
     roomTypes[0]?.id ||
     'rt_deluxe';
 
-  const [configuredRooms, setConfiguredRooms] = useState(() => {
-    const initialAvailable = rooms.filter(
-      (r) =>
-        (r.roomTypeId === defaultRoomTypeId ||
-          (defaultRoomTypeId === 'rt_standard' && r.roomTypeId === 'rt_normal') ||
-          (defaultRoomTypeId === 'rt_normal' && r.roomTypeId === 'rt_standard')) &&
-        isRoomAvailable(r, 1, [])
-    );
-
-    const initialRoomId = initialData?.room?.id && isRoomAvailable(initialData.room, 1, [])
-      ? initialData.room.id
-      : (initialAvailable[0]?.id || '');
-
-    return [
-      {
-        id: 1,
-        roomTypeId: defaultRoomTypeId,
-        ratePlanCode: '',
-        ratePlanName: '',
-        roomId: initialRoomId,
-        roomsCount: 1,
-        adults: 1,
-        children: 2,
-        rate: ''
-      }
-    ];
-  });
-
-  // Ensure every configured room row has an available physical room (never occupied or dirty)
-  useEffect(() => {
-    setConfiguredRooms((prev) => {
-      let changed = false;
-      const updated = prev.map((rm) => {
-        const available = getAvailableRoomsForType(rm.roomTypeId, rm.id, prev);
-        const isCurrentValid = rm.roomId && available.some((r) => r.id === rm.roomId);
-        if (!isCurrentValid) {
-          changed = true;
-          return {
-            ...rm,
-            roomId: available[0]?.id || ''
-          };
-        }
-        return rm;
-      });
-      return changed ? updated : prev;
-    });
-  }, [rooms, getAvailableRoomsForType]);
+  const [configuredRooms, setConfiguredRooms] = useState([
+    {
+      id: 1,
+      roomTypeId: defaultRoomTypeId,
+      ratePlanCode: '',
+      ratePlanName: '',
+      roomId: initialData?.room?.id || 'unassigned',
+      roomsCount: 1,
+      adults: 1,
+      children: 2,
+      rate: ''
+    }
+  ]);
 
   const [activeDropdown, setActiveDropdown] = useState(null); // `${rm.id}-roomType` | `${rm.id}-ratePlan` | `${rm.id}-roomNo`
 
@@ -769,9 +629,8 @@ export default function AddReservationView({
   };
 
   const handleSelectRoomType = (rmId, rt) => {
-    setConfiguredRooms((prev) => {
-      const available = getAvailableRoomsForType(rt.id, rmId, prev);
-      return prev.map((r) => {
+    setConfiguredRooms((prev) =>
+      prev.map((r) => {
         if (r.id !== rmId) return r;
 
         let updatedRatePlanCode = r.ratePlanCode;
@@ -794,15 +653,15 @@ export default function AddReservationView({
         return {
           ...r,
           roomTypeId: rt.id,
-          roomId: available[0]?.id || '',
+          roomId: 'unassigned',
           ratePlanCode: updatedRatePlanCode,
           ratePlanName: updatedRatePlanName,
           adults: rt.baseAdults || 1,
           children: rt.baseChildren ?? 0,
           rate: updatedRate
         };
-      });
-    });
+      })
+    );
     setActiveDropdown(null);
   };
 
@@ -847,16 +706,14 @@ export default function AddReservationView({
 
   const handleAddRoomRow = () => {
     const defaultRt = roomTypes.find((rt) => rt.id === defaultRoomTypeId);
-    const newId = configuredRooms.length + 1;
-    const available = getAvailableRoomsForType(defaultRoomTypeId, newId, configuredRooms);
     setConfiguredRooms((prev) => [
       ...prev,
       {
-        id: newId,
+        id: prev.length + 1,
         roomTypeId: defaultRoomTypeId,
         ratePlanCode: '',
         ratePlanName: '',
-        roomId: available[0]?.id || '',
+        roomId: 'unassigned',
         roomsCount: 1,
         adults: defaultRt?.baseAdults || 1,
         children: defaultRt?.baseChildren ?? 0,
@@ -869,14 +726,13 @@ export default function AddReservationView({
     setConfiguredRooms((prev) => {
       if (prev.length <= 1) {
         const defaultRt = roomTypes.find((rt) => rt.id === defaultRoomTypeId);
-        const available = getAvailableRoomsForType(defaultRoomTypeId, 1, []);
         return [
           {
             id: 1,
             roomTypeId: defaultRoomTypeId,
             ratePlanCode: '',
             ratePlanName: '',
-            roomId: available[0]?.id || '',
+            roomId: 'unassigned',
             roomsCount: 1,
             adults: defaultRt?.baseAdults || 1,
             children: defaultRt?.baseChildren ?? 0,
@@ -1006,9 +862,7 @@ export default function AddReservationView({
       checkOutTime,
       nights,
       roomsCount: configuredRooms.length || 1,
-      roomId: (!primaryRoom.roomId || primaryRoom.roomId === 'unassigned')
-        ? (rooms.find((r) => r.roomTypeId === primaryRoom.roomTypeId || (primaryRoom.roomTypeId === 'rt_standard' && r.roomTypeId === 'rt_normal'))?.id || '')
-        : primaryRoom.roomId,
+      roomId: primaryRoom.roomId === 'unassigned' ? '' : primaryRoom.roomId,
       roomTypeId: primaryRoom.roomTypeId,
       ratePlanCode: primaryRoom.ratePlanCode || 'BAR_EP',
       baseRatePerNight: Number(primaryRoom.rate) || 2500,
@@ -1311,8 +1165,13 @@ export default function AddReservationView({
                 <tbody>
                   {configuredRooms.map((rm) => {
                     const currentRoomType = roomTypes.find((rt) => rt.id === rm.roomTypeId);
-                    const matchingRooms = getAvailableRoomsForType(rm.roomTypeId, rm.id, configuredRooms);
-                    const selectedRoom = matchingRooms.find((r) => r.id === rm.roomId) || rooms.find((r) => r.id === rm.roomId);
+                    const matchingRooms = rooms.filter(
+                      (r) =>
+                        r.roomTypeId === rm.roomTypeId ||
+                        (rm.roomTypeId === 'rt_standard' && r.roomTypeId === 'rt_normal') ||
+                        (rm.roomTypeId === 'rt_normal' && r.roomTypeId === 'rt_standard')
+                    );
+                    const selectedRoom = rooms.find((r) => r.id === rm.roomId);
                     const selectedRatePlan = ratePlans.find((rp) => rp.code === rm.ratePlanCode || rp.id === rm.ratePlanCode);
                     const availableRatePlans = ratePlans.filter((rp) => isRoomTypeActiveInRatePlan(rp, rm.roomTypeId));
 
@@ -1403,21 +1262,14 @@ export default function AddReservationView({
                           </div>
                         </td>
 
-                        {/* 3. Rooms (Unchangeable - fixed at 1 room per row) */}
+                        {/* 3. Rooms (Aligned Center) */}
                         <td style={{ textAlign: 'center' }}>
                           <input
-                            type="text"
-                            readOnly
-                            tabIndex={-1}
+                            type="number"
+                            min="1"
                             className="room-config-rooms-input"
-                            value="1"
-                            title="1 room per row (unchangeable)"
-                            style={{
-                              cursor: 'default',
-                              userSelect: 'none',
-                              backgroundColor: '#ffffff'
-                            }}
-                            onKeyDown={(e) => e.preventDefault()}
+                            value={rm.roomsCount || 1}
+                            onChange={(e) => handleUpdateRoomRow(rm.id, 'roomsCount', Number(e.target.value) || 1)}
                           />
                         </td>
 
@@ -1430,9 +1282,11 @@ export default function AddReservationView({
                               onClick={() => setActiveDropdown(activeDropdown === `${rm.id}-roomNo` ? null : `${rm.id}-roomNo`)}
                             >
                               <span>
-                                {selectedRoom && matchingRooms.some((r) => r.id === selectedRoom.id)
+                                {selectedRoom
                                   ? selectedRoom.roomNumber
-                                  : (matchingRooms[0]?.roomNumber || 'No Room Available')}
+                                  : rm.roomId && rm.roomId !== 'unassigned'
+                                  ? rm.roomId
+                                  : 'Unassigned'}
                               </span>
                               {activeDropdown === `${rm.id}-roomNo` ? (
                                 <ChevronUp size={15} color="#475569" />
@@ -1443,26 +1297,33 @@ export default function AddReservationView({
 
                             {activeDropdown === `${rm.id}-roomNo` && (
                               <div className="room-config-popover" style={{ bottom: 'calc(100% + 4px)', left: 0, minWidth: '150px' }}>
+                                {/* Unassigned Option */}
+                                <div
+                                  className="room-config-popover-item"
+                                  onClick={() => handleSelectRoomNo(rm.id, 'unassigned')}
+                                >
+                                  <span style={{ fontWeight: (!rm.roomId || rm.roomId === 'unassigned') ? 600 : 400 }}>
+                                    Unassigned
+                                  </span>
+                                  {(!rm.roomId || rm.roomId === 'unassigned') && (
+                                    <Check size={14} color="#2563EB" />
+                                  )}
+                                </div>
+
                                 {/* Available Rooms of Selected Room Type */}
-                                {matchingRooms.length > 0 ? (
-                                  matchingRooms.map((r) => {
-                                    const isSelected = rm.roomId === r.id;
-                                    return (
-                                      <div
-                                        key={r.id}
-                                        className="room-config-popover-item"
-                                        onClick={() => handleSelectRoomNo(rm.id, r.id)}
-                                      >
-                                        <span style={{ fontWeight: isSelected ? 600 : 400 }}>{r.roomNumber}</span>
-                                        {isSelected && <Check size={14} color="#2563EB" />}
-                                      </div>
-                                    );
-                                  })
-                                ) : (
-                                  <div className="room-config-popover-item" style={{ color: '#94a3b8', cursor: 'default' }}>
-                                    <span>No rooms available</span>
-                                  </div>
-                                )}
+                                {matchingRooms.map((r) => {
+                                  const isSelected = rm.roomId === r.id;
+                                  return (
+                                    <div
+                                      key={r.id}
+                                      className="room-config-popover-item"
+                                      onClick={() => handleSelectRoomNo(rm.id, r.id)}
+                                    >
+                                      <span style={{ fontWeight: isSelected ? 600 : 400 }}>{r.roomNumber}</span>
+                                      {isSelected && <Check size={14} color="#2563EB" />}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -1851,8 +1712,10 @@ export default function AddReservationView({
           isOpen={!!createdReservation}
           reservation={createdReservation}
           onClose={() => {
+            const target = createdReservation;
+            const targetId = target?.id || (target?.bookingReference ? target.bookingReference.replace('#', '').toLowerCase() : 'res_1');
             setCreatedReservation(null);
-            navigate('/reservations');
+            navigate(`/reservations/${targetId}/edit`);
           }}
           onViewBookingDetails={(res) => {
             const target = res || createdReservation;

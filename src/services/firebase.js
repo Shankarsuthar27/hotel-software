@@ -4,8 +4,7 @@ import { getAnalytics, isSupported as isAnalyticsSupported } from "firebase/anal
 import {
   initializeFirestore,
   getFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager
+  memoryLocalCache
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
@@ -25,16 +24,34 @@ const firebaseConfig = {
 // Initialize Firebase App
 export const app = initializeApp(firebaseConfig);
 
-// Initialize Cloud Firestore with multi-tab offline persistence
+// Clean up stale Firestore multi-tab state keys from localStorage that exceed the 5MB browser quota
+if (typeof window !== 'undefined' && window.localStorage) {
+  try {
+    const keysToPurge = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('firestore_') || k.startsWith('firebase:'))) {
+        keysToPurge.push(k);
+      }
+    }
+    keysToPurge.forEach((k) => localStorage.removeItem(k));
+  } catch (_) {}
+}
+
+// Initialize Cloud Firestore using memory cache to eliminate multi-tab IndexedDB lock contention
+// and prevent localStorage quota exhaustion. The PMS maintains its own instant offline persistence
+// in localStorage (hotel_astha_pms_v5), while Firestore operates purely as a live cloud synchronization engine.
 let firestoreInstance = null;
 try {
   firestoreInstance = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
+    localCache: memoryLocalCache()
   });
 } catch (e) {
-  firestoreInstance = getFirestore(app);
+  try {
+    firestoreInstance = getFirestore(app);
+  } catch (err) {
+    console.warn('[Firebase] Firestore fallback initialization error:', err);
+  }
 }
 export const db = firestoreInstance;
 
