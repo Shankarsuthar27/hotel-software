@@ -1851,10 +1851,8 @@ export default function AddReservationView({
           isOpen={!!createdReservation}
           reservation={createdReservation}
           onClose={() => {
-            const target = createdReservation;
-            const targetId = target?.id || (target?.bookingReference ? target.bookingReference.replace('#', '').toLowerCase() : 'res_1');
             setCreatedReservation(null);
-            navigate(`/reservations/${targetId}/edit`);
+            navigate('/reservations');
           }}
           onViewBookingDetails={(res) => {
             const target = res || createdReservation;

@@ -164,9 +164,9 @@ export const initialReservations = [
     id: 'res_11',
     bookingReference: '#RES_11',
     primaryGuest: {
-      name: 'Mr Shaknrk Suthar',
+      name: 'Mr Shankar Suthar',
       title: 'Mr.',
-      firstName: 'Shaknrk',
+      firstName: 'Shankar',
       lastName: 'Suthar',
       phone: '+91 9239288392',
       email: 'ssajhdjka@gmail.com',
@@ -329,9 +329,9 @@ export const initialReservations = [
     id: 'res_6',
     bookingReference: '#RES_6',
     primaryGuest: {
-      name: 'Mr Kkk Suthar',
+      name: 'Mr Krishna Suthar',
       title: 'Mr.',
-      firstName: 'Kkk',
+      firstName: 'Krishna',
       lastName: 'Suthar',
       phone: '9898398334',
       email: 'ss2137789@gmail.com',
@@ -345,7 +345,7 @@ export const initialReservations = [
     ratePlanCode: 'BAR_EP',
     ratePlanName: 'Best Available Rate - Room Only',
     checkInDate: '2026-11-02',
-    checkOutDate: '2026-10-27',
+    checkOutDate: '2026-11-03',
     actualCheckOutDate: null,
     isEarlyCheckOut: false,
     nights: 1,
@@ -370,9 +370,9 @@ export const initialReservations = [
     id: 'res_5',
     bookingReference: '#RES_5',
     primaryGuest: {
-      name: 'Mr Kkk Suthar',
+      name: 'Mr Krishna Suthar',
       title: 'Mr.',
-      firstName: 'Kkk',
+      firstName: 'Krishna',
       lastName: 'Suthar',
       phone: '9898398334',
       email: 'ss2137789@gmail.com',
@@ -386,8 +386,8 @@ export const initialReservations = [
     ratePlanCode: 'test_plan',
     ratePlanName: 'test plan',
     checkInDate: '2026-10-26', // Mon 26, Oct 2026
-    checkOutDate: '2026-10-26', // Mon 26, Oct 2026
-    actualCheckOutDate: '2026-10-26',
+    checkOutDate: '2026-10-27', // Tue 27, Oct 2026
+    actualCheckOutDate: '2026-10-27',
     isEarlyCheckOut: false,
     nights: 1,
     adults: 1,
@@ -465,8 +465,8 @@ export const initialReservations = [
     roomTypeId: 'rt_deluxe',
     roomTypeName: 'Delux Room',
     ratePlanCode: 'BAR_EP',
-    checkInDate: '2026-10-26', // Mon 26, Oct 2026
-    checkOutDate: '2026-10-27', // Tue 27, Oct 2026
+    checkInDate: '2026-11-13', // Fri 13, Nov 2026
+    checkOutDate: '2026-11-14', // Sat 14, Nov 2026
     nights: 1,
     adults: 1,
     children: 2,
@@ -476,11 +476,11 @@ export const initialReservations = [
     totalAmount: 3500.00,
     paidAmount: 0.00,
     balanceDue: 3500.00,
-    status: 'cancelled',
+    status: 'confirmed',
     bookingSource: 'WALK_IN',
     marketSegment: 'FIT',
-    createdAt: '2026-10-26 1:02 PM',
-    bookingDateFormatted: '26 Oct 2026, 1:02 PM',
+    createdAt: '2026-11-13 10:00 AM',
+    bookingDateFormatted: '13 Nov 2026, 10:00 AM',
     folioId: 'fol_3'
   },
   {
@@ -645,6 +645,15 @@ export const initialFolios = {
     roomNumber: '102',
     status: 'CLOSED',
     transactions: []
+  },
+  fol_11: {
+    folioNumber: 'FOL_11',
+    reservationId: 'res_11',
+    roomNumber: '201',
+    status: 'OPEN',
+    transactions: [
+      { id: 'tx_111', date: '2026-11-12', particulars: 'Room', type: 'ROOM_CHARGE', desc: 'Room Tariff (1 Night)', reference: '-', direction: 'Debit', amount: 1050, tax: 0 }
+    ]
   }
 };
 
@@ -771,7 +780,7 @@ export const initialNightAudits = [
     revPar: 1312.5,
     chargesPostedCount: 2,
     roomChargesLog: [
-      { room: '101', guest: 'Mr Kkk Suthar', rate: 2625, tax: 315, net: 2940, folio: 'FOL_5' },
+      { room: '101', guest: 'Mr Krishna Suthar', rate: 2625, tax: 315, net: 2940, folio: 'FOL_5' },
       { room: '102', guest: 'Mr Shankar Suthar', rate: 2625, tax: 315, net: 2940, folio: 'FOL_4' }
     ]
   },
@@ -794,7 +803,7 @@ export const initialNightAudits = [
     revPar: 656.25,
     chargesPostedCount: 1,
     roomChargesLog: [
-      { room: '101', guest: 'Mr Kkk Suthar', rate: 2625, tax: 315, net: 2940, folio: 'FOL_5' }
+      { room: '101', guest: 'Mr Krishna Suthar', rate: 2625, tax: 315, net: 2940, folio: 'FOL_5' }
     ]
   },
   {
@@ -889,8 +898,8 @@ export const initialAuditTrail = [
 
 export const initialGuests = [
   {
-    id: 'gst_shaknrk',
-    name: 'Mr Shaknrk Suthar',
+    id: 'gst_shankar_11',
+    name: 'Mr Shankar Suthar',
     email: 'ssajhdjka@gmail.com',
     phone: '+91 9239288392',
     gender: 'Male',
@@ -902,8 +911,8 @@ export const initialGuests = [
     reservationIds: ['res_11']
   },
   {
-    id: 'gst_krishana',
-    name: 'Mr Krishana Suthar',
+    id: 'gst_krishna',
+    name: 'Mr Krishna Suthar',
     email: 'shanak@gmail.com',
     phone: '+91 9738873383',
     gender: 'Male',
@@ -912,7 +921,7 @@ export const initialGuests = [
     birthDate: null,
     addedOn: '2026-11-12',
     isVIP: false,
-    reservationIds: ['res_10']
+    reservationIds: ['res_10', 'res_6', 'res_5']
   },
   {
     id: 'gst_shankar',

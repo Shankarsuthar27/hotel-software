@@ -52,7 +52,7 @@ const defaultAuditsList = [
       {
         room: '101 - Delux Room',
         folio: 'FOL_5',
-        guest: 'Mr Kkk Suthar',
+        guest: 'Mr Krishna Suthar',
         nrmlTariff: 2500,
         ofrdTariff: 2500,
         totalTax: 125,
@@ -649,7 +649,7 @@ export default function NightAuditView({
         {
           room: '101 - Delux Room',
           folio: 'FOL_5',
-          guest: 'Mr Kkk Suthar',
+          guest: 'Mr Krishna Suthar',
           nrmlTariff: 2500,
           ofrdTariff: 2500,
           totalTax: 125,

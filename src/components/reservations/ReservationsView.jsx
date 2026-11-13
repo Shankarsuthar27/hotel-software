@@ -221,10 +221,15 @@ export default function ReservationsView({
       const idOrder = ['res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
       const idxA = idOrder.indexOf(a.id);
       const idxB = idOrder.indexOf(b.id);
+      // Both are known fixed IDs → keep fixed order
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return 0;
+      // New reservation vs fixed ID → new comes first
+      if (idxA === -1 && idxB !== -1) return -1;
+      if (idxA !== -1 && idxB === -1) return 1;
+      // Both are new/dynamic → sort by createdAt descending (newest first)
+      const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tB - tA;
     });
   }, [
     reservations,

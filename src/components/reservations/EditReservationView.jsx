@@ -74,34 +74,63 @@ export default function EditReservationView({
   // Sub-sidebar accordion state
   const [isRoomAccordionOpen, setIsRoomAccordionOpen] = useState(true);
 
+  // Helper: parse firstName/lastName from combined name string (e.g. "Mr. John Doe" or "John Doe")
+  const parseNameParts = (pg) => {
+    if (pg?.firstName) return { firstName: pg.firstName, lastName: pg.lastName || '' };
+    const fullName = pg?.name || '';
+    if (!fullName) return { firstName: '', lastName: '' };
+    const titlePrefixes = ['mr.', 'mrs.', 'ms.', 'dr.', 'prof.', 'mr', 'mrs', 'ms', 'dr'];
+    const parts = fullName.trim().split(/\s+/);
+    const firstPart = parts[0]?.toLowerCase().replace(/\.?$/, '');
+    let nameParts = parts;
+    if (titlePrefixes.includes(firstPart) || titlePrefixes.includes(parts[0]?.toLowerCase())) {
+      nameParts = parts.slice(1);
+    }
+    return {
+      firstName: nameParts[0] || '',
+      lastName: nameParts.slice(1).join(' ') || ''
+    };
+  };
+
   // Editable Form State: Guest Details
-  const [guestForm, setGuestForm] = useState({
-    title: reservation.primaryGuest?.title || 'Mr.',
-    firstName: reservation.primaryGuest?.firstName || 'shankar',
-    lastName: reservation.primaryGuest?.lastName || 'suthar',
-    mobile: reservation.primaryGuest?.phone || '9664471637',
-    countryCode: reservation.primaryGuest?.countryCode || '+91',
-    email: reservation.primaryGuest?.email || 'ss2137789@gmail.com',
-    birthDate: reservation.primaryGuest?.birthDate || '2002-09-27',
-    nationality: reservation.primaryGuest?.nationality || '',
-    gender: reservation.primaryGuest?.gender || 'Male',
-    guestType: reservation.primaryGuest?.guestType || 'Adult',
-    isPrimary: reservation.primaryGuest?.isPrimary !== undefined ? reservation.primaryGuest.isPrimary : true,
-    isVIP: reservation.isVIP || false,
-    address: reservation.primaryGuest?.address || 'jalore',
-    zip: reservation.primaryGuest?.zip || '343001',
-    country: reservation.primaryGuest?.country || 'Algeria',
-    state: reservation.primaryGuest?.state || 'Ain Defla',
-    city: reservation.primaryGuest?.city || '',
-    idNumber: reservation.primaryGuest?.idNumber || '990969609690',
-    idType: reservation.primaryGuest?.idType || 'Aadhaar Card',
-    issuingCountry: reservation.primaryGuest?.issuingCountry || 'India',
-    issuingCity: reservation.primaryGuest?.issuingCity || 'jalore',
-    expiryDate: reservation.primaryGuest?.expiryDate || '2026-10-28',
-    idDocumentUrl: reservation.primaryGuest?.idDocumentUrl || reservation.primaryGuest?.idPhoto || '',
-    idDocumentName: reservation.primaryGuest?.idDocumentName || '',
-    idStoragePath: reservation.primaryGuest?.idStoragePath || ''
-  });
+  const buildGuestForm = (res) => {
+    const pg = res?.primaryGuest || {};
+    const { firstName, lastName } = parseNameParts(pg);
+    return {
+      title: pg.title || 'Mr.',
+      firstName: pg.firstName || firstName || '',
+      lastName: pg.lastName || lastName || '',
+      mobile: pg.phone || pg.mobile || '',
+      countryCode: pg.countryCode || '+91',
+      email: pg.email || '',
+      birthDate: pg.birthDate || '',
+      nationality: pg.nationality || '',
+      gender: pg.gender || 'Male',
+      guestType: pg.guestType || 'Adult',
+      isPrimary: pg.isPrimary !== undefined ? pg.isPrimary : true,
+      isVIP: res?.isVIP || false,
+      address: pg.address || '',
+      zip: pg.zip || '',
+      country: pg.country || 'India',
+      state: pg.state || '',
+      city: pg.city || '',
+      idNumber: pg.idNumber || '',
+      idType: pg.idType || 'Aadhaar Card',
+      issuingCountry: pg.issuingCountry || 'India',
+      issuingCity: pg.issuingCity || '',
+      expiryDate: pg.expiryDate || '',
+      idDocumentUrl: pg.idDocumentUrl || pg.idPhoto || '',
+      idDocumentName: pg.idDocumentName || '',
+      idStoragePath: pg.idStoragePath || ''
+    };
+  };
+  const [guestForm, setGuestForm] = useState(() => buildGuestForm(reservation));
+
+  // Re-sync guest form when switching to a different reservation or when reservation updates
+  useEffect(() => {
+    setGuestForm(buildGuestForm(reservation));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reservation?.id, reservation?.primaryGuest?.name, reservation?.primaryGuest?.phone, reservation?.roomId]);
 
   // Dynamic State & City options based on selected Country and State
   const stateOptions = useMemo(() => {

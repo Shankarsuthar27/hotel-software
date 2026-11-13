@@ -103,7 +103,11 @@ class PMSStore {
             r202.status = 'clean';
           }
         } else {
-          this.rooms = parsed.rooms;
+          // Filter out rooms with invalid/placeholder room numbers
+          this.rooms = parsed.rooms.filter(r => {
+            const rNum = (r.roomNumber || '').trim();
+            return rNum && rNum.toLowerCase() !== 'unassigned' && rNum !== '0';
+          });
         }
         let rtUltra = this.roomTypes.find(rt => rt.id === 'rt_ultra_premium' || rt.name === 'Ultra Premium');
         if (!rtUltra) {
@@ -226,7 +230,6 @@ class PMSStore {
         this.mealPlans = loadedPlans;
         this.reservations = (parsed.reservations || initialReservations).filter(r => {
           if (r.id === 'res_unassigned_1') return false;
-          if (r.id === 'res_372' || r.bookingReference === '#RES_372' || r.bookingReference === 'RES_372') return false;
           const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
           if (name.includes('rahul kumar') && (r.status === 'cancelled' || !r.status)) return false;
           return true;
@@ -261,22 +264,71 @@ class PMSStore {
           }
         });
 
-        // Ensure Room 101 has active in_house reservation for Mr Kkk Suthar (Checkout: Tue 27, Oct 2026)
-        const res101 = this.reservations.find(r => r.id === 'res_5');
-        if (res101) {
-          res101.roomId = 'rm_101';
-          res101.roomNumber = '101';
-          res101.roomTypeId = 'rt_standard';
-          res101.roomTypeName = 'Standard Room';
-          res101.status = 'in_house';
-          res101.checkOutDate = '2026-10-27';
-          res101.primaryGuest = {
-            ...(res101.primaryGuest || {}),
-            name: 'Mr Kkk Suthar',
+        // Ensure res_6 has correct guest name (Mr Krishna Suthar) and checkout date (2026-11-03)
+        const res6 = this.reservations.find(r => r.id === 'res_6');
+        if (res6) {
+          res6.primaryGuest = {
+            ...(res6.primaryGuest || {}),
+            name: 'Mr Krishna Suthar',
             title: 'Mr.',
-            firstName: 'Kkk',
+            firstName: 'Krishna',
             lastName: 'Suthar'
           };
+          res6.guestName = 'Mr Krishna Suthar';
+          res6.checkInDate = '2026-11-02';
+          res6.checkOutDate = '2026-11-03';
+          res6.nights = 1;
+        }
+
+        // Ensure res_5 has correct guest name (Mr Krishna Suthar) and checked_out status
+        const res5 = this.reservations.find(r => r.id === 'res_5');
+        if (res5) {
+          res5.primaryGuest = {
+            ...(res5.primaryGuest || {}),
+            name: 'Mr Krishna Suthar',
+            title: 'Mr.',
+            firstName: 'Krishna',
+            lastName: 'Suthar'
+          };
+          res5.guestName = 'Mr Krishna Suthar';
+          res5.status = 'checked_out';
+          res5.checkInDate = '2026-10-26';
+          res5.checkOutDate = '2026-10-27';
+          res5.actualCheckOutDate = '2026-10-26';
+          res5.paidAmount = 2625.00;
+          res5.balanceDue = 0.00;
+        }
+
+        // Ensure res_11 has proper name (Mr Shankar Suthar)
+        const res11 = this.reservations.find(r => r.id === 'res_11');
+        if (res11) {
+          res11.primaryGuest = {
+            ...(res11.primaryGuest || {}),
+            name: 'Mr Shankar Suthar',
+            title: 'Mr.',
+            firstName: 'Shankar',
+            lastName: 'Suthar'
+          };
+          res11.guestName = 'Mr Shankar Suthar';
+        }
+
+        // Ensure res_3 has current unassigned confirmed booking dates
+        const res3 = this.reservations.find(r => r.id === 'res_3');
+        if (res3) {
+          res3.primaryGuest = {
+            ...(res3.primaryGuest || {}),
+            name: 'Mr Shankar Suthar',
+            title: 'Mr.',
+            firstName: 'Shankar',
+            lastName: 'Suthar'
+          };
+          res3.guestName = 'Mr Shankar Suthar';
+          res3.checkInDate = '2026-11-13';
+          res3.checkOutDate = '2026-11-14';
+          res3.bookingDateFormatted = '13 Nov 2026, 10:00 AM';
+          res3.createdAt = '2026-11-13 10:00 AM';
+          res3.status = 'confirmed';
+          res3.nights = 1;
         }
 
         // Ensure res_12 and all other reservations are not occupying Room 102
@@ -321,7 +373,7 @@ class PMSStore {
           }
         }
         this.folios = parsed.folios || initialFolios;
-        ['fol_3', 'fol_4', 'fol_5'].forEach(fId => {
+        ['fol_3', 'fol_4', 'fol_5', 'fol_6', 'fol_11'].forEach(fId => {
           if (!this.folios[fId] && initialFolios[fId]) {
             this.folios[fId] = initialFolios[fId];
           }
@@ -584,23 +636,63 @@ class PMSStore {
           const cloudRes = snapshot.docs.map((d) => d.data());
           // Purge obsolete/cancelled residue
           const validCloudRes = cloudRes.filter((r) => {
-            if (r.id === 'res_372' || r.bookingReference === '#RES_372' || r.bookingReference === 'RES_372') return false;
             const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
             if (name.includes('rahul kumar') && (r.status === 'cancelled' || !r.status)) return false;
             return true;
           });
 
+          // Merge cloud reservations with existing local reservations so newly created reservations are never dropped
+          const cloudIdSet = new Set(validCloudRes.map(r => r.id));
+          const localOnly = (this.reservations || []).filter(r => r.id && !cloudIdSet.has(r.id));
+          const allRes = [...validCloudRes, ...localOnly];
+
           const idOrder = ['res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
-          validCloudRes.sort((a, b) => {
+          allRes.sort((a, b) => {
             const idxA = idOrder.indexOf(a.id);
             const idxB = idOrder.indexOf(b.id);
             if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-            if (idxA !== -1) return -1;
-            if (idxB !== -1) return 1;
-            return 0;
+            if (idxA === -1 && idxB !== -1) return -1;
+            if (idxA !== -1 && idxB === -1) return 1;
+            const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return tB - tA;
           });
 
-          this.reservations = validCloudRes;
+          // Apply same corrections as load() to cloud data
+          this.reservations = allRes.map(r => {
+            if (r.roomId === 'rm_102' || r.roomNumber === '102' || r.roomId === '102') {
+              const updated = { ...r, roomId: '', roomNumber: '' };
+              if (updated.status === 'in_house' || updated.status === 'checked_in') {
+                updated.status = 'checked_out';
+              }
+              return updated;
+            }
+            return r;
+          });
+          // Apply guest name fixes on cloud data
+          const fireRes6 = this.reservations.find(r => r.id === 'res_6');
+          if (fireRes6) {
+            fireRes6.primaryGuest = { ...(fireRes6.primaryGuest || {}), name: 'Mr Krishna Suthar', title: 'Mr.', firstName: 'Krishna', lastName: 'Suthar' };
+            fireRes6.guestName = 'Mr Krishna Suthar';
+            fireRes6.checkInDate = '2026-11-02'; fireRes6.checkOutDate = '2026-11-03'; fireRes6.nights = 1;
+          }
+          const fireRes5 = this.reservations.find(r => r.id === 'res_5');
+          if (fireRes5) {
+            fireRes5.primaryGuest = { ...(fireRes5.primaryGuest || {}), name: 'Mr Krishna Suthar', title: 'Mr.', firstName: 'Krishna', lastName: 'Suthar' };
+            fireRes5.guestName = 'Mr Krishna Suthar';
+            fireRes5.status = 'checked_out';
+          }
+          const fireRes11 = this.reservations.find(r => r.id === 'res_11');
+          if (fireRes11) {
+            fireRes11.primaryGuest = { ...(fireRes11.primaryGuest || {}), name: 'Mr Shankar Suthar', title: 'Mr.', firstName: 'Shankar', lastName: 'Suthar' };
+            fireRes11.guestName = 'Mr Shankar Suthar';
+          }
+          const fireRes3 = this.reservations.find(r => r.id === 'res_3');
+          if (fireRes3) {
+            fireRes3.primaryGuest = { ...(fireRes3.primaryGuest || {}), name: 'Mr Shankar Suthar', title: 'Mr.', firstName: 'Shankar', lastName: 'Suthar' };
+            fireRes3.guestName = 'Mr Shankar Suthar';
+            fireRes3.status = 'confirmed';
+          }
           this.cloudStatus = 'LIVE';
           this.save();
           this.notify();
@@ -621,10 +713,21 @@ class PMSStore {
           const cloudRooms = snapshot.docs.map((d) => d.data());
           const map = new Map();
           cloudRooms.forEach((r) => {
+            // Skip rooms with invalid/placeholder room numbers
+            const rNum = (r.roomNumber || '').trim();
+            if (!rNum || rNum.toLowerCase() === 'unassigned' || rNum === '0') return;
             const key = r.id || r.roomNumber;
             if (key && !map.has(key)) map.set(key, r);
           });
-          this.rooms = Array.from(map.values());
+          this.rooms = Array.from(map.values()).map(r => {
+            if (r.id === 'rm_102' || r.roomNumber === '102') {
+              const statusNorm = (r.status || '').toLowerCase();
+              if (statusNorm === 'occupied' || !['clean', 'dirty', 'maintenance'].includes(statusNorm)) {
+                return { ...r, id: 'rm_102', roomNumber: '102', roomTypeId: 'rt_deluxe', status: 'clean', operational: 'available', notes: 'Ready for check-in' };
+              }
+            }
+            return r;
+          });
           this.cloudStatus = 'LIVE';
           this.save();
           this.notify();
@@ -913,14 +1016,26 @@ class PMSStore {
   // --- RESERVATIONS & BOOKING ENGINE ---
 
   createReservation(bookingData) {
-    const count = this.reservations.length + 366;
+    let maxNum = 11;
+    (this.reservations || []).forEach((r) => {
+      const match = String(r.bookingReference || r.id || '').match(/(\d+)/);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (!isNaN(n) && n > maxNum && n < 10000) {
+          maxNum = n;
+        }
+      }
+    });
+    const count = maxNum + 1;
     const ref = `#RES_${count}`;
     const id = `res_${count}`;
     const folioId = `fol_${count}`;
     const isUnassigned = !bookingData.roomId || bookingData.roomId === 'unassigned' || bookingData.roomId === '';
-    const room = !isUnassigned ? this.rooms.find(r => r.id === bookingData.roomId) : null;
-    const roomNumber = isUnassigned ? '' : (bookingData.roomNumber || room?.roomNumber || '');
-    const finalRoomId = isUnassigned ? '' : bookingData.roomId;
+    const room = !isUnassigned ? this.rooms.find(r => r.id === bookingData.roomId || r.roomNumber === bookingData.roomId) : null;
+    const roomNumber = isUnassigned ? '' : (bookingData.roomNumber || room?.roomNumber || bookingData.roomId || '');
+    const finalRoomId = isUnassigned ? '' : (room?.id || bookingData.roomId);
+    const matchedRt = this.roomTypes?.find(rt => rt.id === bookingData.roomTypeId);
+    const roomTypeName = matchedRt?.name || bookingData.roomTypeName || 'Delux Room';
 
     const taxCalc = calculateRoomTax(bookingData.baseRatePerNight, bookingData.nights, {
       isComplimentary: bookingData.isComplimentary,
@@ -938,17 +1053,27 @@ class PMSStore {
       bookingReference: ref,
       primaryGuest: {
         name: bookingData.guestName,
-        phone: bookingData.guestPhone,
-        email: bookingData.guestEmail || '',
-        gstin: bookingData.guestGstin || '',
-        nationality: bookingData.nationality || 'Indian',
-        idType: bookingData.idType || 'Aadhaar',
-        idNumber: bookingData.idNumber || '',
-        idDocumentUrl: bookingData.idDocumentUrl || ''
+        title: bookingData.primaryGuest?.title || bookingData.title || 'Mr.',
+        firstName: bookingData.primaryGuest?.firstName || bookingData.firstName || '',
+        lastName: bookingData.primaryGuest?.lastName || bookingData.lastName || '',
+        phone: bookingData.guestPhone || bookingData.primaryGuest?.phone || '',
+        countryCode: bookingData.primaryGuest?.countryCode || bookingData.countryCode || '+91',
+        email: bookingData.guestEmail || bookingData.primaryGuest?.email || '',
+        gstin: bookingData.guestGstin || bookingData.primaryGuest?.gstin || '',
+        nationality: bookingData.nationality || bookingData.primaryGuest?.nationality || 'Indian',
+        idType: bookingData.idType || bookingData.primaryGuest?.idType || 'Aadhaar Card',
+        idNumber: bookingData.idNumber || bookingData.primaryGuest?.idNumber || '',
+        idDocumentUrl: bookingData.idDocumentUrl || bookingData.primaryGuest?.idDocumentUrl || '',
+        address: bookingData.primaryGuest?.address || bookingData.address || '',
+        city: bookingData.primaryGuest?.city || bookingData.city || '',
+        state: bookingData.primaryGuest?.state || bookingData.state || '',
+        zip: bookingData.primaryGuest?.zip || bookingData.zip || '',
+        isPrimary: true
       },
       roomId: finalRoomId,
       roomNumber,
       roomTypeId: bookingData.roomTypeId,
+      roomTypeName,
       ratePlanCode: bookingData.ratePlanCode || 'BAR_CP',
       checkInDate: bookingData.checkInDate,
       checkOutDate: bookingData.checkOutDate,
