@@ -48,13 +48,13 @@ if (fs.existsSync(envPath)) {
 }
 
 const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY || env.VITE_FIREBASE_API_KEY || "",
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || env.VITE_FIREBASE_AUTH_DOMAIN || "",
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID || env.VITE_FIREBASE_PROJECT_ID || "",
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || env.VITE_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: process.env.VITE_FIREBASE_APP_ID || env.VITE_FIREBASE_APP_ID || "",
-  measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || env.VITE_FIREBASE_MEASUREMENT_ID || ""
+  apiKey: process.env.VITE_FIREBASE_API_KEY || env.VITE_FIREBASE_API_KEY || "AIzaSyAdHlCHjFIZuS9LyiO0HTUL4DFhg7XO3yE",
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || env.VITE_FIREBASE_AUTH_DOMAIN || "hotel-263a3.firebaseapp.com",
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID || env.VITE_FIREBASE_PROJECT_ID || "hotel-263a3",
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || env.VITE_FIREBASE_STORAGE_BUCKET || "hotel-263a3.firebasestorage.app",
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || env.VITE_FIREBASE_MESSAGING_SENDER_ID || "172374373154",
+  appId: process.env.VITE_FIREBASE_APP_ID || env.VITE_FIREBASE_APP_ID || "1:172374373154:web:6747af4581d2d678abeb7b",
+  measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || env.VITE_FIREBASE_MEASUREMENT_ID || "G-LTCZMXG0XN"
 };
 
 console.log(`🚀 Initializing Firebase App for project: ${firebaseConfig.projectId || "hotel-263a3"}...`);
@@ -170,9 +170,9 @@ async function transferAllData() {
         issuingCity: "jalore",
         totalStays: 1,
         totalSpent: 5250,
-        currentStatus: "IN_HOUSE",
-        activeRoom: "102",
-        activeBookingRef: "#RES_1"
+        currentStatus: "CHECKED_OUT",
+        activeRoom: "",
+        activeBookingRef: ""
       },
       {
         id: "gst_krishna_suthar",
@@ -182,9 +182,9 @@ async function transferAllData() {
         nationality: "Indian",
         totalStays: 1,
         totalSpent: 18733.33,
-        currentStatus: "CONFIRMED_ARRIVAL",
-        activeRoom: "102",
-        activeBookingRef: "#RES_2"
+        currentStatus: "CANCELLED",
+        activeRoom: "",
+        activeBookingRef: ""
       }
     ];
 

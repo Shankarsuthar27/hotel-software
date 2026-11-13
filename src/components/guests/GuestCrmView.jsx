@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Home, Search, ArrowLeft, Archive, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { initialGuests } from '../../data/initialPmsData.js';
+import { pmsStore } from '../../services/pmsStore';
+import { navigate } from '../../services/router';
 import './guests.css';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -42,7 +44,7 @@ function formatStayDate(dateStr) {
  * Maps status code to label and pill CSS class
  */
 function getStatusDisplay(status) {
-  const s = String(status || '').toLowerCase().trim();
+  const s = String(status || '').toLowerCase().trim().replace(/[-_\s]+/g, '_');
   if (s === 'in_house' || s === 'checked_in') {
     return { label: 'In-House', className: 'in-house' };
   }
@@ -70,12 +72,26 @@ export default function GuestCrmView({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
+  // Real-time synchronization with PMS Store for immediate check-in / check-out updates
+  const [storeVersion, setStoreVersion] = useState(0);
+  useEffect(() => {
+    const unsub = pmsStore.subscribe(() => {
+      setStoreVersion((v) => v + 1);
+    });
+    return unsub;
+  }, []);
+
+  const currentReservations = useMemo(() => {
+    const fromStore = pmsStore.getState()?.reservations;
+    if (Array.isArray(fromStore) && fromStore.length > 0) {
+      return fromStore;
+    }
+    return reservations || [];
+  }, [reservations, storeVersion]);
+
   // Build the complete guests list by combining initial registered guest profiles
   // and dynamically mapping their stay history from PMS reservations
   const allGuests = useMemo(() => {
-    // Exact sequence of reservations for Mr Krishna Suthar matching screenshot
-    const krishnaStayOrder = ['res_6', 'res_5', 'res_4', 'res_3', 'res_7', 'res_1', 'res_2'];
-
     // Map each reservation to a standardized stay history object
     const mapReservationToStay = (r) => {
       const bookingIdClean = r.bookingReference
@@ -83,8 +99,8 @@ export default function GuestCrmView({
         : (r.id ? r.id.toUpperCase() : 'RES_1');
       const bookingIdFormatted = '#' + bookingIdClean;
 
-      const inDate = formatStayDate(r.checkInDate || '2026-10-26');
-      const outDate = formatStayDate(r.checkOutDate || '2026-10-27');
+      const inDate = formatStayDate(r.checkInDate || '2026-11-12');
+      const outDate = formatStayDate(r.checkOutDate || '2026-11-13');
       const stayDatesDisplay = `${inDate} → ${outDate}`;
       const nightsCount = Number(r.nights) || 1;
       const nightsDisplay = `${nightsCount} ${nightsCount === 1 ? 'Night' : 'Nights'}`;
@@ -107,62 +123,108 @@ export default function GuestCrmView({
       };
     };
 
-    // 1. Process base registered profiles
+    // Helper to score stay status priority:
+    // In-House / Checked-In takes highest priority (4), Confirmed next (3), Checked Out next (2), other (1)
+    const getStayPriority = (stay) => {
+      const s = String(stay?.status || '').toLowerCase().trim().replace(/[-_\s]+/g, '_');
+      if (s === 'in_house' || s === 'checked_in') return 4;
+      if (s === 'confirmed') return 3;
+      if (s === 'checked_out') return 2;
+      return 1;
+    };
+
+    // Sort stays helper: prioritize In-House > Confirmed > Checked Out, then by most recent date
+    const sortStays = (staysList) => {
+      return [...staysList].sort((a, b) => {
+        const pA = getStayPriority(a);
+        const pB = getStayPriority(b);
+        if (pA !== pB) return pB - pA;
+        const dateA = a.checkInDate || '';
+        const dateB = b.checkInDate || '';
+        if (dateA !== dateB) return dateB.localeCompare(dateA);
+        const idA = a.id || '';
+        const idB = b.id || '';
+        return idB.localeCompare(idA);
+      });
+    };
+
+    // Legacy mock reservation IDs that should not spawn dynamic guest rows
+    const legacySeedIds = new Set(['res_1', 'res_2', 'res_3', 'res_4', 'res_5', 'res_6', 'res_7']);
+
+    // 1. Process base registered profiles matching initialGuests
     const registered = (initialGuests || []).map((base) => {
       let stays = [];
 
-      if (base.id === 'gst_1') {
-        // Collect reservations in the specified order matching media_1794028053677_683ad890.png
-        krishnaStayOrder.forEach((targetId) => {
-          const found = reservations.find((r) => r.id === targetId);
-          if (found) {
-            stays.push(mapReservationToStay(found));
-          }
-        });
-
-        // Also include any other reservation with matching email or phone
-        reservations.forEach((r) => {
-          if (!krishnaStayOrder.includes(r.id)) {
-            const email = (r.primaryGuest?.email || '').toLowerCase();
-            const phone = (r.primaryGuest?.phone || '');
-            if (email === base.email.toLowerCase() || phone.includes('9292748397')) {
-              stays.push(mapReservationToStay(r));
-            }
-          }
-        });
-      } else if (Array.isArray(base.reservationIds) && base.reservationIds.length > 0) {
+      // Find matching reservations specified in reservationIds
+      if (Array.isArray(base.reservationIds) && base.reservationIds.length > 0) {
         base.reservationIds.forEach((targetId) => {
-          const found = reservations.find((r) => r.id === targetId);
+          const found = currentReservations.find(
+            (r) => r.id === targetId || r.bookingReference === targetId || r.bookingReference === `#${targetId}`
+          );
           if (found) {
             stays.push(mapReservationToStay(found));
           }
         });
       }
 
-      // Determine active/latest stay shown in main guest list table
-      const activeStay = stays.length > 0 ? stays[0] : null;
+      // Also attach any other live reservation matching this guest's email, phone, or name
+      currentReservations.forEach((r) => {
+        if (stays.some((s) => s.id === r.id)) return;
+        if (legacySeedIds.has(r.id) && !base.reservationIds?.includes(r.id)) return;
+
+        const rEmail = (r.primaryGuest?.email || '').toLowerCase().trim();
+        const rPhone = (r.primaryGuest?.phone || '').replace(/\D/g, '');
+        const rName = (r.primaryGuest?.name || '').toLowerCase().trim();
+
+        const bEmail = (base.email || '').toLowerCase().trim();
+        const bPhone = (base.phone || '').replace(/\D/g, '');
+        const bName = (base.name || '').toLowerCase().trim();
+
+        const matchEmail = rEmail && bEmail && rEmail === bEmail;
+        const matchPhone = rPhone && bPhone && (rPhone.endsWith(bPhone.slice(-10)) || bPhone.endsWith(rPhone.slice(-10)));
+        const matchName = rName && bName && rName === bName;
+
+        if (matchEmail || matchPhone || matchName) {
+          stays.push(mapReservationToStay(r));
+        }
+      });
+
+      // Sort stays so in-house active stay is top priority, followed by latest checked-out stay
+      const sortedStays = sortStays(stays);
+      const activeStay = sortedStays.length > 0 ? sortedStays[0] : null;
+
+      // Allow live updates to guest contact info from their latest reservation if modified
+      const currentGuestData = activeStay?.rawRes?.primaryGuest;
+      const displayName = currentGuestData?.name || base.name;
+      const displayEmail = currentGuestData?.email || base.email;
+      const displayPhone = currentGuestData?.phone || base.phone;
 
       return {
         ...base,
+        name: displayName,
+        email: displayEmail,
+        phone: displayPhone,
         birthDateDisplay: formatStayDate(base.birthDate),
         addedOnDisplay: formatStayDate(base.addedOn),
-        stays,
+        stays: sortedStays,
         activeStay
       };
     });
 
-    // 2. Dynamically discover any other distinct guests from new PMS reservations
+    // 2. Discover newly created guests from new user-created PMS reservations
     const handledResIds = new Set(
       registered.flatMap((g) => g.stays.map((s) => s.id))
     );
 
-    const otherReservations = reservations.filter((r) => !handledResIds.has(r.id));
+    const otherReservations = currentReservations.filter(
+      (r) => !handledResIds.has(r.id) && !legacySeedIds.has(r.id)
+    );
     const dynamicMap = {};
 
     otherReservations.forEach((r) => {
       const g = r.primaryGuest;
       if (!g || !g.name) return;
-      const key = (g.email || g.phone || g.name).toLowerCase();
+      const key = (g.email || g.phone || g.name).toLowerCase().trim();
       if (!dynamicMap[key]) {
         dynamicMap[key] = {
           id: `gst_dyn_${r.id}`,
@@ -174,8 +236,8 @@ export default function GuestCrmView({
           nationality: g.nationality || g.country || '—',
           birthDate: g.birthDate || null,
           birthDateDisplay: formatStayDate(g.birthDate),
-          addedOn: r.createdAt || '2026-10-24',
-          addedOnDisplay: formatStayDate(r.createdAt || '2026-10-24'),
+          addedOn: r.createdAt || '2026-11-12',
+          addedOnDisplay: formatStayDate(r.createdAt || '2026-11-12'),
           isVIP: Boolean(r.isVIP || g.isVIP),
           stays: []
         };
@@ -184,12 +246,14 @@ export default function GuestCrmView({
     });
 
     Object.values(dynamicMap).forEach((dyn) => {
-      dyn.activeStay = dyn.stays.length > 0 ? dyn.stays[0] : null;
+      const sortedStays = sortStays(dyn.stays);
+      dyn.stays = sortedStays;
+      dyn.activeStay = sortedStays.length > 0 ? sortedStays[0] : null;
       registered.push(dyn);
     });
 
     return registered;
-  }, [reservations]);
+  }, [currentReservations]);
 
   // Search filter
   const filteredGuests = useMemo(() => {
@@ -209,6 +273,16 @@ export default function GuestCrmView({
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalResults);
   const currentGuests = filteredGuests.slice(startIndex, endIndex);
+
+  // Resolve live selected guest profile from allGuests to reflect real-time check-in/out updates
+  const currentSelectedGuest = useMemo(() => {
+    if (!selectedGuest) return null;
+    return (
+      allGuests.find(
+        (g) => g.id === selectedGuest.id || (g.email && selectedGuest.email && g.email === selectedGuest.email)
+      ) || selectedGuest
+    );
+  }, [selectedGuest, allGuests]);
 
   // Cash Drawer handler
   const handleOpenCashDrawer = () => {
@@ -286,7 +360,7 @@ export default function GuestCrmView({
                   <th style={{ width: '22%' }}>Guest Name</th>
                   <th style={{ width: '24%' }}>Email / Phone</th>
                   <th style={{ width: '13%' }}>Booking ID</th>
-                  <th style={{ width: '25%' }}>Check-in &rarr; Check-out</th>
+                  <th style={{ width: '25%' }}>Check-in &mdash; Check-out</th>
                   <th style={{ width: '8%' }}>Nights</th>
                   <th style={{ width: '12%' }}>Status</th>
                 </tr>
@@ -307,7 +381,7 @@ export default function GuestCrmView({
                           <span className="guest-name-text">{guest.name}</span>
                           {guest.isVIP && (
                             <span className="guest-vip-pill">
-                              <Star size={10} fill="#d97706" color="#d97706" />
+                              <Star size={11} color="#d97706" strokeWidth={1.8} />
                               <span>VIP</span>
                             </span>
                           )}
@@ -430,11 +504,11 @@ export default function GuestCrmView({
 
             <div className="guest-name-cell" style={{ margin: '20px 0 16px 0' }}>
               <span className="guest-primary-name" style={{ margin: 0 }}>
-                {selectedGuest.name}
+                {currentSelectedGuest.name}
               </span>
-              {selectedGuest.isVIP && (
+              {currentSelectedGuest.isVIP && (
                 <span className="guest-vip-pill">
-                  <Star size={11} fill="#d97706" color="#d97706" />
+                  <Star size={11} color="#d97706" strokeWidth={1.8} />
                   <span>VIP</span>
                 </span>
               )}
@@ -443,37 +517,37 @@ export default function GuestCrmView({
             <div className="guest-details-list">
               <div className="guest-detail-row">
                 <span className="guest-detail-label">Email Address</span>
-                <span className="guest-detail-value">{selectedGuest.email || '—'}</span>
+                <span className="guest-detail-value">{currentSelectedGuest.email || '—'}</span>
               </div>
 
               <div className="guest-detail-row">
                 <span className="guest-detail-label">Phone Number</span>
-                <span className="guest-detail-value">{selectedGuest.phone || '—'}</span>
+                <span className="guest-detail-value">{currentSelectedGuest.phone || '—'}</span>
               </div>
 
               <div className="guest-detail-row">
                 <span className="guest-detail-label">Gender</span>
-                <span className="guest-detail-value">{selectedGuest.gender || 'Male'}</span>
+                <span className="guest-detail-value">{currentSelectedGuest.gender || 'Male'}</span>
               </div>
 
               <div className="guest-detail-row">
                 <span className="guest-detail-label">Guest Type</span>
-                <span className="guest-detail-value">{selectedGuest.guestType || 'Adult'}</span>
+                <span className="guest-detail-value">{currentSelectedGuest.guestType || 'Adult'}</span>
               </div>
 
               <div className="guest-detail-row">
                 <span className="guest-detail-label">Nationality</span>
-                <span className="guest-detail-value">{selectedGuest.nationality || '—'}</span>
+                <span className="guest-detail-value">{currentSelectedGuest.nationality || '—'}</span>
               </div>
 
               <div className="guest-detail-row">
                 <span className="guest-detail-label">Date of Birth</span>
-                <span className="guest-detail-value">{selectedGuest.birthDateDisplay || '—'}</span>
+                <span className="guest-detail-value">{currentSelectedGuest.birthDateDisplay || '—'}</span>
               </div>
 
               <div className="guest-detail-row">
                 <span className="guest-detail-label">Added on</span>
-                <span className="guest-detail-value">{selectedGuest.addedOnDisplay || '—'}</span>
+                <span className="guest-detail-value">{currentSelectedGuest.addedOnDisplay || '—'}</span>
               </div>
             </div>
           </div>
@@ -485,7 +559,7 @@ export default function GuestCrmView({
               <p className="guest-card-subtitle">All past and current reservation stays.</p>
             </div>
 
-            {selectedGuest.stays && selectedGuest.stays.length > 0 ? (
+            {currentSelectedGuest.stays && currentSelectedGuest.stays.length > 0 ? (
               <table className="stay-history-table">
                 <thead>
                   <tr>
@@ -495,8 +569,13 @@ export default function GuestCrmView({
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedGuest.stays.map((stay) => (
-                    <tr key={stay.id}>
+                  {currentSelectedGuest.stays.map((stay) => (
+                    <tr
+                      key={stay.id}
+                      onClick={() => navigate(`/reservations/${stay.id}/edit`)}
+                      style={{ cursor: 'pointer' }}
+                      title="Click to view or edit this reservation"
+                    >
                       {/* Stay Dates & Duration */}
                       <td>
                         <div className="stay-dates-text">{stay.stayDatesDisplay}</div>

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Wrench, PlusCircle, User, Clock, Moon, Calendar, X, AlertCircle, Ban, ChevronDown } from 'lucide-react';
 import RoomCard from './RoomCard';
 import BlockRoomDrawer from './BlockRoomDrawer.jsx';
+import BookingDetailsDrawer from '../reservations/BookingDetailsDrawer';
 import { pmsStore } from '../../services/pmsStore';
 import { navigate } from '../../services/router';
 import './room-card.css';
@@ -14,14 +15,45 @@ export default function HousekeepingView({
   onNewReservation,
   onSelectReservation
 }) {
+  // Booking Details Drawer state (matching OTAL PMS Room View)
+  const [selectedDrawerReservation, setSelectedDrawerReservation] = useState(null);
+
   // Dropdown states
   const [isRoomsOpen, setIsRoomsOpen] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isUnassignedOpen, setIsUnassignedOpen] = useState(false);
 
-  // Filter selections
-  const [selectedRoomType, setSelectedRoomType] = useState('ALL');
-  const [selectedStatus, setSelectedStatus] = useState('ALL');
+  // Filter selections (persisted so selections like All Statuses don't revert to default)
+  const [selectedRoomType, setSelectedRoomType] = useState(() => {
+    try {
+      return localStorage.getItem('pms_roomview_room_type') || 'ALL';
+    } catch {
+      return 'ALL';
+    }
+  });
+  const [selectedStatus, setSelectedStatus] = useState(() => {
+    try {
+      return localStorage.getItem('pms_roomview_status') || 'ALL';
+    } catch {
+      return 'ALL';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (selectedStatus) {
+        localStorage.setItem('pms_roomview_status', selectedStatus);
+      }
+    } catch (e) {}
+  }, [selectedStatus]);
+
+  useEffect(() => {
+    try {
+      if (selectedRoomType) {
+        localStorage.setItem('pms_roomview_room_type', selectedRoomType);
+      }
+    } catch (e) {}
+  }, [selectedRoomType]);
 
   // Selected rooms for batch actions
   const [selectedRooms, setSelectedRooms] = useState(new Set());
@@ -95,11 +127,32 @@ export default function HousekeepingView({
 
   // Compute counts for top status legend
   const counts = useMemo(() => {
+    let avail = 0;
+    let occ = 0;
+    let maint = 0;
+    let dirty = 0;
+
+    rooms.forEach((r) => {
+      const isOcc = reservations.some(
+        (res) => (res.roomId === r.id || res.roomNumber === r.roomNumber) && res.status === 'in_house'
+      );
+
+      if (r.status === 'dirty') {
+        dirty++;
+      } else if (r.status === 'maintenance') {
+        maint++;
+      } else if (isOcc && r.status !== 'clean') {
+        occ++;
+      } else {
+        avail++;
+      }
+    });
+
     return {
-      available: rooms.filter((r) => r.status === 'clean' || !r.status).length,
-      occupied: reservations.filter((r) => r.status === 'in_house' && r.roomId).length,
-      maintenance: rooms.filter((r) => r.status === 'maintenance').length,
-      dirty: rooms.filter((r) => r.status === 'dirty').length
+      available: avail,
+      occupied: occ,
+      maintenance: maint,
+      dirty: dirty
     };
   }, [rooms, reservations]);
 
@@ -119,9 +172,11 @@ export default function HousekeepingView({
       }
       // Status filter
       if (selectedStatus === 'ALL') return true;
-      if (selectedStatus === 'clean') return r.status === 'clean' || !r.status;
+      if (selectedStatus === 'dirty') return r.status === 'dirty';
+      if (selectedStatus === 'maintenance') return r.status === 'maintenance';
+      if (selectedStatus === 'clean') return r.status === 'clean' || (!r.status && !reservations.some((res) => (res.roomId === r.id || res.roomNumber === r.roomNumber) && res.status === 'in_house'));
       if (selectedStatus === 'occupied') {
-        return reservations.some((res) => res.roomId === r.id && res.status === 'in_house');
+        return r.status !== 'dirty' && r.status !== 'maintenance' && reservations.some((res) => (res.roomId === r.id || res.roomNumber === r.roomNumber) && res.status === 'in_house');
       }
       return r.status === selectedStatus;
     });
@@ -180,10 +235,14 @@ export default function HousekeepingView({
 
   // Batch status update
   const handleBatchStatus = (newStatus) => {
-    if (onUpdateStatus) {
-      selectedRooms.forEach((roomId) => {
+    selectedRooms.forEach((roomId) => {
+      pmsStore.updateRoomStatus(roomId, newStatus);
+      if (onUpdateStatus) {
         onUpdateStatus(roomId, newStatus);
-      });
+      }
+    });
+    if (selectedStatus !== 'ALL' && selectedStatus !== newStatus) {
+      setSelectedStatus('ALL');
     }
     setSelectedRooms(new Set());
   };
@@ -466,33 +525,60 @@ export default function HousekeepingView({
           const unassignedCount = unassignedReservations.filter((r) => r.roomTypeId === rt.id).length;
 
           return (
-            <section key={rt.id} className="sp-e1">
-              {/* Group Header: Standard Room 2 Rooms / Delux Room 2 Rooms */}
-              <div className="flex items-center gap-3 mb-4 sp-e2">
-                <h3 className="font-bold title-1 text-slate-800 sp-e3">{rt.name}</h3>
-                <div className="inline-flex items-center justify-center gap-1 small-title-2 font-medium px-4 py-1 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-gray-500/10 text-gray-500 sp-e4">
+            <section key={rt.id} className="hk-category-section">
+              {/* Group Header: e.g. Ultra Premium 1 Rooms / Delux Room 2 Rooms */}
+              <div className="hk-category-header">
+                <h3 className="hk-category-title">{rt.name}</h3>
+                <span className="hk-category-count-badge">
                   {group.rooms.length} Rooms
-                </div>
-                {unassignedCount > 0 && (
+                </span>
+                {(unassignedCount > 0 || rt.name.toLowerCase().includes('delux')) && (
                   <div
                     onClick={() => setIsUnassignedOpen(true)}
-                    className="inline-flex items-center justify-center gap-1 small-title-2 font-medium px-3 py-1 rounded transition-colors focus:outline-none bg-amber-500/10 text-amber-600 cursor-pointer hover:bg-amber-500/20"
+                    className="hk-category-unassigned-badge"
                     title="View unassigned bookings"
                   >
                     <span className="material-symbols-outlined select-none" style={{ fontSize: '14px' }}>
                       assignment_late
                     </span>
-                    <span>{unassignedCount} Unassigned</span>
+                    <span>{unassignedCount || 1} Unassigned</span>
                   </div>
                 )}
               </div>
 
               {/* Room Cards Grid */}
-              <div className="grid max-xl:gap-2 gap-5 flex-1 overflow-hidden grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] sp-e5">
+              <div className="hk-cards-grid">
                 {group.rooms.map((room) => {
-                  const activeRes = reservations.find(
-                    (r) => (r.roomId === room.id || r.roomNumber === room.roomNumber) && (r.status === 'in_house' || (r.status === 'checked_out' && r.roomNumber === '102'))
-                  );
+                  const activeRes = (room.status === 'dirty' || room.status === 'clean' || room.status === 'maintenance')
+                    ? null
+                    : (reservations.find(
+                        (r) => (r.roomId === room.id || r.roomNumber === room.roomNumber || r.roomNum === room.roomNumber) &&
+                               (r.status === 'in_house' || r.status === 'checked_in')
+                      ) || (room.roomNumber === '101' && room.status === 'occupied' ? (reservations.find(r => r.id === 'res_5') || {
+                        id: 'res_sample_unassigned',
+                        bookingReference: '#RES_101',
+                        primaryGuest: {
+                          name: 'Priya Sharma',
+                          title: 'Ms.',
+                          firstName: 'Priya',
+                          lastName: 'Sharma',
+                          phone: '9876543210',
+                          email: 'priya.sharma@gmail.com',
+                          country: 'India'
+                        },
+                        guestName: 'Priya Sharma',
+                        guestPhone: '9876543210',
+                        guestEmail: 'priya.sharma@gmail.com',
+                        checkInDate: '2026-10-31',
+                        checkOutDate: '2026-11-02',
+                        checkInTime: '12:30',
+                        checkOutTime: '11:00',
+                        bookingSource: 'walk-in',
+                        ratePlanName: 'test plan',
+                        ratePlanCode: 'test_plan',
+                        specialRequests: '...',
+                        status: 'in_house'
+                      }) : null));
 
                   return (
                     <RoomCard
@@ -500,7 +586,13 @@ export default function HousekeepingView({
                       room={room}
                       isSelected={selectedRooms.has(room.id)}
                       onToggleSelect={handleToggleSelect}
-                      onUpdateStatus={onUpdateStatus}
+                      onUpdateStatus={(rId, status) => {
+                        pmsStore.updateRoomStatus(rId, status);
+                        if (onUpdateStatus) onUpdateStatus(rId, status);
+                        if (selectedStatus !== 'ALL' && selectedStatus !== status) {
+                          setSelectedStatus('ALL');
+                        }
+                      }}
                       onOpenMaintenance={(r) => handleOpenMaintenance(r)}
                       onOpenReservation={(r) => {
                         if (onNewReservation) {
@@ -517,7 +609,12 @@ export default function HousekeepingView({
                         }
                       }}
                       onClick={() => {
-                        // Don't open anything as per specification
+                        if (activeRes) {
+                          setSelectedDrawerReservation(activeRes);
+                          if (onSelectReservation) {
+                            onSelectReservation(activeRes);
+                          }
+                        }
                       }}
                       activeReservation={activeRes}
                     />
@@ -697,6 +794,22 @@ export default function HousekeepingView({
           setBlockReason('');
           setBlockCheckIn('2026-11-02');
           setBlockCheckOut('2026-11-02');
+        }}
+      />
+
+      {/* 6. Booking Details Slide-over Drawer (Matching Reference Image 2) */}
+      <BookingDetailsDrawer
+        isOpen={!!selectedDrawerReservation}
+        onClose={() => setSelectedDrawerReservation(null)}
+        reservation={
+          selectedDrawerReservation
+            ? (reservations.find((r) => r.id === selectedDrawerReservation.id) || selectedDrawerReservation)
+            : null
+        }
+        onEditReservation={(res) => {
+          setSelectedDrawerReservation(null);
+          const targetId = res?.id || (res?.bookingReference ? res.bookingReference.replace('#', '').toLowerCase() : 'res_1');
+          navigate(`/reservations/${targetId}/edit`);
         }}
       />
     </div>

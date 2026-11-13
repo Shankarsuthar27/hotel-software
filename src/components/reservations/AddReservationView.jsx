@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import './add-reservation.css';
 import {
   Home,
@@ -17,10 +17,14 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Check
 } from 'lucide-react';
 import { calculateRoomTax } from '../../services/taxEngine';
 import ReservationConfirmationModal from './ReservationConfirmationModal';
+import { navigate } from '../../services/router';
+import { pmsStore } from '../../services/pmsStore';
 
 // Venus / Female Icon matching OTAL
 const VenusIcon = ({ size = 15, color = '#c026d3' }) => (
@@ -75,6 +79,8 @@ const ChevronDownCustom = ({ size = 13, color = '#334155', isOpen = false }) => 
 // Custom Date Picker matching screenshot DD/MM/YYYY
 function CustomDatePicker({ value, onChange, label = 'Check-in', required = true }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showMonthMenu, setShowMonthMenu] = useState(false);
+  const [showYearMenu, setShowYearMenu] = useState(false);
   const containerRef = useRef(null);
 
   // Parse YYYY-MM-DD
@@ -113,6 +119,8 @@ function CustomDatePicker({ value, onChange, label = 'Check-in', required = true
     const handleOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setIsOpen(false);
+        setShowMonthMenu(false);
+        setShowYearMenu(false);
       }
     };
     if (isOpen) {
@@ -126,11 +134,43 @@ function CustomDatePicker({ value, onChange, label = 'Check-in', required = true
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  const yearOptions = useMemo(() => {
+    const years = [];
+    const current = new Date().getFullYear();
+    for (let y = current - 5; y <= current + 10; y++) {
+      years.push(y);
+    }
+    return years;
+  }, []);
+
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayIndex = new Date(viewYear, viewMonth, 1).getDay(); // 0 is Sunday
+  const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+  // Trailing previous month days
+  const prevDays = [];
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    prevDays.push(daysInPrevMonth - i);
+  }
+
+  // Current month days
+  const currentDays = [];
+  for (let i = 1; i <= daysInMonth; i++) {
+    currentDays.push(i);
+  }
+
+  // Next month leading days
+  const totalCells = prevDays.length + currentDays.length > 35 ? 42 : 35;
+  const nextDays = [];
+  const remaining = totalCells - (prevDays.length + currentDays.length);
+  for (let i = 1; i <= remaining; i++) {
+    nextDays.push(i);
+  }
 
   const prevMonth = (e) => {
     e.stopPropagation();
+    setShowMonthMenu(false);
+    setShowYearMenu(false);
     if (viewMonth === 0) {
       setViewMonth(11);
       setViewYear(viewYear - 1);
@@ -141,6 +181,8 @@ function CustomDatePicker({ value, onChange, label = 'Check-in', required = true
 
   const nextMonth = (e) => {
     e.stopPropagation();
+    setShowMonthMenu(false);
+    setShowYearMenu(false);
     if (viewMonth === 11) {
       setViewMonth(0);
       setViewYear(viewYear + 1);
@@ -149,11 +191,13 @@ function CustomDatePicker({ value, onChange, label = 'Check-in', required = true
     }
   };
 
-  const selectDay = (day) => {
-    const mm = String(viewMonth + 1).padStart(2, '0');
+  const selectDay = (day, m = viewMonth, y = viewYear) => {
+    const mm = String(m + 1).padStart(2, '0');
     const dd = String(day).padStart(2, '0');
-    onChange(`${viewYear}-${mm}-${dd}`);
+    onChange(`${y}-${mm}-${dd}`);
     setIsOpen(false);
+    setShowMonthMenu(false);
+    setShowYearMenu(false);
   };
 
   const isSelected = (day) => {
@@ -169,15 +213,6 @@ function CustomDatePicker({ value, onChange, label = 'Check-in', required = true
     return false;
   };
 
-  const isToday = (day) => {
-    const today = new Date();
-    return (
-      today.getFullYear() === viewYear &&
-      today.getMonth() === viewMonth &&
-      today.getDate() === day
-    );
-  };
-
   return (
     <div className="custom-datetime-control" ref={containerRef}>
       <label className="custom-cal-label">
@@ -185,27 +220,102 @@ function CustomDatePicker({ value, onChange, label = 'Check-in', required = true
       </label>
       <div
         className={`custom-date-box ${isOpen ? 'active' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          setShowMonthMenu(false);
+          setShowYearMenu(false);
+        }}
       >
         <span className="custom-date-text">{displayFormatted || 'Select Date'}</span>
         <CalendarIconCustom />
       </div>
 
       {isOpen && (
-        <div className="calendar-popover">
-          <div className="calendar-popover-header">
-            <button type="button" className="calendar-nav-btn" onClick={prevMonth}>
-              ‹
+        <div className="custom-calendar-popover placement-bottom" style={{ width: '310px', padding: '16px' }}>
+          {/* Header Bar matching Image 1 */}
+          <div className="custom-cal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '12px' }}>
+            <button
+              type="button"
+              className="custom-cal-nav-btn"
+              onClick={prevMonth}
+              aria-label="Previous month"
+            >
+              <ChevronLeft size={16} strokeWidth={2.2} />
             </button>
-            <span className="calendar-month-title">
-              {monthNames[viewMonth]} {viewYear}
-            </span>
-            <button type="button" className="calendar-nav-btn" onClick={nextMonth}>
-              ›
+
+            <div className="custom-cal-selectors" style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center' }}>
+              {/* Month Dropdown Pill */}
+              <div
+                className="custom-cal-pill"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMonthMenu((prev) => !prev);
+                  setShowYearMenu(false);
+                }}
+              >
+                <span>{monthNames[viewMonth]}</span>
+                <ChevronDown size={14} color="#64748b" />
+
+                {showMonthMenu && (
+                  <div className="custom-cal-pill-menu month-menu" onClick={(e) => e.stopPropagation()}>
+                    {monthNames.map((name, idx) => (
+                      <div
+                        key={name}
+                        className={`custom-cal-menu-item ${viewMonth === idx ? 'active' : ''}`}
+                        onClick={() => {
+                          setViewMonth(idx);
+                          setShowMonthMenu(false);
+                        }}
+                      >
+                        {name.substring(0, 3)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Year Dropdown Pill */}
+              <div
+                className="custom-cal-pill"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowYearMenu((prev) => !prev);
+                  setShowMonthMenu(false);
+                }}
+              >
+                <span>{viewYear}</span>
+                <ChevronDown size={14} color="#64748b" />
+
+                {showYearMenu && (
+                  <div className="custom-cal-pill-menu year-menu" onClick={(e) => e.stopPropagation()}>
+                    {yearOptions.map((y) => (
+                      <div
+                        key={y}
+                        className={`custom-cal-menu-item ${viewYear === y ? 'active' : ''}`}
+                        onClick={() => {
+                          setViewYear(y);
+                          setShowYearMenu(false);
+                        }}
+                      >
+                        {y}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="custom-cal-nav-btn"
+              onClick={nextMonth}
+              aria-label="Next month"
+            >
+              <ChevronRight size={16} strokeWidth={2.2} />
             </button>
           </div>
 
-          <div className="calendar-weekdays">
+          <div className="custom-cal-weekdays">
             <span>Su</span>
             <span>Mo</span>
             <span>Tu</span>
@@ -215,24 +325,50 @@ function CustomDatePicker({ value, onChange, label = 'Check-in', required = true
             <span>Sa</span>
           </div>
 
-          <div className="calendar-days-grid">
-            {Array.from({ length: firstDayIndex }).map((_, i) => (
-              <div key={`empty-${i}`} className="calendar-day-cell empty" />
+          <div className="custom-cal-grid">
+            {/* Trailing previous month days */}
+            {prevDays.map((d) => (
+              <div
+                key={`prev-${d}`}
+                className="custom-cal-day other-month"
+                onClick={() => {
+                  const m = viewMonth === 0 ? 11 : viewMonth - 1;
+                  const y = viewMonth === 0 ? viewYear - 1 : viewYear;
+                  selectDay(d, m, y);
+                }}
+              >
+                {d}
+              </div>
             ))}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const selected = isSelected(day);
-              const today = isToday(day);
+
+            {/* Current month days */}
+            {currentDays.map((d) => {
+              const selected = isSelected(d);
               return (
                 <div
-                  key={`day-${day}`}
-                  className={`calendar-day-cell ${selected ? 'selected' : ''} ${today ? 'today' : ''}`}
-                  onClick={() => selectDay(day)}
+                  key={`curr-${d}`}
+                  className={`custom-cal-day current-month ${selected ? 'selected' : ''}`}
+                  onClick={() => selectDay(d, viewMonth, viewYear)}
                 >
-                  {day}
+                  {d}
                 </div>
               );
             })}
+
+            {/* Next month leading days */}
+            {nextDays.map((d) => (
+              <div
+                key={`next-${d}`}
+                className="custom-cal-day other-month"
+                onClick={() => {
+                  const m = viewMonth === 11 ? 0 : viewMonth + 1;
+                  const y = viewMonth === 11 ? viewYear + 1 : viewYear;
+                  selectDay(d, m, y);
+                }}
+              >
+                {d}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -301,29 +437,54 @@ function CustomTimePicker({ value, onChange, label = 'Time', required = true }) 
   );
 }
 
+// Helper to get formatted YYYY-MM-DD for today in local time
+function getTodayIsoDate() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// Helper to get next day (YYYY-MM-DD) from a given YYYY-MM-DD string
+function getNextDayIsoDate(dateStr) {
+  if (!dateStr) return getTodayIsoDate();
+  const parts = String(dateStr).split('-');
+  if (parts.length === 3) {
+    const dt = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    dt.setDate(dt.getDate() + 1);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const d = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const dt = new Date(dateStr);
+  dt.setDate(dt.getDate() + 1);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const d = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export default function AddReservationView({
   property = {},
   rooms = [],
   roomTypes = [],
   ratePlans = [],
+  reservations = [],
   initialData = null,
   onBack,
   onNavigate,
   onSubmit
 }) {
-  const businessDate = initialData?.date || property?.businessDate || '2026-10-26';
+  const todayStr = useMemo(() => getTodayIsoDate(), []);
+  const initialCheckIn = initialData?.date || initialData?.checkInDate || todayStr;
+  const initialCheckOut = initialData?.checkOutDate || getNextDayIsoDate(initialCheckIn);
 
-  // Calculate default next day
-  const defaultNextDay = useMemo(() => {
-    const d = new Date(businessDate);
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
-  }, [businessDate]);
-
-  // Stay Details State
-  const [checkInDate, setCheckInDate] = useState(businessDate);
+  // Stay Details State - defaults to today's date and next day
+  const [checkInDate, setCheckInDate] = useState(initialCheckIn);
   const [checkInTime, setCheckInTime] = useState('14:00');
-  const [checkOutDate, setCheckOutDate] = useState(defaultNextDay);
+  const [checkOutDate, setCheckOutDate] = useState(initialCheckOut);
   const [checkOutTime, setCheckOutTime] = useState('11:00');
   const [reservationType, setReservationType] = useState('CONFIRMED');
   const [marketSegment, setMarketSegment] = useState('corporate');
@@ -331,14 +492,60 @@ export default function AddReservationView({
   const [sendConfirmationMail, setSendConfirmationMail] = useState(true);
   const [createdReservation, setCreatedReservation] = useState(null);
 
+  // Current live reservations from props or store
+  const currentReservations = useMemo(() => {
+    if (reservations && reservations.length > 0) return reservations;
+    try {
+      return pmsStore.getReservations() || [];
+    } catch {
+      return [];
+    }
+  }, [reservations]);
+
+  // Sync dates when explicit initialData is passed (e.g. clicking a specific cell on calendar)
+  useEffect(() => {
+    if (initialData?.date || initialData?.checkInDate) {
+      const inDate = initialData.date || initialData.checkInDate;
+      setCheckInDate(inDate);
+      setCheckOutDate(initialData.checkOutDate || getNextDayIsoDate(inDate));
+    }
+  }, [initialData]);
+
+  // Remove scrollbar from page and lock scrolling when confirmation modal is shown
+  useEffect(() => {
+    if (!createdReservation) return;
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.classList.add('has-res-modal-open');
+
+    const overlay = document.querySelector('.add-res-fullscreen-overlay');
+    let originalOverlayOverflow = '';
+    if (overlay) {
+      originalOverlayOverflow = overlay.style.overflow;
+      overlay.style.overflow = 'hidden';
+      overlay.classList.add('has-modal-open');
+    }
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.classList.remove('has-res-modal-open');
+      if (overlay) {
+        overlay.style.overflow = originalOverlayOverflow;
+        overlay.classList.remove('has-modal-open');
+      }
+    };
+  }, [createdReservation]);
+
   const handleCheckInChange = (newDate) => {
     setCheckInDate(newDate);
     const start = new Date(newDate);
     const end = new Date(checkOutDate);
     if (end <= start) {
-      const nextDay = new Date(start);
-      nextDay.setDate(nextDay.getDate() + 1);
-      setCheckOutDate(nextDay.toISOString().split('T')[0]);
+      setCheckOutDate(getNextDayIsoDate(newDate));
     }
   };
 
@@ -346,9 +553,7 @@ export default function AddReservationView({
     const start = new Date(checkInDate);
     const end = new Date(newDate);
     if (end <= start) {
-      const nextDay = new Date(start);
-      nextDay.setDate(nextDay.getDate() + 1);
-      setCheckOutDate(nextDay.toISOString().split('T')[0]);
+      setCheckOutDate(getNextDayIsoDate(checkInDate));
     } else {
       setCheckOutDate(newDate);
     }
@@ -372,6 +577,100 @@ export default function AddReservationView({
     }
   };
 
+  // Check if a specific room is available (never show if dirty, occupied, or in maintenance)
+  const isRoomAvailable = useCallback(
+    (room, currentRowId = null, currentConfigured = null) => {
+      if (!room) return false;
+
+      // 1. Never show if room status is dirty
+      const statusNorm = (room.status || '').toLowerCase().trim();
+      const cleanNorm = (room.cleanliness || '').toLowerCase().trim();
+      if (statusNorm === 'dirty' || cleanNorm === 'dirty') {
+        return false;
+      }
+
+      // 2. Never show if room is in maintenance / out of order
+      if (statusNorm === 'maintenance' || room.operational === 'out_of_order') {
+        return false;
+      }
+
+      // 3. Never show if explicitly marked occupied
+      if (statusNorm === 'occupied') {
+        return false;
+      }
+
+      // 4. Never show if occupied by an in-house guest right now
+      const isInHouse = currentReservations.some((res) => {
+        const matchesRoom =
+          res.roomId === room.id ||
+          res.roomNumber === room.roomNumber ||
+          res.roomNum === room.roomNumber;
+        if (!matchesRoom) return false;
+        const s = (res.status || '').toLowerCase().replace(/[-_\s]+/g, '_');
+        return s === 'in_house' || s === 'checked_in';
+      });
+
+      if (isInHouse) {
+        return false;
+      }
+
+      // 5. Never show if reserved during the selected check-in / check-out dates
+      if (checkInDate && checkOutDate) {
+        const hasDateConflict = currentReservations.some((res) => {
+          const matchesRoom =
+            res.roomId === room.id ||
+            res.roomNumber === room.roomNumber ||
+            res.roomNum === room.roomNumber;
+          if (!matchesRoom) return false;
+
+          const s = (res.status || '').toLowerCase().replace(/[-_\s]+/g, '_');
+          if (s === 'cancelled' || s === 'no_show' || s === 'checked_out') {
+            return false;
+          }
+
+          const resIn = res.checkInDate;
+          const resOut = res.checkOutDate;
+          if (!resIn || !resOut) return false;
+
+          // Date overlap check: existing reservation departs after requested check-in AND arrives before requested check-out
+          return resOut > checkInDate && resIn < checkOutDate;
+        });
+
+        if (hasDateConflict) {
+          return false;
+        }
+      }
+
+      // 6. Never show if already picked in another row of this multi-room booking
+      if (currentRowId !== null) {
+        const rowsToCheck = currentConfigured || [];
+        const pickedInAnotherRow = rowsToCheck.some(
+          (cr) => cr.id !== currentRowId && cr.roomId === room.id
+        );
+        if (pickedInAnotherRow) {
+          return false;
+        }
+      }
+
+      return true;
+    },
+    [currentReservations, checkInDate, checkOutDate]
+  );
+
+  // Helper to get available rooms matching a room type
+  const getAvailableRoomsForType = useCallback(
+    (roomTypeId, rowId = null, currentConfigured = null) => {
+      return rooms.filter(
+        (r) =>
+          (r.roomTypeId === roomTypeId ||
+            (roomTypeId === 'rt_standard' && r.roomTypeId === 'rt_normal') ||
+            (roomTypeId === 'rt_normal' && r.roomTypeId === 'rt_standard')) &&
+          isRoomAvailable(r, rowId, currentConfigured)
+      );
+    },
+    [rooms, isRoomAvailable]
+  );
+
   // Room Configuration: Multi-room support
   const defaultRoomTypeId =
     initialData?.room?.roomTypeId ||
@@ -379,19 +678,53 @@ export default function AddReservationView({
     roomTypes[0]?.id ||
     'rt_deluxe';
 
-  const [configuredRooms, setConfiguredRooms] = useState([
-    {
-      id: 1,
-      roomTypeId: defaultRoomTypeId,
-      ratePlanCode: '',
-      ratePlanName: '',
-      roomId: initialData?.room?.id || 'unassigned',
-      roomsCount: 1,
-      adults: 1,
-      children: 2,
-      rate: ''
-    }
-  ]);
+  const [configuredRooms, setConfiguredRooms] = useState(() => {
+    const initialAvailable = rooms.filter(
+      (r) =>
+        (r.roomTypeId === defaultRoomTypeId ||
+          (defaultRoomTypeId === 'rt_standard' && r.roomTypeId === 'rt_normal') ||
+          (defaultRoomTypeId === 'rt_normal' && r.roomTypeId === 'rt_standard')) &&
+        isRoomAvailable(r, 1, [])
+    );
+
+    const initialRoomId = initialData?.room?.id && isRoomAvailable(initialData.room, 1, [])
+      ? initialData.room.id
+      : (initialAvailable[0]?.id || '');
+
+    return [
+      {
+        id: 1,
+        roomTypeId: defaultRoomTypeId,
+        ratePlanCode: '',
+        ratePlanName: '',
+        roomId: initialRoomId,
+        roomsCount: 1,
+        adults: 1,
+        children: 2,
+        rate: ''
+      }
+    ];
+  });
+
+  // Ensure every configured room row has an available physical room (never occupied or dirty)
+  useEffect(() => {
+    setConfiguredRooms((prev) => {
+      let changed = false;
+      const updated = prev.map((rm) => {
+        const available = getAvailableRoomsForType(rm.roomTypeId, rm.id, prev);
+        const isCurrentValid = rm.roomId && available.some((r) => r.id === rm.roomId);
+        if (!isCurrentValid) {
+          changed = true;
+          return {
+            ...rm,
+            roomId: available[0]?.id || ''
+          };
+        }
+        return rm;
+      });
+      return changed ? updated : prev;
+    });
+  }, [rooms, getAvailableRoomsForType]);
 
   const [activeDropdown, setActiveDropdown] = useState(null); // `${rm.id}-roomType` | `${rm.id}-ratePlan` | `${rm.id}-roomNo`
 
@@ -436,8 +769,9 @@ export default function AddReservationView({
   };
 
   const handleSelectRoomType = (rmId, rt) => {
-    setConfiguredRooms((prev) =>
-      prev.map((r) => {
+    setConfiguredRooms((prev) => {
+      const available = getAvailableRoomsForType(rt.id, rmId, prev);
+      return prev.map((r) => {
         if (r.id !== rmId) return r;
 
         let updatedRatePlanCode = r.ratePlanCode;
@@ -460,15 +794,15 @@ export default function AddReservationView({
         return {
           ...r,
           roomTypeId: rt.id,
-          roomId: 'unassigned',
+          roomId: available[0]?.id || '',
           ratePlanCode: updatedRatePlanCode,
           ratePlanName: updatedRatePlanName,
           adults: rt.baseAdults || 1,
           children: rt.baseChildren ?? 0,
           rate: updatedRate
         };
-      })
-    );
+      });
+    });
     setActiveDropdown(null);
   };
 
@@ -513,14 +847,16 @@ export default function AddReservationView({
 
   const handleAddRoomRow = () => {
     const defaultRt = roomTypes.find((rt) => rt.id === defaultRoomTypeId);
+    const newId = configuredRooms.length + 1;
+    const available = getAvailableRoomsForType(defaultRoomTypeId, newId, configuredRooms);
     setConfiguredRooms((prev) => [
       ...prev,
       {
-        id: prev.length + 1,
+        id: newId,
         roomTypeId: defaultRoomTypeId,
         ratePlanCode: '',
         ratePlanName: '',
-        roomId: 'unassigned',
+        roomId: available[0]?.id || '',
         roomsCount: 1,
         adults: defaultRt?.baseAdults || 1,
         children: defaultRt?.baseChildren ?? 0,
@@ -533,13 +869,14 @@ export default function AddReservationView({
     setConfiguredRooms((prev) => {
       if (prev.length <= 1) {
         const defaultRt = roomTypes.find((rt) => rt.id === defaultRoomTypeId);
+        const available = getAvailableRoomsForType(defaultRoomTypeId, 1, []);
         return [
           {
             id: 1,
             roomTypeId: defaultRoomTypeId,
             ratePlanCode: '',
             ratePlanName: '',
-            roomId: 'unassigned',
+            roomId: available[0]?.id || '',
             roomsCount: 1,
             adults: defaultRt?.baseAdults || 1,
             children: defaultRt?.baseChildren ?? 0,
@@ -597,6 +934,14 @@ export default function AddReservationView({
   // Formatted display dates
   const formatDisplayDate = (dStr) => {
     if (!dStr) return '';
+    const parts = String(dStr).split('-');
+    if (parts.length === 3) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const mIdx = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      const y = parts[0];
+      return `${d} ${months[mIdx] || ''} ${y}`;
+    }
     const d = new Date(dStr);
     if (isNaN(d.getTime())) return dStr;
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -637,6 +982,11 @@ export default function AddReservationView({
       alert('Please enter guest Phone Number');
       return;
     }
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+      alert('Phone must be 10-15 digits');
+      return;
+    }
     if (!email.trim()) {
       alert('Please enter guest Email Address');
       return;
@@ -655,7 +1005,10 @@ export default function AddReservationView({
       checkInTime,
       checkOutTime,
       nights,
-      roomId: primaryRoom.roomId === 'unassigned' ? '' : primaryRoom.roomId,
+      roomsCount: configuredRooms.length || 1,
+      roomId: (!primaryRoom.roomId || primaryRoom.roomId === 'unassigned')
+        ? (rooms.find((r) => r.roomTypeId === primaryRoom.roomTypeId || (primaryRoom.roomTypeId === 'rt_standard' && r.roomTypeId === 'rt_normal'))?.id || '')
+        : primaryRoom.roomId,
       roomTypeId: primaryRoom.roomTypeId,
       ratePlanCode: primaryRoom.ratePlanCode || 'BAR_EP',
       baseRatePerNight: Number(primaryRoom.rate) || 2500,
@@ -958,13 +1311,8 @@ export default function AddReservationView({
                 <tbody>
                   {configuredRooms.map((rm) => {
                     const currentRoomType = roomTypes.find((rt) => rt.id === rm.roomTypeId);
-                    const matchingRooms = rooms.filter(
-                      (r) =>
-                        r.roomTypeId === rm.roomTypeId ||
-                        (rm.roomTypeId === 'rt_standard' && r.roomTypeId === 'rt_normal') ||
-                        (rm.roomTypeId === 'rt_normal' && r.roomTypeId === 'rt_standard')
-                    );
-                    const selectedRoom = rooms.find((r) => r.id === rm.roomId);
+                    const matchingRooms = getAvailableRoomsForType(rm.roomTypeId, rm.id, configuredRooms);
+                    const selectedRoom = matchingRooms.find((r) => r.id === rm.roomId) || rooms.find((r) => r.id === rm.roomId);
                     const selectedRatePlan = ratePlans.find((rp) => rp.code === rm.ratePlanCode || rp.id === rm.ratePlanCode);
                     const availableRatePlans = ratePlans.filter((rp) => isRoomTypeActiveInRatePlan(rp, rm.roomTypeId));
 
@@ -1055,14 +1403,21 @@ export default function AddReservationView({
                           </div>
                         </td>
 
-                        {/* 3. Rooms (Aligned Center) */}
+                        {/* 3. Rooms (Unchangeable - fixed at 1 room per row) */}
                         <td style={{ textAlign: 'center' }}>
                           <input
-                            type="number"
-                            min="1"
+                            type="text"
+                            readOnly
+                            tabIndex={-1}
                             className="room-config-rooms-input"
-                            value={rm.roomsCount || 1}
-                            onChange={(e) => handleUpdateRoomRow(rm.id, 'roomsCount', Number(e.target.value) || 1)}
+                            value="1"
+                            title="1 room per row (unchangeable)"
+                            style={{
+                              cursor: 'default',
+                              userSelect: 'none',
+                              backgroundColor: '#ffffff'
+                            }}
+                            onKeyDown={(e) => e.preventDefault()}
                           />
                         </td>
 
@@ -1075,11 +1430,9 @@ export default function AddReservationView({
                               onClick={() => setActiveDropdown(activeDropdown === `${rm.id}-roomNo` ? null : `${rm.id}-roomNo`)}
                             >
                               <span>
-                                {selectedRoom
+                                {selectedRoom && matchingRooms.some((r) => r.id === selectedRoom.id)
                                   ? selectedRoom.roomNumber
-                                  : rm.roomId && rm.roomId !== 'unassigned'
-                                  ? rm.roomId
-                                  : 'Unassigned'}
+                                  : (matchingRooms[0]?.roomNumber || 'No Room Available')}
                               </span>
                               {activeDropdown === `${rm.id}-roomNo` ? (
                                 <ChevronUp size={15} color="#475569" />
@@ -1090,33 +1443,26 @@ export default function AddReservationView({
 
                             {activeDropdown === `${rm.id}-roomNo` && (
                               <div className="room-config-popover" style={{ bottom: 'calc(100% + 4px)', left: 0, minWidth: '150px' }}>
-                                {/* Unassigned Option */}
-                                <div
-                                  className="room-config-popover-item"
-                                  onClick={() => handleSelectRoomNo(rm.id, 'unassigned')}
-                                >
-                                  <span style={{ fontWeight: (!rm.roomId || rm.roomId === 'unassigned') ? 600 : 400 }}>
-                                    Unassigned
-                                  </span>
-                                  {(!rm.roomId || rm.roomId === 'unassigned') && (
-                                    <Check size={14} color="#2563EB" />
-                                  )}
-                                </div>
-
                                 {/* Available Rooms of Selected Room Type */}
-                                {matchingRooms.map((r) => {
-                                  const isSelected = rm.roomId === r.id;
-                                  return (
-                                    <div
-                                      key={r.id}
-                                      className="room-config-popover-item"
-                                      onClick={() => handleSelectRoomNo(rm.id, r.id)}
-                                    >
-                                      <span style={{ fontWeight: isSelected ? 600 : 400 }}>{r.roomNumber}</span>
-                                      {isSelected && <Check size={14} color="#2563EB" />}
-                                    </div>
-                                  );
-                                })}
+                                {matchingRooms.length > 0 ? (
+                                  matchingRooms.map((r) => {
+                                    const isSelected = rm.roomId === r.id;
+                                    return (
+                                      <div
+                                        key={r.id}
+                                        className="room-config-popover-item"
+                                        onClick={() => handleSelectRoomNo(rm.id, r.id)}
+                                      >
+                                        <span style={{ fontWeight: isSelected ? 600 : 400 }}>{r.roomNumber}</span>
+                                        {isSelected && <Check size={14} color="#2563EB" />}
+                                      </div>
+                                    );
+                                  })
+                                ) : (
+                                  <div className="room-config-popover-item" style={{ color: '#94a3b8', cursor: 'default' }}>
+                                    <span>No rooms available</span>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1319,6 +1665,11 @@ export default function AddReservationView({
                     onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
+                {phone.trim().length > 0 && (phone.replace(/\D/g, '').length < 10 || phone.replace(/\D/g, '').length > 15) && (
+                  <div className="guest-phone-error-msg">
+                    Phone must be 10-15 digits
+                  </div>
+                )}
               </div>
 
               <div className="add-res-field-group">
@@ -1498,25 +1849,18 @@ export default function AddReservationView({
       {createdReservation && (
         <ReservationConfirmationModal
           isOpen={!!createdReservation}
-          onClose={() => {
-            setCreatedReservation(null);
-            if (onNavigate) {
-              onNavigate('reservations');
-            } else if (onBack) {
-              onBack();
-            }
-          }}
           reservation={createdReservation}
-          onGoToArrivals={() => {
+          onClose={() => {
+            const target = createdReservation;
+            const targetId = target?.id || (target?.bookingReference ? target.bookingReference.replace('#', '').toLowerCase() : 'res_1');
             setCreatedReservation(null);
-            if (onNavigate) {
-              onNavigate('reservations?tab=arrivals');
-            } else if (onBack) {
-              onBack();
-            }
+            navigate(`/reservations/${targetId}/edit`);
           }}
-          onPrintVoucher={() => {
-            // Can open print voucher
+          onViewBookingDetails={(res) => {
+            const target = res || createdReservation;
+            const targetId = target?.id || (target?.bookingReference ? target.bookingReference.replace('#', '').toLowerCase() : 'res_1');
+            setCreatedReservation(null);
+            navigate(`/reservations/${targetId}/edit`);
           }}
         />
       )}

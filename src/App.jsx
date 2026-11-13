@@ -332,6 +332,7 @@ export default function App() {
             rooms={state.rooms}
             roomTypes={state.roomTypes}
             ratePlans={state.ratePlans}
+            reservations={state.reservations}
             initialData={effectivePrefillData}
             onBack={() => {
               setSlotPrefillData(null);
@@ -341,8 +342,11 @@ export default function App() {
               setSlotPrefillData(null);
               navigate(tab === 'dashboard' ? '/dashboard' : '/' + tab);
             }}
-            onSubmit={(bookingData) => {
-              handleCreateReservation(bookingData);
+            onSubmit={async (bookingData) => {
+              const newRes = await createReservationViaApi(bookingData);
+              showToast(`🎉 Reservation ${newRes.bookingReference || '#RES_CONFIRMED'} confirmed for ${newRes.primaryGuest?.name || 'Guest'}!`);
+              setSlotPrefillData(null);
+              return newRes;
             }}
           />
         </div>
@@ -465,6 +469,7 @@ export default function App() {
               rooms={state.rooms}
               roomTypes={state.roomTypes}
               initialTab={router.queryParams?.tab || 'all'}
+              initialStatusFilter={router.queryParams?.status}
               onAssignRoom={(resId, roomId) => {
                 pmsStore.assignRoom(resId, roomId);
                 showToast('Success: Room assigned successfully');
@@ -556,7 +561,6 @@ export default function App() {
               }}
               onSelectReservation={(res) => {
                 setSelectedReservation(res);
-                setIsFolioOpen(true);
               }}
             />
           )}

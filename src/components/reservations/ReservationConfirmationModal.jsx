@@ -1,295 +1,516 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import {
-  CheckCircle2,
-  Calendar,
+  Check,
   User,
-  BedDouble,
-  DollarSign,
-  Printer,
-  ArrowRight,
   X,
-  Phone,
-  Mail,
-  Share2
+  FileText
 } from 'lucide-react';
+
+// Format date to "Nov 12, 2026"
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return 'Nov 12, 2026';
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  if (typeof dateStr === 'string' && dateStr.includes('-')) {
+    const parts = dateStr.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      const year = parts[0];
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      if (monthIdx >= 0 && monthIdx < 12 && !isNaN(day)) {
+        return `${MONTHS[monthIdx]} ${day}, ${year}`;
+      }
+    }
+  }
+
+  if (typeof dateStr === 'string' && dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        const year = parts[0];
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        return `${MONTHS[monthIdx]} ${day}, ${year}`;
+      } else {
+        const day = parseInt(parts[0], 10);
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        const year = parts[2];
+        return `${MONTHS[monthIdx]} ${day}, ${year}`;
+      }
+    }
+  }
+
+  try {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    }
+  } catch (e) {}
+
+  return String(dateStr);
+}
 
 export default function ReservationConfirmationModal({
   isOpen,
   onClose,
   reservation,
-  onGoToArrivals,
-  onPrintVoucher
+  onViewBookingDetails
 }) {
   if (!isOpen || !reservation) return null;
 
-  const guestName = reservation.primaryGuest?.name || reservation.guestName || 'Guest';
-  const phone = reservation.primaryGuest?.phone || reservation.phone || '-';
-  const email = reservation.primaryGuest?.email || reservation.email || '-';
-  const resNumber = reservation.bookingReference || '#RES_5';
-  const roomTypeName = reservation.roomTypeName || 'Delux Room';
-  const roomNumber = reservation.roomNumber || '101';
-  const checkInDate = reservation.checkInDate || '26/10/2026';
-  const checkOutDate = reservation.checkOutDate || '27/10/2026';
-  const nights = reservation.nights || 1;
-  const adults = reservation.adults || 1;
-  const children = reservation.children !== undefined ? reservation.children : 2;
-  const totalAmount = Number(reservation.totalAmount || 2625).toFixed(2);
-  const paidAmount = Number(reservation.paidAmount || 0).toFixed(2);
-  const balanceDue = Number(reservation.balanceDue !== undefined ? reservation.balanceDue : 2625).toFixed(2);
+  // Extract Guest Name
+  const guestFullName =
+    reservation.primaryGuest?.name ||
+    [reservation.primaryGuest?.title, reservation.primaryGuest?.firstName, reservation.primaryGuest?.lastName]
+      .filter(Boolean)
+      .join(' ') ||
+    reservation.guestName ||
+    'Mr Shankar Suthar';
 
-  return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1300 }}>
+  // Confirmation Number (stripped of '#', e.g. RES_10)
+  const rawRef = reservation.bookingReference || reservation.id || 'RES_10';
+  const cleanConfirmationNumber = String(rawRef).replace('#', '').toUpperCase();
+
+  // Dates & Times
+  const checkInDateFormatted = formatDisplayDate(reservation.checkInDate);
+  const checkOutDateFormatted = formatDisplayDate(reservation.checkOutDate);
+  const checkInTimeFormatted = reservation.checkInTime || '11:59';
+  const checkOutTimeFormatted = reservation.checkOutTime || '11:00';
+
+  // Guests & Rooms
+  const adults = reservation.adults !== undefined ? reservation.adults : 1;
+  const children = reservation.children !== undefined ? reservation.children : 2;
+  const roomsCount = reservation.roomsCount || 1;
+
+  // Remove scrollbar from page and lock scrolling while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.classList.add('has-res-modal-open');
+
+    const overlays = document.querySelectorAll('.add-res-fullscreen-overlay, .edit-res-fullscreen-overlay');
+    const originalOverlays = [];
+    overlays.forEach((el, i) => {
+      originalOverlays[i] = el.style.overflow;
+      el.style.overflow = 'hidden';
+      el.classList.add('has-modal-open');
+    });
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.classList.remove('has-res-modal-open');
+      overlays.forEach((el, i) => {
+        el.style.overflow = originalOverlays[i] || '';
+        el.classList.remove('has-modal-open');
+      });
+    };
+  }, [isOpen]);
+
+  const handleAction = () => {
+    if (onViewBookingDetails) {
+      onViewBookingDetails(reservation);
+    } else if (onClose) {
+      onClose();
+    }
+  };
+
+  const modalElement = (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 100000,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        backdropFilter: 'blur(3px)',
+        WebkitBackdropFilter: 'blur(3px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+        boxSizing: 'border-box'
+      }}
+      onClick={handleAction}
+    >
       <div
-        className="modal-content"
-        onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: '580px',
-          width: '95%',
-          borderRadius: '18px',
-          padding: '0',
-          overflow: 'hidden',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+          background: '#ffffff',
+          borderRadius: '20px',
+          width: '100%',
+          maxWidth: '520px',
+          padding: '32px 32px 28px 32px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          position: 'relative',
           display: 'flex',
           flexDirection: 'column'
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Celebration Header */}
-        <div
+        {/* Close Button top-right */}
+        <button
+          type="button"
+          onClick={handleAction}
+          aria-label="Close"
           style={{
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            color: '#ffffff',
-            padding: '1.75rem 1.5rem',
-            textAlign: 'center',
-            position: 'relative'
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#475569',
+            borderRadius: '6px'
           }}
         >
-          <button
-            onClick={onClose}
+          <X size={20} strokeWidth={2.2} />
+        </button>
+
+        {/* Celebratory Icon with Festive Confetti */}
+        <div
+          style={{
+            position: 'relative',
+            width: '100px',
+            height: '76px',
+            margin: '0 auto 12px auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {/* Confetti dot: Orange (top-left) */}
+          <span
             style={{
               position: 'absolute',
-              top: '16px',
-              right: '16px',
-              background: 'rgba(255, 255, 255, 0.2)',
-              border: 'none',
+              top: '12px',
+              left: '12px',
+              width: '6.5px',
+              height: '6.5px',
               borderRadius: '50%',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: '#ffffff'
+              backgroundColor: '#FB923C'
             }}
+          />
+          {/* Confetti dot: Light mint (top) */}
+          <span
+            style={{
+              position: 'absolute',
+              top: '2px',
+              left: '26px',
+              width: '5px',
+              height: '5px',
+              borderRadius: '50%',
+              backgroundColor: '#34D399'
+            }}
+          />
+          {/* Confetti dot: Coral red (top-right) */}
+          <span
+            style={{
+              position: 'absolute',
+              top: '10px',
+              right: '20px',
+              width: '6.5px',
+              height: '6.5px',
+              borderRadius: '50%',
+              backgroundColor: '#F87171'
+            }}
+          />
+          {/* Confetti 4-point star / sparkle (right) */}
+          <svg
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '6px'
+            }}
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="#86EFAC"
           >
-            <X size={16} />
-          </button>
+            <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+          </svg>
+          {/* Confetti dot: Bright green (bottom-right) */}
+          <span
+            style={{
+              position: 'absolute',
+              bottom: '6px',
+              right: '24px',
+              width: '5.5px',
+              height: '5.5px',
+              borderRadius: '50%',
+              backgroundColor: '#22C55E'
+            }}
+          />
+          {/* Confetti dot: Sky cyan (bottom-left) */}
+          <span
+            style={{
+              position: 'absolute',
+              bottom: '6px',
+              left: '20px',
+              width: '5px',
+              height: '5px',
+              borderRadius: '50%',
+              backgroundColor: '#38BDF8'
+            }}
+          />
 
+          {/* Central Green Check Badge */}
           <div
             style={{
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.25)',
+              backgroundColor: '#16A34A',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 0.75rem auto'
+              boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)'
             }}
           >
-            <CheckCircle2 size={34} color="#ffffff" />
-          </div>
-
-          <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>
-            Booking Confirmed!
-          </h2>
-          <p style={{ margin: '6px 0 0 0', fontSize: '0.88rem', color: '#d1fae5' }}>
-            The reservation has been successfully booked into the system.
-          </p>
-
-          {/* Reservation Number Pill */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#ffffff',
-              color: '#065f46',
-              padding: '0.45rem 1.25rem',
-              borderRadius: '30px',
-              fontWeight: 800,
-              fontSize: '1.05rem',
-              marginTop: '1rem',
-              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
-              letterSpacing: '0.04em'
-            }}
-          >
-            <span>Reservation Number:</span>
-            <span style={{ color: '#2563eb' }}>{resNumber}</span>
+            <Check size={28} color="#FFFFFF" strokeWidth={3} />
           </div>
         </div>
 
-        {/* Summary Card Body */}
-        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Guest info card */}
-          <div
-            style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '12px',
-              padding: '1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <User size={16} color="#6366f1" />
-              <strong style={{ fontSize: '0.98rem', color: '#0f172a' }}>{guestName}</strong>
-            </div>
-            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.84rem', color: '#475569' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Phone size={13} color="#64748b" /> {phone}
-              </span>
-              {email && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Mail size={13} color="#64748b" /> {email}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Stay & Room details */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '0.75rem'
-            }}
-          >
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.85rem' }}>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Stay Dates ({nights} Night)</span>
-              <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{checkInDate} — {checkOutDate}</strong>
-            </div>
-
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.85rem' }}>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Room Configuration</span>
-              <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{roomTypeName} (Room {roomNumber})</strong>
-              <span style={{ fontSize: '0.74rem', color: '#64748b', display: 'block' }}>
-                {adults} Adult, {children} Child
-              </span>
-            </div>
-          </div>
-
-          {/* Financials Breakdown */}
-          <div
-            style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '10px',
-              padding: '0.85rem',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}
-          >
-            <div>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Total Amount</span>
-              <strong style={{ fontSize: '1rem', color: '#0f172a' }}>₹{totalAmount}</strong>
-            </div>
-            <div>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Advance Paid</span>
-              <strong style={{ fontSize: '1rem', color: '#16a34a' }}>₹{paidAmount}</strong>
-            </div>
-            <div>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>Balance Due</span>
-              <strong style={{ fontSize: '1.05rem', color: Number(balanceDue) > 0 ? '#ef4444' : '#16a34a' }}>
-                ₹{balanceDue}
-              </strong>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer Actions */}
-        <div
+        {/* Title & Subtitle */}
+        <h3
           style={{
-            padding: '1rem 1.5rem',
-            background: '#f8fafc',
-            borderTop: '1px solid #e2e8f0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.75rem'
+            margin: '0 0 6px 0',
+            fontSize: '22px',
+            fontWeight: 800,
+            color: '#0F172A',
+            textAlign: 'center',
+            letterSpacing: '-0.015em'
           }}
         >
-          <button
-            type="button"
-            onClick={() => {
-              if (onPrintVoucher) onPrintVoucher(reservation);
-            }}
+          Booking Confirmed!
+        </h3>
+        <p
+          style={{
+            margin: '0 0 24px 0',
+            fontSize: '13.5px',
+            color: '#64748B',
+            textAlign: 'center',
+            fontWeight: 400
+          }}
+        >
+          Your reservation has been successfully processed.
+        </p>
+
+        {/* 4-Quadrant Information Card */}
+        <div
+          style={{
+            border: '1px solid #E2E8F0',
+            borderRadius: '16px',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            backgroundColor: '#FFFFFF',
+            marginBottom: '22px',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Quadrant 1 (Top-Left): Guest Name */}
+          <div
             style={{
-              padding: '0.65rem 1rem',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#334155',
-              fontSize: '0.88rem',
-              fontWeight: 600,
-              cursor: 'pointer',
+              padding: '16px 18px',
+              borderRight: '1px solid #F1F5F9',
+              borderBottom: '1px solid #F1F5F9',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.4rem'
+              gap: '12px'
             }}
           >
-            <Printer size={15} />
-            <span>Print Voucher</span>
-          </button>
-
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={onClose}
+            <div
               style={{
-                padding: '0.65rem 1.15rem',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                background: '#ffffff',
-                color: '#475569',
-                fontSize: '0.88rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              All Reservations
-            </button>
-
-            {/* Go to Arrivals Button for direct next step in workflow */}
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                if (onGoToArrivals) onGoToArrivals();
-              }}
-              style={{
-                padding: '0.65rem 1.35rem',
-                borderRadius: '8px',
-                border: 'none',
-                background: '#2563eb',
-                color: '#ffffff',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                cursor: 'pointer',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: '#ECFDF5',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem',
-                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)'
+                justifyContent: 'center',
+                flexShrink: 0
               }}
             >
-              <span>Go to Arrivals</span>
-              <ArrowRight size={15} />
-            </button>
+              <User size={18} color="#10B981" strokeWidth={2.2} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span style={{ fontSize: '12px', color: '#64748B', marginBottom: '2px', fontWeight: 500 }}>
+                Guest Name
+              </span>
+              <span
+                style={{
+                  fontSize: '13.5px',
+                  fontWeight: 700,
+                  color: '#0F172A',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                {guestFullName}
+              </span>
+            </div>
+          </div>
+
+          {/* Quadrant 2 (Top-Right): Confirmation Number */}
+          <div
+            style={{
+              padding: '16px 18px',
+              borderBottom: '1px solid #F1F5F9',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
+            }}
+          >
+            <span style={{ fontSize: '12px', color: '#64748B', marginBottom: '4px', fontWeight: 500 }}>
+              Confirmation Number
+            </span>
+            <span
+              style={{
+                fontSize: '14.5px',
+                fontWeight: 800,
+                color: '#16A34A',
+                letterSpacing: '0.02em'
+              }}
+            >
+              {cleanConfirmationNumber}
+            </span>
+          </div>
+
+          {/* Quadrant 3 (Bottom-Left): Stay Duration */}
+          <div
+            style={{
+              padding: '16px 18px',
+              borderRight: '1px solid #F1F5F9',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <span style={{ fontSize: '12px', color: '#64748B', marginBottom: '8px', fontWeight: 500 }}>
+              Stay Duration
+            </span>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '8px'
+              }}
+            >
+              {/* Check-in */}
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '2px' }}>
+                  Check-in
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+                  {checkInDateFormatted}
+                </span>
+                <span style={{ fontSize: '11.5px', color: '#64748B', marginTop: '1px' }}>
+                  {checkInTimeFormatted}
+                </span>
+              </div>
+
+              {/* Check-out */}
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '11.5px', color: '#64748B', marginBottom: '2px' }}>
+                  Check-out
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+                  {checkOutDateFormatted}
+                </span>
+                <span style={{ fontSize: '11.5px', color: '#64748B', marginTop: '1px' }}>
+                  {checkOutTimeFormatted}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quadrant 4 (Bottom-Right): Guests & Room */}
+          <div
+            style={{
+              padding: '16px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}
+          >
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: '#ECFDF5',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <User size={18} color="#10B981" strokeWidth={2.2} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span style={{ fontSize: '12px', color: '#64748B', marginBottom: '2px', fontWeight: 500 }}>
+                Guests & Room
+              </span>
+              <span
+                style={{
+                  fontSize: '13.5px',
+                  fontWeight: 700,
+                  color: '#0F172A',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                {adults} Adults, {children} Children
+              </span>
+              <span style={{ fontSize: '11.5px', color: '#64748B', marginTop: '1px' }}>
+                {roomsCount} Room{roomsCount > 1 ? 's' : ''}
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* View Booking Details Action Button */}
+        <button
+          type="button"
+          onClick={handleAction}
+          style={{
+            width: '100%',
+            backgroundColor: '#2563EB',
+            color: '#FFFFFF',
+            padding: '12px 20px',
+            borderRadius: '10px',
+            border: 'none',
+            fontSize: '14.5px',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+            transition: 'background-color 0.15s ease'
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1D4ED8')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#2563EB')}
+        >
+          <FileText size={18} color="#FFFFFF" strokeWidth={2.2} />
+          <span>View Booking Details</span>
+        </button>
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? ReactDOM.createPortal(modalElement, document.body)
+    : modalElement;
 }

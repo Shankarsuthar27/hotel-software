@@ -60,6 +60,7 @@ export default function ReservationsView({
   rooms = [],
   roomTypes = [],
   initialTab = 'all',
+  initialStatusFilter = 'all_active',
   onAssignRoom,
   onCheckIn,
   onCheckOut,
@@ -96,8 +97,29 @@ export default function ReservationsView({
   const [groupListReservation, setGroupListReservation] = useState(null);
   const [cancellingRes, setCancellingRes] = useState(null);
 
-  // Filters
-  const [statusFilter, setStatusFilter] = useState('all');
+  // Filters (persisted so selections like 'all' (All Statuses) or anything else don't revert to default)
+  const [statusFilter, setStatusFilter] = useState(() => {
+    if (initialStatusFilter) return initialStatusFilter;
+    try {
+      const saved = localStorage.getItem('pms_reservations_status_filter');
+      if (saved) return saved;
+    } catch (e) {}
+    return 'all_active';
+  });
+
+  useEffect(() => {
+    if (initialStatusFilter) {
+      setStatusFilter(initialStatusFilter);
+    }
+  }, [initialStatusFilter]);
+
+  useEffect(() => {
+    try {
+      if (statusFilter) {
+        localStorage.setItem('pms_reservations_status_filter', statusFilter);
+      }
+    } catch (e) {}
+  }, [statusFilter]);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,7 +128,7 @@ export default function ReservationsView({
   const [filterSingleLady, setFilterSingleLady] = useState(false);
 
   const handleResetFilters = () => {
-    setStatusFilter('all');
+    setStatusFilter('all_active');
     setSourceFilter('all');
     setFilterVip(false);
     setFilterSingleLady(false);
@@ -160,12 +182,12 @@ export default function ReservationsView({
 
       // Status dropdown filter
       if (statusFilter === 'all_active') {
-        const norm = (r.status || '').toLowerCase().replace('-', '_');
+        const norm = (r.status || '').toLowerCase().replace(/[\s-]/g, '_');
         if (norm !== 'confirmed' && norm !== 'in_house') return false;
       } else if (statusFilter === 'unmapped') {
         if (r.roomId && r.roomNumber && r.roomNumber !== 'Unassigned') return false;
       } else if (statusFilter !== 'all') {
-        const norm = (r.status || '').toLowerCase().replace('-', '_');
+        const norm = (r.status || '').toLowerCase().replace(/[\s-]/g, '_');
         if (norm !== statusFilter) return false;
       }
 

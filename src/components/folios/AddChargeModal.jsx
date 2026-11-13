@@ -40,7 +40,7 @@ export default function AddChargeModal({
 
   const guestFullNameLower = rawGuestName.toLowerCase();
   const folioNumber = folio.folioNumber || reservation.folioId || 'FOL_1';
-  const roomNumber = reservation.roomNumber || (reservation.assignedRoomId ? reservation.assignedRoomId.replace('rm_', '') : '102');
+  const roomNumber = reservation.roomNumber || (reservation.assignedRoomId ? reservation.assignedRoomId.replace('rm_', '') : (reservation.roomId ? reservation.roomId.replace('rm_', '') : '—'));
 
   // Form State
   const [selectedFolio, setSelectedFolio] = useState(folioNumber);

@@ -45,311 +45,18 @@ class PMSStore {
   }
 
   load() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        this.property = parsed.property || initialProperty;
-        this.roomTypes = parsed.roomTypes || initialRoomTypes;
-        this.rooms = parsed.rooms || initialRooms;
+    // Explicitly purge legacy localStorage PMS cache so local storage never stores or overrides main data
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('hotel_astha_pms_v5');
+      localStorage.removeItem('hotel_astha_pms_v4');
+      localStorage.removeItem('hotel_astha_pms_v3');
+      localStorage.removeItem('hotel_astha_pms_v2');
+      localStorage.removeItem('hotel_astha_pms_v1');
+      localStorage.removeItem('hotel_pms_state');
+    } catch (_) {}
 
-        // Apply room mapping: 101, 102 are Delux Room & 201, 202 are Normal
-        const r101 = this.rooms.find(r => r.id === 'rm_101');
-        if (r101) {
-          r101.roomTypeId = 'rt_deluxe';
-          r101.roomNumber = '101';
-          if (r101.status !== 'dirty' && r101.status !== 'maintenance') {
-            r101.status = 'clean';
-          }
-        }
-        const r102 = this.rooms.find(r => r.id === 'rm_102');
-        if (r102) {
-          r102.roomTypeId = 'rt_deluxe';
-          r102.roomNumber = '102';
-          r102.status = 'dirty';
-        }
-        const r201 = this.rooms.find(r => r.id === 'rm_201');
-        if (r201) {
-          r201.roomTypeId = 'rt_standard';
-          r201.roomNumber = '201';
-          if (r201.status !== 'dirty' && r201.status !== 'maintenance') {
-            r201.status = 'clean';
-          }
-        }
-        const r202 = this.rooms.find(r => r.id === 'rm_202');
-        if (r202) {
-          r202.roomTypeId = 'rt_standard';
-          r202.roomNumber = '202';
-          if (r202.status !== 'dirty' && r202.status !== 'maintenance') {
-            r202.status = 'clean';
-          }
-        }
-
-        const rtNormal = this.roomTypes.find(rt => rt.id === 'rt_standard' || rt.name === 'Normal' || rt.name === 'Standard Room');
-        if (rtNormal) {
-          rtNormal.name = 'Normal';
-          rtNormal.baseAdults = 2;
-          rtNormal.maxAdults = 4;
-          rtNormal.baseChildren = 1;
-          rtNormal.maxChildren = 1;
-          rtNormal.status = 'ACTIVE';
-        }
-        const rtDeluxe = this.roomTypes.find(rt => rt.id === 'rt_deluxe' || rt.name === 'Delux Room');
-        if (rtDeluxe) {
-          rtDeluxe.name = 'Delux Room';
-          rtDeluxe.baseAdults = 1;
-          rtDeluxe.maxAdults = 2;
-          rtDeluxe.baseChildren = 2;
-          rtDeluxe.maxChildren = 2;
-          rtDeluxe.status = 'ACTIVE';
-        }
-        let rtPremium = this.roomTypes.find(rt => rt.id === 'rt_premium' || rt.name === 'Premium');
-        if (!rtPremium) {
-          rtPremium = {
-            id: 'rt_premium',
-            name: 'Premium',
-            code: 'PRM',
-            description: 'Luxury premium suite with jacuzzi and executive lounge access.',
-            baseAdults: 4,
-            maxAdults: 6,
-            baseChildren: 2,
-            maxChildren: 4,
-            basePrice: 4500,
-            status: 'ACTIVE',
-            color: '#8b5cf6'
-          };
-          this.roomTypes.push(rtPremium);
-        } else {
-          rtPremium.name = 'Premium';
-          rtPremium.baseAdults = 4;
-          rtPremium.maxAdults = 6;
-          rtPremium.baseChildren = 2;
-          rtPremium.maxChildren = 4;
-          rtPremium.status = 'ACTIVE';
-        }
-
-        const roomTypeOrder = { 'Normal': 1, 'Delux Room': 2, 'Premium': 3 };
-        this.roomTypes.sort((a, b) => (roomTypeOrder[a.name] || 99) - (roomTypeOrder[b.name] || 99));
-        let loadedPlans = (parsed.mealPlans || initialMealPlans).filter(
-          mp => mp.id !== 'mp_ep' && mp.code !== 'EP'
-        );
-        if (!loadedPlans || !loadedPlans.some(mp => mp.code === 'STD')) {
-          loadedPlans = [
-            {
-              id: 'mp_std',
-              code: 'STD',
-              name: 'Standard',
-              inclusions: ['Breakfast', 'Lunch', 'Dinner'],
-              inclusionDetails: [
-                { type: 'Breakfast', from: '7:30 AM', to: '10:30 AM' },
-                { type: 'Lunch', from: '12:30 PM', to: '3:30 PM' },
-                { type: 'Dinner', from: '7:30 PM', to: '10:30 PM' }
-              ],
-              pricingModel: 'PER_PERSON',
-              adultPrice: 1000,
-              childPrice: 500,
-              status: 'ACTIVE'
-            },
-            ...loadedPlans
-          ];
-        } else {
-          loadedPlans = loadedPlans.map(mp => {
-            if (mp.code === 'STD') {
-              return {
-                ...mp,
-                inclusions: ['Breakfast', 'Lunch', 'Dinner'],
-                adultPrice: 1000,
-                childPrice: 500
-              };
-            }
-            return mp;
-          });
-        }
-        this.mealPlans = loadedPlans;
-        this.reservations = (parsed.reservations || initialReservations).filter(r => {
-          if (r.id === 'res_unassigned_1') return false;
-          if (r.id === 'res_372' || r.bookingReference === '#RES_372' || r.bookingReference === 'RES_372') return false;
-          const name = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
-          if (name.includes('rahul kumar') && (r.status === 'cancelled' || !r.status)) return false;
-          return true;
-        });
-        ['res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'].forEach(id => {
-          const initRes = initialReservations.find(r => r.id === id);
-          if (initRes) {
-            const existingIdx = this.reservations.findIndex(r => r.id === id);
-            if (existingIdx === -1) {
-              this.reservations.unshift(initRes);
-            } else {
-              this.reservations[existingIdx] = {
-                ...this.reservations[existingIdx],
-                ...initRes,
-                roomId: initRes.roomId,
-                roomNumber: initRes.roomNumber,
-                roomTypeId: initRes.roomTypeId,
-                roomTypeName: initRes.roomTypeName,
-                primaryGuest: {
-                  ...(this.reservations[existingIdx].primaryGuest || {}),
-                  ...(initRes.primaryGuest || {})
-                },
-                checkInDate: initRes.checkInDate,
-                checkOutDate: initRes.checkOutDate,
-                nights: initRes.nights,
-                status: initRes.status,
-                totalAmount: initRes.totalAmount,
-                paidAmount: initRes.paidAmount,
-                balanceDue: initRes.balanceDue
-              };
-            }
-          }
-        });
-
-        // Ensure Room 101 has active in_house reservation for Mr Kkk Suthar (Checkout: Tue 27, Oct 2026)
-        const res101 = this.reservations.find(r => r.id === 'res_5');
-        if (res101) {
-          res101.roomId = 'rm_101';
-          res101.roomNumber = '101';
-          res101.roomTypeId = 'rt_standard';
-          res101.roomTypeName = 'Standard Room';
-          res101.status = 'in_house';
-          res101.checkOutDate = '2026-10-27';
-          res101.primaryGuest = {
-            ...(res101.primaryGuest || {}),
-            name: 'Mr Kkk Suthar',
-            title: 'Mr.',
-            firstName: 'Kkk',
-            lastName: 'Suthar'
-          };
-        }
-
-        // Ensure Room 102 has active in_house reservation for Mr Shankar Suthar (Checkout: Mon 26, Oct 2026)
-        const res102 = this.reservations.find(r => r.id === 'res_4' || r.id === 'res_1');
-        if (res102) {
-          res102.roomId = 'rm_102';
-          res102.roomNumber = '102';
-          res102.roomTypeId = 'rt_standard';
-          res102.roomTypeName = 'Standard Room';
-          res102.status = 'in_house';
-          res102.checkOutDate = '2026-10-26';
-          res102.primaryGuest = {
-            ...(res102.primaryGuest || {}),
-            name: 'Mr Shankar Suthar',
-            title: 'Mr.',
-            firstName: 'Shankar',
-            lastName: 'Suthar'
-          };
-        }
-
-        // Ensure no other reservation is conflicting with 101, 102, 201, 202
-        this.reservations.forEach(r => {
-          if (r.id !== 'res_5' && r.roomId === 'rm_101') {
-            r.roomId = '';
-            r.roomNumber = '';
-          }
-          if (r.id !== res102?.id && r.roomId === 'rm_102') {
-            r.roomId = '';
-            r.roomNumber = '';
-          }
-          if ((r.roomId === 'rm_201' || r.roomId === 'rm_202') && r.status === 'in_house') {
-            r.status = 'confirmed';
-          }
-        });
-
-        // Ensure 1 Unassigned reservation exists for Delux Room
-        const unassignedDlx = this.reservations.filter(
-          r => (r.status === 'confirmed' || r.status === 'in_house') && (!r.roomId || r.roomId === '') && r.roomTypeId === 'rt_deluxe'
-        );
-        if (unassignedDlx.length === 0) {
-          const res3 = initialReservations.find(r => r.id === 'res_3');
-          if (res3) {
-            this.reservations.push({
-              ...res3,
-              roomId: '',
-              roomNumber: '',
-              roomTypeId: 'rt_deluxe',
-              roomTypeName: 'Delux Room',
-              status: 'confirmed'
-            });
-          }
-        }
-        this.folios = parsed.folios || initialFolios;
-        ['fol_3', 'fol_4', 'fol_5'].forEach(fId => {
-          if (!this.folios[fId] && initialFolios[fId]) {
-            this.folios[fId] = initialFolios[fId];
-          }
-        });
-        this.announcements = parsed.announcements || initialStaffNotes || [];
-        this.otaChannels = parsed.otaChannels || initialOtaChannels;
-        this.teamMembers = parsed.teamMembers || initialTeamMembers;
-        if (!this.teamMembers.some(m => m.email === 'ss2137789@gmail.com')) {
-          this.teamMembers.push({
-            id: 'usr_02',
-            name: 'Shankar L',
-            initials: 'S',
-            email: 'ss2137789@gmail.com',
-            role: 'Hotel Manager / GM',
-            status: 'ACTIVE',
-            properties: ['HOTEL ASTHA'],
-            invitedAt: '3 Nov 2026',
-            hasAccount: true
-          });
-        }
-        this.nightAudits = (parsed.nightAudits && parsed.nightAudits.length >= 5) ? parsed.nightAudits : initialNightAudits;
-        this.auditTrail = parsed.auditTrail || initialAuditTrail;
-        this.stopouts = parsed.stopouts || {};
-        this.dailyRates = parsed.dailyRates || {
-          base: {
-            'rt_deluxe_2026-11-05': 1000,
-            'rt_deluxe_2026-11-06': 1000
-          },
-          extra_adult: {},
-          extra_child: {}
-        };
-        if (!this.dailyRates.base) this.dailyRates.base = {};
-        if (this.dailyRates.base['rt_deluxe_2026-11-05'] === undefined) {
-          this.dailyRates.base['rt_deluxe_2026-11-05'] = 1000;
-        }
-        if (this.dailyRates.base['rt_deluxe_2026-11-06'] === undefined) {
-          this.dailyRates.base['rt_deluxe_2026-11-06'] = 1000;
-        }
-        this.propertiesList = parsed.propertiesList || ['HOTEL ASTHA', 'HOTEL ASTHA RESORT'];
-        this.currentUser = parsed.currentUser || {
-          id: 'usr_owner',
-          name: 'Astha India',
-          email: 'owner@hotelastha.com',
-          role: 'Owner',
-          initials: 'AI',
-          status: 'ACTIVE'
-        };
-        this.invitationTokens = parsed.invitationTokens || [];
-        if (!parsed.ratePlans || parsed.ratePlans.length === 0 || !parsed.ratePlans.some(rp => rp.code === 'STR')) {
-          this.ratePlans = JSON.parse(JSON.stringify(initialRatePlans));
-        } else {
-          // Deduplicate ratePlans by code/id so stored duplicates are cleanly merged
-          const dedupeMap = new Map();
-          parsed.ratePlans.forEach((rp) => {
-            const key = (rp.code || rp.id || '').trim().toUpperCase();
-            if (key) {
-              if (!dedupeMap.has(key)) {
-                dedupeMap.set(key, { ...rp, id: rp.id || key });
-              } else {
-                const prev = dedupeMap.get(key);
-                dedupeMap.set(key, { ...prev, ...rp, id: prev.id || rp.id || key });
-              }
-            }
-          });
-          this.ratePlans = Array.from(dedupeMap.values());
-        }
-        if (this.property) {
-          this.property.businessDate = '2026-11-03';
-        }
-        this.restrictions = parsed.restrictions || {};
-        this.maintenanceBlocks = parsed.maintenanceBlocks || [];
-        this.save();
-        return;
-      } catch (e) {
-        console.warn('Failed to parse saved PMS state, resetting to defaults.', e);
-      }
-    }
+    // Initialize clean in-memory defaults while Cloud Firestore establishes live connection
     this.resetToDefaults();
   }
 
@@ -387,36 +94,44 @@ class PMSStore {
         createdAt: '2026-10-23T08:00:00Z'
       }
     ];
-    this.save();
+    this.propertiesList = ['HOTEL ASTHA', 'HOTEL ASTHA RESORT'];
+    this.currentUser = {
+      id: 'usr_owner',
+      name: 'Astha India',
+      email: 'owner@hotelastha.com',
+      role: 'Owner',
+      initials: 'AI',
+      status: 'ACTIVE'
+    };
+    this.invitationTokens = [];
+
+    // Ensure Room 102 is clean and free
+    const r102 = this.rooms.find(r => r.id === 'rm_102' || r.roomNumber === '102');
+    if (r102) {
+      r102.id = 'rm_102';
+      r102.roomNumber = '102';
+      r102.roomTypeId = 'rt_deluxe';
+      r102.status = 'clean';
+      r102.operational = 'available';
+      r102.notes = 'Ready for check-in';
+    }
+
+    // Ensure business date is valid
+    if (this.property) {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const todayStr = `${y}-${m}-${d}`;
+      if (!this.property.businessDate || this.property.businessDate < todayStr) {
+        this.property.businessDate = todayStr;
+      }
+    }
   }
 
   save() {
-    const payload = {
-      property: this.property,
-      roomTypes: this.roomTypes,
-      rooms: this.rooms,
-      mealPlans: this.mealPlans,
-      ratePlans: this.ratePlans,
-      reservations: this.reservations,
-      folios: this.folios,
-      announcements: this.announcements,
-      otaChannels: this.otaChannels,
-      teamMembers: this.teamMembers,
-      nightAudits: this.nightAudits,
-      auditTrail: this.auditTrail,
-      stopouts: this.stopouts,
-      dailyRates: this.dailyRates,
-      restrictions: this.restrictions,
-      maintenanceBlocks: this.maintenanceBlocks,
-      propertiesList: this.propertiesList || ['HOTEL ASTHA', 'HOTEL ASTHA RESORT'],
-      currentUser: this.currentUser || { id: 'usr_owner', name: 'Astha India', role: 'Owner', email: 'owner@hotelastha.com', initials: 'AI', status: 'ACTIVE' },
-      invitationTokens: this.invitationTokens || []
-    };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {
-      console.error('LocalStorage write failed:', e);
-    }
+    // Main business info is stored and synchronized exclusively with Firebase Cloud Firestore.
+    // LocalStorage persistence is disabled per architectural requirement.
     this.notify();
   }
 
@@ -534,6 +249,18 @@ class PMSStore {
             return true;
           });
 
+          // Ensure Shankar Suthar or historical bookings don't occupy Room 102 in Firestore
+          validCloudRes.forEach(r => {
+            if (r.roomId === 'rm_102' || r.roomNumber === '102' || r.roomId === '102') {
+              const guestName = (r.primaryGuest?.name || r.guestName || '').toLowerCase();
+              if (guestName.includes('shankar') || guestName.includes('hitesh') || r.status !== 'in_house') {
+                r.roomId = '';
+                r.roomNumber = '';
+                if (r.status === 'in_house') r.status = 'checked_out';
+              }
+            }
+          });
+
           const idOrder = ['res_7', 'res_6', 'res_5', 'res_4', 'res_3', 'res_2', 'res_1'];
           validCloudRes.sort((a, b) => {
             const idxA = idOrder.indexOf(a.id);
@@ -546,7 +273,6 @@ class PMSStore {
 
           this.reservations = validCloudRes;
           this.cloudStatus = 'LIVE';
-          this.save();
           this.notify();
         },
         (err) => {
@@ -563,14 +289,24 @@ class PMSStore {
         roomsCol,
         (snapshot) => {
           const cloudRooms = snapshot.docs.map((d) => d.data());
-          const map = new Map();
-          cloudRooms.forEach((r) => {
-            const key = r.id || r.roomNumber;
-            if (key && !map.has(key)) map.set(key, r);
-          });
-          this.rooms = Array.from(map.values());
+          if (cloudRooms.length > 0) {
+            const map = new Map();
+            cloudRooms.forEach((r) => {
+              const key = r.id || r.roomNumber;
+              if (key && !map.has(key)) map.set(key, r);
+            });
+            this.rooms = Array.from(map.values());
+
+            // Normalize Room 102 state in Firestore if needed
+            const r102 = this.rooms.find(r => r.id === 'rm_102' || r.roomNumber === '102');
+            if (r102 && (r102.status === 'occupied' || !['clean', 'dirty', 'maintenance'].includes(r102.status))) {
+              r102.status = 'clean';
+              r102.operational = 'available';
+              r102.notes = 'Ready for check-in';
+              this.syncDocToFirestore('rooms', r102.id, r102);
+            }
+          }
           this.cloudStatus = 'LIVE';
-          this.save();
           this.notify();
         },
         (err) => {
@@ -588,9 +324,10 @@ class PMSStore {
           snapshot.docs.forEach((d) => {
             newFolios[d.id] = d.data();
           });
-          this.folios = newFolios;
+          if (Object.keys(newFolios).length > 0) {
+            this.folios = newFolios;
+          }
           this.cloudStatus = 'LIVE';
-          this.save();
           this.notify();
         },
         (err) => {
@@ -605,7 +342,6 @@ class PMSStore {
         mbCol,
         (snapshot) => {
           this.maintenanceBlocks = snapshot.docs.map((d) => d.data());
-          this.save();
           this.notify();
         },
         () => {}
@@ -620,7 +356,6 @@ class PMSStore {
           if (snapshot.exists()) {
             const cloudProp = snapshot.data();
             this.property = { ...this.property, ...cloudProp };
-            this.save();
             this.notify();
           }
         },
@@ -641,9 +376,10 @@ class PMSStore {
             const key = mp.id || mp.code;
             if (key && !map.has(key)) map.set(key, mp);
           });
-          this.mealPlans = Array.from(map.values());
-          this.save();
-          this.notify();
+          if (map.size > 0) {
+            this.mealPlans = Array.from(map.values());
+            this.notify();
+          }
         },
         () => {}
       );
@@ -678,7 +414,6 @@ class PMSStore {
           });
           if (map.size > 0) {
             this.ratePlans = Array.from(map.values());
-            this.save();
             this.notify();
           }
         },
@@ -697,9 +432,10 @@ class PMSStore {
             const key = rt.id || rt.code;
             if (key && !map.has(key)) map.set(key, rt);
           });
-          this.roomTypes = Array.from(map.values());
-          this.save();
-          this.notify();
+          if (map.size > 0) {
+            this.roomTypes = Array.from(map.values());
+            this.notify();
+          }
         },
         () => {}
       );
@@ -718,7 +454,6 @@ class PMSStore {
               if (key && !map.has(key)) map.set(key, tm);
             });
             this.teamMembers = Array.from(map.values());
-            this.save();
             this.notify();
           }
         },
@@ -734,13 +469,42 @@ class PMSStore {
           const cloudAnn = snapshot.docs.map((d) => d.data());
           if (cloudAnn.length > 0) {
             this.announcements = cloudAnn;
-            this.save();
             this.notify();
           }
         },
         () => {}
       );
       this.unsubscribers.push(unsubAnn);
+
+      // 12. Real-time Listener: Night Audits
+      const naCol = collection(db, 'properties', this.propertyId, 'nightAudits');
+      const unsubNa = onSnapshot(
+        naCol,
+        (snapshot) => {
+          const cloudNa = snapshot.docs.map((d) => d.data());
+          if (cloudNa.length > 0) {
+            this.nightAudits = cloudNa;
+            this.notify();
+          }
+        },
+        () => {}
+      );
+      this.unsubscribers.push(unsubNa);
+
+      // 13. Real-time Listener: Audit Trail
+      const atCol = collection(db, 'properties', this.propertyId, 'auditTrail');
+      const unsubAt = onSnapshot(
+        atCol,
+        (snapshot) => {
+          const cloudAt = snapshot.docs.map((d) => d.data());
+          if (cloudAt.length > 0) {
+            this.auditTrail = cloudAt;
+            this.notify();
+          }
+        },
+        () => {}
+      );
+      this.unsubscribers.push(unsubAt);
 
       this.cloudStatus = 'LIVE';
       this.notify();
@@ -896,6 +660,9 @@ class PMSStore {
       ratePlanCode: bookingData.ratePlanCode || 'BAR_CP',
       checkInDate: bookingData.checkInDate,
       checkOutDate: bookingData.checkOutDate,
+      checkInTime: bookingData.checkInTime || '11:59',
+      checkOutTime: bookingData.checkOutTime || '11:00',
+      roomsCount: bookingData.roomsCount || (bookingData.configuredRooms ? bookingData.configuredRooms.length : 1),
       nights: Number(bookingData.nights) || 1,
       adults: Number(bookingData.adults) || 1,
       children: Number(bookingData.children) || 0,
@@ -1323,18 +1090,54 @@ class PMSStore {
 
   // --- HOUSEKEEPING & MAINTENANCE ---
 
-  updateRoomStatus(roomId, newStatus) {
-    this.rooms = this.rooms.map(rm =>
-      rm.id === roomId ? { ...rm, status: newStatus } : rm
-    );
-    const room = this.rooms.find(r => r.id === roomId);
-    this.logAudit('HOUSEKEEPING_UPDATE', 'ROOM', room ? room.roomNumber : roomId, `Status set to ${newStatus.toUpperCase()}`);
+  updateRoomStatus(roomId, newStatus, extraNotes = null) {
+    const normStatus = (newStatus || 'clean').toLowerCase();
+    let updatedRoom = null;
+
+    this.rooms = this.rooms.map(rm => {
+      const isMatch = rm.id === roomId ||
+                      rm.roomNumber === String(roomId) ||
+                      rm.id === `rm_${roomId}` ||
+                      (roomId && String(rm.id).toLowerCase() === String(roomId).toLowerCase());
+
+      if (isMatch) {
+        let notes = extraNotes;
+        if (!notes) {
+          if (normStatus === 'dirty') {
+            notes = (rm.notes && rm.notes !== 'Ready for check-in') ? rm.notes : 'Needs cleaning';
+          } else if (normStatus === 'clean') {
+            notes = 'Ready for check-in';
+          } else if (normStatus === 'maintenance') {
+            notes = (rm.notes && rm.notes !== 'Ready for check-in') ? rm.notes : 'Out of order';
+          } else {
+            notes = rm.notes || '';
+          }
+        }
+
+        updatedRoom = {
+          ...rm,
+          status: normStatus,
+          operational: normStatus === 'maintenance' ? 'maintenance' : 'available',
+          notes,
+          updatedAt: new Date().toISOString()
+        };
+        return updatedRoom;
+      }
+      return rm;
+    });
+
+    const room = updatedRoom || this.rooms.find(r => r.id === roomId || r.roomNumber === String(roomId) || r.id === `rm_${roomId}`);
+    this.logAudit('HOUSEKEEPING_UPDATE', 'ROOM', room ? room.roomNumber : roomId, `Status set to ${normStatus.toUpperCase()}`);
     this.save();
 
     if (room) {
-      this.syncDocToFirestore('rooms', roomId, room);
+      this.syncDocToFirestore('rooms', room.id, room);
+      if (room.roomNumber && room.roomNumber !== room.id) {
+        this.syncDocToFirestore('rooms', room.roomNumber, room);
+      }
     }
     this.notify();
+    return updatedRoom;
   }
 
   addMaintenanceBlock(blockData) {
@@ -1462,10 +1265,23 @@ class PMSStore {
   postPendingCharges(reservationId) {
     const res = this.reservations.find(r => r.id === reservationId);
     if (!res || !res.folioId) return null;
-    if (res.status === 'checked_out' || res.status === 'Checked Out' || res.status === 'checked-out') {
-      console.warn(`[PMSStore] Cannot post pending charges to checked-out reservation ${reservationId}.`);
+    const statusNorm = (res.status || '').toLowerCase().replace('-', '_').replace(' ', '_');
+    if (statusNorm === 'checked_out' || statusNorm === 'cancelled' || statusNorm === 'no_show') {
+      console.warn(`[PMSStore] Cannot post pending charges to ${res.status} reservation ${reservationId}.`);
       return null;
     }
+
+    // Guard against accidental duplicate posting within 1 second
+    const now = Date.now();
+    if (
+      this._lastPostPendingCall &&
+      this._lastPostPendingCall.reservationId === reservationId &&
+      now - this._lastPostPendingCall.timestamp < 1000
+    ) {
+      console.warn(`[PMSStore] Blocked duplicate postPendingCharges call within 1s for ${reservationId}.`);
+      return null;
+    }
+    this._lastPostPendingCall = { reservationId, timestamp: now };
 
     const folio = this.folios[res.folioId] || {
       folioNumber: `FOL_${res.id.replace('res_', '')}`,
@@ -1530,6 +1346,21 @@ class PMSStore {
     };
 
     const amt = Number(amount) || 0;
+
+    // Guard against accidental duplicate posting within 1 second
+    const now = Date.now();
+    if (
+      this._lastChargeCall &&
+      this._lastChargeCall.reservationId === reservationId &&
+      this._lastChargeCall.amount === amt &&
+      this._lastChargeCall.category === category &&
+      now - this._lastChargeCall.timestamp < 1000
+    ) {
+      console.warn(`[PMSStore] Blocked duplicate addFolioCharge call within 1s for ${reservationId}.`);
+      return folio.transactions[folio.transactions.length - 1] || null;
+    }
+    this._lastChargeCall = { reservationId, amount: amt, category, timestamp: now };
+
     const tax = res.isTaxExempt || res.isComplimentary ? 0 : Math.round(amt * 0.05 * 100) / 100;
 
     const newTx = {
@@ -1582,6 +1413,20 @@ class PMSStore {
     };
 
     const amt = Number(amount) || 0;
+
+    // Guard against accidental duplicate payment posting within 1 second
+    const now = Date.now();
+    if (
+      this._lastPaymentCall &&
+      this._lastPaymentCall.reservationId === reservationId &&
+      this._lastPaymentCall.amount === amt &&
+      this._lastPaymentCall.paymentMethod === paymentMethod &&
+      now - this._lastPaymentCall.timestamp < 1000
+    ) {
+      console.warn(`[PMSStore] Blocked duplicate addFolioPayment call within 1s for ${reservationId}.`);
+      return folio.transactions[folio.transactions.length - 1] || null;
+    }
+    this._lastPaymentCall = { reservationId, amount: amt, paymentMethod, timestamp: now };
 
     const newTx = {
       id: `tx_pay_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,

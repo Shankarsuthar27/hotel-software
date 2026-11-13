@@ -9,6 +9,7 @@ import {
   Edit3,
   User,
   Calendar,
+  Clock,
   ArrowLeftRight,
   SlidersHorizontal,
   MessageSquare,
@@ -124,7 +125,7 @@ export default function BookingDetailsDrawer({
     ? reservation.specialRequests
     : (reservation.notes && reservation.notes.trim() !== '..' && reservation.notes.trim() !== ''
         ? reservation.notes
-        : 'Enter any special requests or notes...');
+        : '...');
 
   const guestCountry = guest.country || guest.nationality || guest.address || 'India';
   const guestEmail = guest.email || reservation.guestEmail || 'ss2137789@gmail.com';
@@ -295,6 +296,11 @@ export default function BookingDetailsDrawer({
                   <div className="booking-info-tile-content">
                     <span className="booking-info-tile-label">Arrival Date</span>
                     <span className="booking-info-tile-val font-bold">{arrivalDateFormatted}</span>
+                    {reservation.checkInTime && (
+                      <span className="booking-info-tile-time" style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
+                        <Clock size={12} color="#64748b" /> {reservation.checkInTime}
+                      </span>
+                    )}
                   </div>
                   <div className="booking-info-tile-icon-box">
                     <Calendar size={18} />
@@ -306,6 +312,11 @@ export default function BookingDetailsDrawer({
                   <div className="booking-info-tile-content">
                     <span className="booking-info-tile-label">Departure Date</span>
                     <span className="booking-info-tile-val font-bold">{departureDateFormatted}</span>
+                    {reservation.checkOutTime && (
+                      <span className="booking-info-tile-time" style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
+                        <Clock size={12} color="#64748b" /> {reservation.checkOutTime}
+                      </span>
+                    )}
                     {isEarlyCheckOut && (
                       <span className="booking-info-tile-subtext text-early-checkout">(Early Check-out)</span>
                     )}

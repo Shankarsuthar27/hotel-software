@@ -18,6 +18,16 @@
   box-sizing: border-box;
 }
 
+.add-res-fullscreen-overlay.has-modal-open {
+  overflow: hidden !important;
+  overflow-y: hidden !important;
+}
+
+body.has-res-modal-open,
+html.has-res-modal-open {
+  overflow: hidden !important;
+}
+
 .add-res-page {
   display: flex;
   flex-direction: column;
@@ -600,11 +610,14 @@
   box-sizing: border-box;
   margin: 0 auto;
   display: block;
+  cursor: default;
+  user-select: none;
+  caret-color: transparent;
 }
 
 .room-config-rooms-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #e2e8f0;
+  box-shadow: none;
 }
 
 .room-config-rate-input {
@@ -1296,7 +1309,7 @@
   display: flex;
   align-items: center;
   background-color: #f8fafc;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid #cbd5e1;
   padding: 0 8px 0 10px;
   flex-shrink: 0;
 }
@@ -1327,5 +1340,13 @@
 
 .guest-phone-input::placeholder {
   color: #94a3b8;
+}
+
+.guest-phone-error-msg {
+  color: #ef4444;
+  font-size: 0.8125rem;
+  margin-top: 4px;
+  font-weight: 400;
+  line-height: 1.3;
 }
 

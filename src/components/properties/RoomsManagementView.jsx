@@ -471,7 +471,12 @@ export default function RoomsManagementView({
               </thead>
               <tbody>
                 {rooms.map((rm, idx) => (
-                  <tr key={rm.id || rm.roomNumber} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                  <tr
+                    key={rm.id || rm.roomNumber}
+                    style={{ borderBottom: '1px solid #F1F5F9', cursor: 'pointer' }}
+                    onClick={() => setEditingRoom(rm)}
+                    title={`Click to edit room ${rm.roomNumber}`}
+                  >
                     {/* Room Number */}
                     <td style={{ padding: '16px 16px 16px 24px' }}>
                       <strong style={{ color: '#0F172A', fontWeight: 700, fontSize: '14px' }}>

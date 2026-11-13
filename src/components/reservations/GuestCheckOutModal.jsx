@@ -26,7 +26,7 @@ export default function GuestCheckOutModal({
   const [isSettling, setIsSettling] = useState(false);
 
   const guestName = reservation.primaryGuest?.name || 'Guest';
-  const roomNumber = reservation.roomNumber || '102';
+  const roomNumber = reservation.roomNumber || (reservation.roomId ? reservation.roomId.replace('rm_', '') : '—');
   const roomType = reservation.roomTypeName || 'Delux Room';
   const checkInDate = reservation.checkInDate || '24/10/2026';
   const checkOutDate = reservation.checkOutDate || '26/10/2026';

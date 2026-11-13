@@ -25,7 +25,7 @@ export const initialProperty = {
   checkOutTime: '11:00',
   createdAt: '22 Oct 2026',
   status: 'ACTIVE',
-  businessDate: '2026-11-03', // System operational date
+  businessDate: '2026-11-12', // System operational date
   gstin: '',
   legalName: 'HOTEL ASTHA',
   tradeName: 'HOTEL ASTHA',
@@ -41,19 +41,19 @@ export const initialProperty = {
 
 export const initialRoomTypes = [
   {
-    id: 'rt_standard',
-    name: 'Normal',
-    code: 'NRM',
-    description: 'Comfortable air-conditioned room with king bed and work desk.',
+    id: 'rt_ultra_premium',
+    name: 'Ultra Premium',
+    code: 'ULP',
+    description: 'Ultra luxurious presidential suite with panoramic views and dedicated butler.',
     baseAdults: 2,
     maxAdults: 4,
     baseChildren: 1,
-    maxChildren: 1,
-    basePrice: 1000,
-    extraAdultPrice: 800,
-    extraChildPrice: 400,
+    maxChildren: 2,
+    basePrice: 6500,
+    extraAdultPrice: 2000,
+    extraChildPrice: 1000,
     status: 'ACTIVE',
-    color: '#06b6d4'
+    color: '#10b981'
   },
   {
     id: 'rt_deluxe',
@@ -84,14 +84,32 @@ export const initialRoomTypes = [
     extraChildPrice: 750,
     status: 'ACTIVE',
     color: '#8b5cf6'
+  },
+  {
+    id: 'rt_standard',
+    name: 'Normal',
+    code: 'NRM',
+    description: 'Comfortable air-conditioned room with king bed and work desk.',
+    baseAdults: 2,
+    maxAdults: 4,
+    baseChildren: 1,
+    maxChildren: 1,
+    basePrice: 1000,
+    extraAdultPrice: 800,
+    extraChildPrice: 400,
+    status: 'ACTIVE',
+    color: '#06b6d4'
   }
 ];
 
 export const initialRooms = [
-  { id: 'rm_101', roomNumber: '101', roomTypeId: 'rt_deluxe', floor: '1', status: 'clean', operational: 'available', notes: '' },
-  { id: 'rm_102', roomNumber: '102', roomTypeId: 'rt_deluxe', floor: '1', status: 'dirty', operational: 'available', notes: '' },
-  { id: 'rm_201', roomNumber: '201', roomTypeId: 'rt_standard', floor: '2', status: 'clean', operational: 'available', notes: '' },
-  { id: 'rm_202', roomNumber: '202', roomTypeId: 'rt_standard', floor: '2', status: 'clean', operational: 'available', notes: '' }
+  { id: 'rm_501', roomNumber: '501', roomTypeId: 'rt_ultra_premium', floor: '5', status: 'clean', operational: 'available', notes: 'Ready for check-in' },
+  { id: 'rm_101', roomNumber: '101', roomTypeId: 'rt_deluxe', floor: '1', status: 'clean', operational: 'available', notes: 'Turnaround required post check-out' },
+  { id: 'rm_102', roomNumber: '102', roomTypeId: 'rt_deluxe', floor: '1', status: 'clean', operational: 'available', notes: 'Ready for check-in' },
+  { id: 'rm_301', roomNumber: '301', roomTypeId: 'rt_premium', floor: '3', status: 'clean', operational: 'available', notes: 'Ready for check-in' },
+  { id: 'rm_302', roomNumber: '302', roomTypeId: 'rt_premium', floor: '3', status: 'dirty', operational: 'available', notes: 'Ready for check-in' },
+  { id: 'rm_201', roomNumber: '201', roomTypeId: 'rt_standard', floor: '2', status: 'clean', operational: 'available', notes: 'Ready for check-in' },
+  { id: 'rm_202', roomNumber: '202', roomTypeId: 'rt_standard', floor: '2', status: 'clean', operational: 'available', notes: 'Ready for check-in' }
 ];
 
 export const initialMealPlans = [
@@ -143,6 +161,130 @@ export const initialRatePlans = [
 
 export const initialReservations = [
   {
+    id: 'res_11',
+    bookingReference: '#RES_11',
+    primaryGuest: {
+      name: 'Mr Shaknrk Suthar',
+      title: 'Mr.',
+      firstName: 'Shaknrk',
+      lastName: 'Suthar',
+      phone: '+91 9239288392',
+      email: 'ssajhdjka@gmail.com',
+      country: 'India',
+      isPrimary: true
+    },
+    roomId: 'rm_201',
+    roomNumber: '201',
+    roomTypeId: 'rt_standard',
+    roomTypeName: 'Normal',
+    ratePlanCode: 'BAR_EP',
+    ratePlanName: 'test plan',
+    checkInDate: '2026-11-12',
+    checkOutDate: '2026-11-13',
+    checkInTime: '12:30',
+    checkOutTime: '11:00',
+    nights: 1,
+    adults: 2,
+    children: 1,
+    baseRatePerNight: 1050.00,
+    totalRoomCharges: 1050.00,
+    taxAmount: 0.00,
+    totalAmount: 1050.00,
+    paidAmount: 0.00,
+    balanceDue: 1050.00,
+    status: 'in_house',
+    bookingSource: 'walk-in',
+    marketSegment: 'FIT',
+    createdAt: '2026-11-12 12:30 PM',
+    bookingDateFormatted: '12 Nov 2026, 12:30 PM',
+    specialRequests: '',
+    notes: '',
+    folioId: 'fol_11'
+  },
+  {
+    id: 'res_10',
+    bookingReference: '#RES_10',
+    primaryGuest: {
+      name: 'Mr Krishana Suthar',
+      title: 'Mr.',
+      firstName: 'Krishana',
+      lastName: 'Suthar',
+      phone: '+91 9738873383',
+      email: 'shanak@gmail.com',
+      country: 'India',
+      isPrimary: true
+    },
+    roomId: '',
+    roomNumber: '',
+    roomTypeId: 'rt_standard',
+    roomTypeName: 'Standard Room',
+    ratePlanCode: 'BAR_EP',
+    ratePlanName: 'test plan',
+    checkInDate: '2026-11-12',
+    checkOutDate: '2026-11-12',
+    checkInTime: '10:00',
+    checkOutTime: '18:00',
+    nights: 1,
+    adults: 1,
+    children: 0,
+    baseRatePerNight: 1500.00,
+    totalRoomCharges: 1500.00,
+    taxAmount: 0.00,
+    totalAmount: 1500.00,
+    paidAmount: 1500.00,
+    balanceDue: 0.00,
+    status: 'checked_out',
+    bookingSource: 'walk-in',
+    marketSegment: 'FIT',
+    createdAt: '2026-11-12 10:00 AM',
+    bookingDateFormatted: '12 Nov 2026, 10:00 AM',
+    specialRequests: '',
+    notes: '',
+    folioId: 'fol_10'
+  },
+  {
+    id: 'res_12',
+    bookingReference: '#RES_12',
+    primaryGuest: {
+      name: 'Mr Shankar Suthar',
+      title: 'Mr.',
+      firstName: 'Shankar',
+      lastName: 'Suthar',
+      phone: '+91 98932938982',
+      email: 'ss2137789@gmail.com',
+      country: 'India',
+      isPrimary: true
+    },
+    roomId: '',
+    roomNumber: '',
+    roomTypeId: 'rt_deluxe',
+    roomTypeName: 'Delux Room',
+    ratePlanCode: 'BAR_EP',
+    ratePlanName: 'test plan',
+    checkInDate: '2026-11-12',
+    checkOutDate: '2026-11-12',
+    actualCheckOutDate: '2026-11-12',
+    checkInTime: '12:30',
+    checkOutTime: '11:00',
+    nights: 1,
+    adults: 1,
+    children: 0,
+    baseRatePerNight: 1200.00,
+    totalRoomCharges: 1200.00,
+    taxAmount: 0.00,
+    totalAmount: 1200.00,
+    paidAmount: 1200.00,
+    balanceDue: 0.00,
+    status: 'checked_out',
+    bookingSource: 'walk-in',
+    marketSegment: 'FIT',
+    createdAt: '2026-11-12 12:30 PM',
+    bookingDateFormatted: '12 Nov 2026, 12:30 PM',
+    specialRequests: '',
+    notes: '',
+    folioId: 'fol_12'
+  },
+  {
     id: 'res_7',
     bookingReference: '#RES_7',
     primaryGuest: {
@@ -155,8 +297,8 @@ export const initialReservations = [
       country: 'India',
       isPrimary: true
     },
-    roomId: 'rm_102',
-    roomNumber: '102',
+    roomId: '',
+    roomNumber: '',
     roomTypeId: 'rt_deluxe',
     roomTypeName: 'Deluxe Room',
     ratePlanCode: 'BAR_EP',
@@ -278,8 +420,8 @@ export const initialReservations = [
       country: 'India',
       isPrimary: true
     },
-    roomId: 'rm_102',
-    roomNumber: '102',
+    roomId: '',
+    roomNumber: '',
     roomTypeId: 'rt_standard',
     roomTypeName: 'Standard Room',
     ratePlanCode: 'BAR_EP',
@@ -351,8 +493,8 @@ export const initialReservations = [
       gstin: '',
       nationality: 'Indian'
     },
-    roomId: 'rm_102',
-    roomNumber: '102',
+    roomId: '',
+    roomNumber: '',
     roomTypeId: 'rt_standard',
     ratePlanCode: 'BAR_EP',
     checkInDate: '2026-10-24', // Sat 24, Oct 2026
@@ -407,8 +549,8 @@ export const initialReservations = [
       expiryDate: '2026-10-28',
       gstin: ''
     },
-    roomId: 'rm_102',
-    roomNumber: '102',
+    roomId: '',
+    roomNumber: '',
     roomTypeId: 'rt_standard',
     roomTypeName: 'Standard Room',
     ratePlanCode: 'BAR_EP',
@@ -747,17 +889,43 @@ export const initialAuditTrail = [
 
 export const initialGuests = [
   {
-    id: 'gst_1',
-    name: 'Mr Krishna Suthar',
-    email: 'ss2137789@gmail.com',
-    phone: '+91 9292748397',
+    id: 'gst_shaknrk',
+    name: 'Mr Shaknrk Suthar',
+    email: 'ssajhdjka@gmail.com',
+    phone: '+91 9239288392',
     gender: 'Male',
     guestType: 'Adult',
-    nationality: '—',
-    birthDate: '2002-09-27', // Fri 27, Sep 2002
-    addedOn: '2026-10-23',   // Fri 23, Oct 2026
+    nationality: 'India',
+    birthDate: null,
+    addedOn: '2026-11-12',
     isVIP: false,
-    reservationIds: ['res_6', 'res_5', 'res_4', 'res_3', 'res_7', 'res_1', 'res_2']
+    reservationIds: ['res_11']
+  },
+  {
+    id: 'gst_krishana',
+    name: 'Mr Krishana Suthar',
+    email: 'shanak@gmail.com',
+    phone: '+91 9738873383',
+    gender: 'Male',
+    guestType: 'Adult',
+    nationality: 'India',
+    birthDate: null,
+    addedOn: '2026-11-12',
+    isVIP: false,
+    reservationIds: ['res_10']
+  },
+  {
+    id: 'gst_shankar',
+    name: 'Mr Shankar Suthar',
+    email: 'ss2137789@gmail.com',
+    phone: '+91 98932938982',
+    gender: 'Male',
+    guestType: 'Adult',
+    nationality: 'India',
+    birthDate: '2002-09-27',
+    addedOn: '2026-11-12',
+    isVIP: false,
+    reservationIds: ['res_12', 'res_4', 'res_1']
   },
   {
     id: 'gst_2',
@@ -768,7 +936,7 @@ export const initialGuests = [
     guestType: 'Adult',
     nationality: '—',
     birthDate: null,
-    addedOn: '2026-10-22',   // Thu 22, Oct 2026
+    addedOn: '2026-10-22',
     isVIP: true,
     reservationIds: []
   }

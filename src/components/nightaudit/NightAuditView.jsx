@@ -332,19 +332,7 @@ export default function NightAuditView({
   const hiddenDateInputRef = React.useRef(null);
 
   const [roomStatusList, setRoomStatusList] = useState(
-    () =>
-      savedSession?.roomStatusList || [
-        {
-          id: 'rm_102',
-          roomNumber: '102',
-          resNo: '#RES_6',
-          guest: 'Mr Krishna Suthar',
-          arrival: '26 Oct 2026',
-          departure: '27 Oct 2026',
-          balance: '3,675.00',
-          status: 'Due Out'
-        }
-      ]
+    () => savedSession?.roomStatusList || []
   );
 
   // Close row action dropdown when clicking outside
@@ -760,18 +748,7 @@ export default function NightAuditView({
     const nextDueBadge = 'Action Required';
     const nextUnsettledText = '0';
     const nextUnsettledBadge = 'Clear';
-    const initial27Rooms = [
-      {
-        id: 'rm_102',
-        roomNumber: '102',
-        resNo: '#RES_6',
-        guest: 'Mr Krishna Suthar',
-        arrival: '26 Oct 2026',
-        departure: '27 Oct 2026',
-        balance: '3,675.00',
-        status: 'Due Out'
-      }
-    ];
+    const initial27Rooms = [];
 
     setAuditsList(updatedAuditsList);
     setDisplayDateStr(nextDateStr);

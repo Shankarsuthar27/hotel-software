@@ -216,6 +216,7 @@
 }
 
 .edit-res-date-metric {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -233,6 +234,35 @@
   font-size: 0.84rem;
   font-weight: 700;
   color: #0f172a;
+}
+
+.edit-res-date-metric .metric-time-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.74rem;
+  color: #64748b;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-top: 1px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.edit-res-date-metric .metric-time-edit:hover {
+  background-color: #f1f5f9;
+  color: #2563eb;
+}
+
+.edit-res-date-metric .time-pencil-icon {
+  color: #94a3b8;
+  transition: color 0.15s ease;
+}
+
+.edit-res-date-metric .metric-time-edit:hover .time-pencil-icon {
+  color: #2563eb;
 }
 
 .edit-res-stat-box {
@@ -402,10 +432,10 @@
 }
 
 .edit-res-add-btn-mini {
-  width: 24px;
-  height: 24px;
-  border-radius: 5px;
-  background: #2563eb;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: #3b82f6;
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -413,6 +443,86 @@
   border: none;
   cursor: pointer;
   font-size: 0.85rem;
+  box-shadow: 0 2px 5px rgba(59, 130, 246, 0.28);
+  transition: all 0.15s ease;
+}
+
+.edit-res-add-btn-mini:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* Add Sharer Popover Tooltip (Image 1) */
+.add-sharer-popover-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.add-sharer-popover {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 8px 18px;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+  z-index: 100;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.12s ease-out;
+  transition: all 0.15s ease;
+}
+
+.add-sharer-popover:hover {
+  background: #f8fafc;
+  box-shadow: 0 6px 20px -2px rgba(0, 0, 0, 0.15);
+}
+
+.add-sharer-popover-text {
+  color: #2563eb;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.add-sharer-popover-arrow {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border-left: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Back Link for Add Room Sharer (Image 2) */
+.add-sharer-back-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 13.5px;
+  margin-bottom: 1.25rem;
+  padding: 4px 0;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.add-sharer-back-header:hover {
+  color: #2563eb;
+}
+
+.add-sharer-back-header:hover svg {
+  stroke: #2563eb;
 }
 
 .edit-res-toggle-label {
@@ -1081,4 +1191,387 @@
   font-size: 0.8rem;
   font-weight: 600;
 }
+
+/* =========================================
+   GUEST LIST VIEW (Matching Image 1 & 2)
+   ========================================= */
+
+.edit-res-toggle-switch {
+  width: 36px;
+  height: 20px;
+  border-radius: 20px;
+  background: #64748b;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.edit-res-toggle-switch.on {
+  background: #2563eb;
+}
+
+.edit-res-toggle-switch-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.edit-res-toggle-switch.on .edit-res-toggle-switch-thumb {
+  transform: translateX(16px);
+}
+
+.edit-res-guest-list-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-res-guest-list-header {
+  margin-bottom: 1.5rem;
+}
+
+.edit-res-guest-list-title {
+  margin: 0 0 4px 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.edit-res-guest-list-subtitle {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #64748b;
+}
+
+.edit-res-guest-table-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.edit-res-guest-table-header {
+  display: grid;
+  grid-template-columns: 2.2fr 1.3fr 1.6fr 1.2fr;
+  gap: 12px;
+  padding: 0 4px 10px 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 12px;
+}
+
+.edit-res-guest-table-header .col-actions {
+  text-align: right;
+  padding-right: 8px;
+}
+
+.edit-res-guest-table-row {
+  display: grid;
+  grid-template-columns: 2.2fr 1.3fr 1.6fr 1.2fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.edit-res-guest-table-row .name-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-res-guest-table-row .title-select {
+  width: 72px;
+  height: 38px;
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+
+.edit-res-guest-table-row .edit-res-input {
+  height: 38px;
+  padding: 0 12px;
+}
+
+.edit-res-guest-table-row .col-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.edit-res-btn-upload-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.edit-res-btn-upload-id:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.edit-res-btn-add-guest {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 38px;
+  padding: 0 14px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
+  transition: background-color 0.15s ease;
+}
+
+.edit-res-btn-add-guest:hover {
+  background: #1d4ed8;
+}
+
+.edit-res-btn-edit-guest {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #2563eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.edit-res-btn-edit-guest:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.edit-res-btn-remove-guest {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fee2e2;
+  background: #fef2f2;
+  color: #ef4444;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.edit-res-btn-remove-guest:hover {
+  background: #fee2e2;
+}
+
+.edit-res-guest-list-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1.5rem;
+}
+
+.edit-res-btn-save-bottom {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 24px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+  transition: background-color 0.15s ease;
+}
+
+.edit-res-btn-save-bottom:hover {
+  background: #1d4ed8;
+}
+
+/* ========================================================
+   ID PHOTO SECTION & LIGHTBOX STYLES
+   ======================================================== */
+
+.edit-res-upload-box.uploading {
+  border-color: #2563eb;
+  background: #eff6ff;
+  cursor: wait;
+}
+
+.id-photo-preview-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 145px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1.5px solid #cbd5e1;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.id-photo-preview-img {
+  width: 100%;
+  height: 100%;
+  min-height: 145px;
+  object-fit: cover;
+  display: block;
+}
+
+.id-photo-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 5;
+}
+
+.id-photo-preview-wrap:hover .id-photo-overlay {
+  opacity: 1;
+}
+
+.id-photo-btn {
+  background: #ffffff;
+  border: none;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1e293b;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: transform 0.12s, background-color 0.12s;
+}
+
+.id-photo-btn:hover {
+  transform: scale(1.08);
+  background: #f8fafc;
+}
+
+.id-photo-btn.delete:hover {
+  background: #fee2e2;
+}
+
+.id-photo-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  z-index: 3;
+}
+
+/* Lightbox Modal */
+.id-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.id-lightbox-card {
+  background: #ffffff;
+  border-radius: 12px;
+  max-width: 680px;
+  width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.edit-res-btn-uploaded-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.edit-res-btn-uploaded-id:hover {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+}
+
+.edit-res-btn-icon-danger {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.edit-res-btn-icon-danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
 

@@ -1699,7 +1699,7 @@ export function generateReservationsExport(reservations) {
     'Reservation Code': r.bookingReference || r.resNo || '#RES',
     'Guest Name': r.primaryGuest?.name || r.guest || 'Guest',
     'Booking Date': r.createdAt || r.arrival || '26 Oct 2026',
-    'Rooms': `${r.roomNumber || '102'} (${r.roomTypeName || r.roomType || 'Delux Room'})`,
+    'Rooms': `${r.roomNumber || (r.roomId ? r.roomId.replace('rm_', '') : 'Unassigned')} (${r.roomTypeName || r.roomType || 'Room'})`,
     'Check-In': r.checkInDate || r.arrival || '26 Oct 2026',
     'Check-Out': r.checkOutDate || r.departure || '28 Oct 2026',
     'Source': r.bookingSource || r.source || 'WALKIN',

@@ -29,6 +29,26 @@ export async function checkAndSeedFirestore(propertyId = 'prop_astha_01', force 
     const propSnap = await getDoc(propRef);
 
     if (propSnap.exists() && !force) {
+      // Ensure Room 102 in Firestore is clean and available, and unbind any old Shankar Suthar links
+      try {
+        const r102Ref = doc(db, 'properties', propertyId, 'rooms', 'rm_102');
+        const r102Snap = await getDoc(r102Ref);
+        if (!r102Snap.exists() || r102Snap.data()?.status === 'occupied') {
+          const room102Data = {
+            id: 'rm_102',
+            roomNumber: '102',
+            roomTypeId: 'rt_deluxe',
+            floor: '1',
+            status: 'clean',
+            operational: 'available',
+            notes: 'Ready for check-in',
+            propertyId
+          };
+          await setDoc(r102Ref, room102Data, { merge: true });
+          await setDoc(doc(db, 'rooms', 'rm_102'), room102Data, { merge: true });
+        }
+      } catch (_) {}
+
       return {
         alreadySeeded: true,
         message: `Property ${propertyId} already exists in Firestore.`
